@@ -1,0 +1,24 @@
+{
+    "manifest_version": 2,
+    "name": "Docker Drive",
+    "version": "0.1",
+    "description": "Docker Drive",
+    "icons": {
+        "64": "public/favicon.ico"
+    },
+    "browser_action": {
+        "browser_style": true,
+        "default_icon": {
+            "16": "public/favicon.ico",
+            "32": "public/favicon.ico",
+            "64": "public/favicon.ico"
+        }
+    },
+    "background": {
+        "scripts": [
+            "background.js"
+        ]
+    },
+    "permissions": [],
+    "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self';"
+}
