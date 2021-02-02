@@ -1,8 +1,17 @@
 module.exports = {
-  transpileDependencies: [
-    'vuetify'
-  ],
+    transpileDependencies: [
+        'vuetify'
+    ],
 
-  productionSourceMap: false,
-  publicPath: ''
-}
+    productionSourceMap: false,
+    publicPath: '',
+
+    pluginOptions: {
+      i18n: {
+        locale: 'zh',
+        fallbackLocale: 'en',
+        localeDir: 'locales',
+        enableInSFC: true
+      }
+    }
+};

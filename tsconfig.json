@@ -15,7 +15,9 @@
     "baseUrl": ".",
     "types": [
       "webpack-env",
-      "vuetify"
+      "vuetify",
+      "webpack",
+      "webpack-env"
     ],
     "paths": {
       "@/*": [

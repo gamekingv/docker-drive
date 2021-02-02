@@ -1,0 +1,11 @@
+html {
+    overflow: hidden;
+}
+
+html,
+body,
+#app,
+#main,
+#main-container {
+    height: 100%;
+}
