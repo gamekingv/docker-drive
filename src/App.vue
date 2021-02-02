@@ -8,7 +8,6 @@
                             >mdi-database-import</v-icon
                         >
                     </v-list-item-avatar>
-
                     <v-list-item-content>
                         <v-list-item-title class="text-h5">{{
                             $t("name")
@@ -20,13 +19,22 @@
             <v-divider></v-divider>
 
             <v-list nav dense>
-                <v-list-item v-for="[icon, text] in links" :key="icon" link>
+                <v-list-item key="files" to="/" link>
                     <v-list-item-icon>
-                        <v-icon>{{ icon }}</v-icon>
+                        <v-icon>mdi-file-multiple</v-icon>
                     </v-list-item-icon>
-
                     <v-list-item-content>
-                        <v-list-item-title>{{ text }}</v-list-item-title>
+                        <v-list-item-title>{{ $t("files") }}</v-list-item-title>
+                    </v-list-item-content>
+                </v-list-item>
+                <v-list-item key="repositories" to="/about" link>
+                    <v-list-item-icon>
+                        <v-icon>mdi-database-settings</v-icon>
+                    </v-list-item-icon>
+                    <v-list-item-content>
+                        <v-list-item-title>{{
+                            $t("repositories")
+                        }}</v-list-item-title>
                     </v-list-item-content>
                 </v-list-item>
             </v-list>
@@ -50,44 +58,9 @@
                 class="py-8 px-6 overflow-y-auto"
                 fluid
             >
-                <v-row>
-                    <v-col v-for="card in cards" :key="card" cols="12">
-                        <v-card color="grey darken-3" elevation="6">
-                            <v-subheader>{{ card }}</v-subheader>
-
-                            <v-list color="grey darken-3" two-line>
-                                <template v-for="n in 15">
-                                    <v-list-item :key="n">
-                                        <v-list-item-avatar
-                                            color="grey darken-1"
-                                        >
-                                        </v-list-item-avatar>
-
-                                        <v-list-item-content>
-                                            <v-list-item-title>
-                                                Message
-                                                {{ n }}
-                                            </v-list-item-title>
-
-                                            <v-list-item-subtitle>
-                                                Lorem ipsum dolor sit amet,
-                                                consectetur adipisicing elit.
-                                                Nihil repellendus distinctio
-                                                similique
-                                            </v-list-item-subtitle>
-                                        </v-list-item-content>
-                                    </v-list-item>
-
-                                    <v-divider
-                                        v-if="n !== 6"
-                                        :key="`divider-${n}`"
-                                        inset
-                                    ></v-divider>
-                                </template>
-                            </v-list>
-                        </v-card>
-                    </v-col>
-                </v-row>
+                <v-fade-transition duration="80" mode="out-in">
+                    <router-view />
+                </v-fade-transition>
             </v-container>
         </v-main>
     </v-app>
@@ -96,14 +69,7 @@
 <script lang="ts">
 export default {
     data: () => ({
-        cards: ['Today'],
-        drawer: null,
-        links: [
-            ['mdi-inbox-arrow-down', 'Inbox'],
-            ['mdi-send', 'Send'],
-            ['mdi-delete', 'Trash'],
-            ['mdi-alert-octagon', 'Spam'],
-        ],
+        drawer: true,
     }),
 };
 </script>

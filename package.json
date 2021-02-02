@@ -1,77 +1,86 @@
 {
-  "name": "docker-drive",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "serve": "vue-cli-service serve",
-    "build": "vue-cli-service build",
-    "lint": "vue-cli-service lint",
-    "i18n:report": "vue-cli-service i18n:report --src './src/**/*.?(js|vue)' --locales './src/locales/**/*.json'"
-  },
-  "dependencies": {
-    "core-js": "^3.6.5",
-    "vue": "^2.6.11",
-    "vue-class-component": "^7.2.3",
-    "vue-i18n": "^8.17.3",
-    "vue-property-decorator": "^9.1.2",
-    "vuetify": "^2.4.0"
-  },
-  "devDependencies": {
-    "@intlify/vue-i18n-loader": "^1.0.0",
-    "@typescript-eslint/eslint-plugin": "^2.33.0",
-    "@typescript-eslint/parser": "^2.33.0",
-    "@vue/cli-plugin-babel": "~4.5.0",
-    "@vue/cli-plugin-eslint": "~4.5.0",
-    "@vue/cli-plugin-typescript": "^4.5.11",
-    "@vue/cli-service": "~4.5.0",
-    "@vue/eslint-config-typescript": "^5.0.2",
-    "babel-eslint": "^10.1.0",
-    "eslint": "^6.7.2",
-    "eslint-plugin-vue": "^6.2.2",
-    "sass": "^1.32.0",
-    "sass-loader": "^10.0.0",
-    "typescript": "~3.9.3",
-    "vue-cli-plugin-i18n": "~1.0.1",
-    "vue-cli-plugin-vuetify": "^2.1.0",
-    "vue-template-compiler": "^2.6.11",
-    "vuetify-loader": "^1.7.0"
-  },
-  "eslintConfig": {
-    "root": true,
-    "env": {
-      "node": true
+    "name": "docker-drive",
+    "version": "0.1.0",
+    "private": true,
+    "scripts": {
+        "serve": "vue-cli-service serve",
+        "build": "vue-cli-service build",
+        "lint": "vue-cli-service lint",
+        "i18n:report": "vue-cli-service i18n:report --src './src/**/*.?(js|vue)' --locales './src/locales/**/*.json'"
     },
-    "extends": [
-      "plugin:vue/recommended",
-      "eslint:recommended",
-      "@vue/typescript"
-    ],
-    "parserOptions": {
-      "parser": "@typescript-eslint/parser"
+    "dependencies": {
+        "core-js": "^3.6.5",
+        "vue": "^2.6.11",
+        "vue-class-component": "^7.2.3",
+        "vue-i18n": "^8.17.3",
+        "vue-property-decorator": "^9.1.2",
+        "vue-router": "^3.2.0",
+        "vuetify": "^2.4.0"
     },
-    "ignorePatterns": [
-      "plugins/*"
-    ],
-    "rules": {
-      "vue/html-indent": "off",
-      "vue/max-attributes-per-line": "off",
-      "vue/html-closing-bracket-newline": "off",
-      "vue/singleline-html-element-content-newline": "off",
-      "vue/multiline-html-element-content-newline": "off",
-      "vue/html-self-closing": "off",
-      "quotes": [
-        "error",
-        "single"
-      ],
-      "semi": [
-        "error"
-      ],
-      "no-var": "error"
-    }
-  },
-  "browserslist": [
-    "> 1%",
-    "last 2 versions",
-    "not dead"
-  ]
+    "devDependencies": {
+        "@intlify/vue-i18n-loader": "^1.0.0",
+        "@typescript-eslint/eslint-plugin": "^2.33.0",
+        "@typescript-eslint/parser": "^2.33.0",
+        "@vue/cli-plugin-babel": "~4.5.0",
+        "@vue/cli-plugin-eslint": "~4.5.0",
+        "@vue/cli-plugin-router": "^4.5.11",
+        "@vue/cli-plugin-typescript": "^4.5.11",
+        "@vue/cli-service": "~4.5.0",
+        "@vue/eslint-config-typescript": "^5.0.2",
+        "axios": "^0.21.1",
+        "babel-eslint": "^10.1.0",
+        "eslint": "^6.7.2",
+        "eslint-plugin-vue": "^6.2.2",
+        "sass": "^1.32.0",
+        "sass-loader": "^10.0.0",
+        "typescript": "~3.9.3",
+        "vue-cli-plugin-i18n": "~1.0.1",
+        "vue-cli-plugin-vuetify": "^2.1.0",
+        "vue-template-compiler": "^2.6.11",
+        "vuetify-loader": "^1.7.0"
+    },
+    "eslintConfig": {
+        "root": true,
+        "env": {},
+        "extends": [
+            "plugin:vue/recommended",
+            "eslint:recommended",
+            "@vue/typescript",
+            "plugin:@typescript-eslint/recommended"
+        ],
+        "parser": "vue-eslint-parser",
+        "parserOptions": {
+            "parser": "@typescript-eslint/parser"
+        },
+        "ignorePatterns": [
+            "plugins/*"
+        ],
+        "rules": {
+            "vue/html-indent": "off",
+            "vue/max-attributes-per-line": "off",
+            "vue/html-closing-bracket-newline": "off",
+            "vue/singleline-html-element-content-newline": "off",
+            "vue/multiline-html-element-content-newline": "off",
+            "vue/html-self-closing": "off",
+            "@typescript-eslint/explicit-function-return-type": [
+                "warn",
+                {
+                    "allowExpressions": true
+                }
+            ],
+            "quotes": [
+                "error",
+                "single"
+            ],
+            "semi": [
+                "error"
+            ],
+            "no-var": "error"
+        }
+    },
+    "browserslist": [
+        "> 1%",
+        "last 2 versions",
+        "not dead"
+    ]
 }

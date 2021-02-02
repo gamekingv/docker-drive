@@ -1,3 +1,6 @@
 {
-  "name": "Docker网盘"
+    "name": "Docker 网盘",
+    "files": "浏览文件",
+    "repositories": "仓库管理",
+    "loading": "正在加载..."
 }

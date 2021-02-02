@@ -1,3 +1,6 @@
 {
-  "name": "Docker Drive"
+    "name": "Docker Drive",
+    "files": "All Files",
+    "repositories": "Repositories",
+    "loading": "Loading..."
 }
