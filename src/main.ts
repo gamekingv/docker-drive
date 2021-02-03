@@ -1,4 +1,4 @@
-import Vue from 'vue';
+import Vue, { VNode } from 'vue';
 import App from './App.vue';
 import vuetify from './plugins/vuetify';
 import './main.css';
@@ -11,5 +11,5 @@ new Vue({
     vuetify,
     i18n,
     router,
-    render: h => h(App)
+    render: (h): VNode => h(App)
 }).$mount('#app');

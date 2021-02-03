@@ -55,7 +55,7 @@
         <v-main id="main" class="grey darken-3">
             <v-container
                 id="main-container"
-                class="py-8 px-6 overflow-y-auto"
+                class="py-8 px-6 overflow-y-auto overflow-x-hidden"
                 fluid
             >
                 <v-fade-transition duration="80" mode="out-in">
@@ -67,9 +67,11 @@
 </template>
 
 <script lang="ts">
-export default {
-    data: () => ({
-        drawer: true,
-    }),
-};
+import { Vue, Component } from 'vue-property-decorator';
+
+@Component
+
+export default class APP extends Vue {
+    drawer = true
+}
 </script>

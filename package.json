@@ -41,7 +41,9 @@
     },
     "eslintConfig": {
         "root": true,
-        "env": {},
+        "env": {
+            "node": true
+        },
         "extends": [
             "plugin:vue/recommended",
             "eslint:recommended",
@@ -62,12 +64,6 @@
             "vue/singleline-html-element-content-newline": "off",
             "vue/multiline-html-element-content-newline": "off",
             "vue/html-self-closing": "off",
-            "@typescript-eslint/explicit-function-return-type": [
-                "warn",
-                {
-                    "allowExpressions": true
-                }
-            ],
             "quotes": [
                 "error",
                 "single"
@@ -75,7 +71,8 @@
             "semi": [
                 "error"
             ],
-            "no-var": "error"
+            "no-var": "error",
+            "no-console": "warn"
         }
     },
     "browserslist": [
