@@ -67,7 +67,6 @@ export default class Files extends Vue {
       }
     });
     try {
-
       const { data } = await this.requestSender(manifestsURL, instance);
       this.result = JSON.stringify(data);
       this.loading = false;
