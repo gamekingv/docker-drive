@@ -1,5 +1,5 @@
 chrome.browserAction.onClicked.addListener(() => chrome.tabs.create({
-    url: chrome.extension.getURL('dist/index.html')
+  url: chrome.extension.getURL('dist/index.html')
 }));
 /*chrome.contextMenus.create({ title: '发送至Aria2下载', contexts: ['link'], onclick: sendToAria2 });
 

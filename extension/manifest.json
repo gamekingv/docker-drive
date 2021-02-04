@@ -1,26 +1,26 @@
 {
-    "manifest_version": 2,
-    "name": "Docker Drive",
-    "version": "0.1",
-    "description": "Docker Drive",
-    "icons": {
-        "64": "dist/favicon.ico"
-    },
-    "browser_action": {
-        "browser_style": true,
-        "default_icon": {
-            "16": "dist/favicon.ico",
-            "32": "dist/favicon.ico",
-            "64": "dist/favicon.ico"
-        }
-    },
-    "background": {
-        "scripts": [
-            "background.js"
-        ]
-    },
-    "permissions": [
-        "<all_urls>"
-    ],
-    "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self';"
+  "manifest_version": 2,
+  "name": "Docker Drive",
+  "version": "0.1",
+  "description": "Docker Drive",
+  "icons": {
+    "64": "dist/favicon.ico"
+  },
+  "browser_action": {
+    "browser_style": true,
+    "default_icon": {
+      "16": "dist/favicon.ico",
+      "32": "dist/favicon.ico",
+      "64": "dist/favicon.ico"
+    }
+  },
+  "background": {
+    "scripts": [
+      "background.js"
+    ]
+  },
+  "permissions": [
+    "<all_urls>"
+  ],
+  "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self';"
 }

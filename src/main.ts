@@ -8,8 +8,8 @@ import router from './router';
 Vue.config.productionTip = false;
 
 new Vue({
-    vuetify,
-    i18n,
-    router,
-    render: (h): VNode => h(App)
+  vuetify,
+  i18n,
+  router,
+  render: (h): VNode => h(App)
 }).$mount('#app');
