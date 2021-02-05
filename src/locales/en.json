@@ -2,5 +2,9 @@
   "name": "Docker Drive",
   "files": "All Files",
   "repositories": "Repositories",
-  "loading": "Loading..."
+  "loading": "Loading...",
+  "getTokenFailed": "Get token failed",
+  "unknownError": "Unknown error: ",
+  "repositoryFormatError": "Repository link format error",
+  "loadConfigFailed": "Load config failed"
 }

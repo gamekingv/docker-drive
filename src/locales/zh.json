@@ -2,5 +2,9 @@
   "name": "Docker 网盘",
   "files": "浏览文件",
   "repositories": "仓库管理",
-  "loading": "正在加载..."
+  "loading": "正在加载...",
+  "getTokenFailed": "获取token失败",
+  "unknownError": "出现未知错误：",
+  "repositoryFormatError": "仓库连接格式错误",
+  "loadConfigFailed": "加载配置失败"
 }
