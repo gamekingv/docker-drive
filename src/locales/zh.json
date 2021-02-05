@@ -6,5 +6,11 @@
   "getTokenFailed": "获取token失败",
   "unknownError": "出现未知错误：",
   "repositoryFormatError": "仓库连接格式错误",
-  "loadConfigFailed": "加载配置失败"
+  "loadConfigFailed": "加载配置失败",
+  "needLogin": "需要登录",
+  "account": "账号",
+  "password": "密码",
+  "ok": "确认",
+  "cancel": "取消",
+  "require": "必填"
 }

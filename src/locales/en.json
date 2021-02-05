@@ -6,5 +6,11 @@
   "getTokenFailed": "Get token failed",
   "unknownError": "Unknown error: ",
   "repositoryFormatError": "Repository link format error",
-  "loadConfigFailed": "Load config failed"
+  "loadConfigFailed": "Load config failed",
+  "needLogin": "Need to login",
+  "account": "Account",
+  "password": "Password",
+  "ok": "OK",
+  "cancel": "Cancel",
+  "require": "Require"
 }
