@@ -8,8 +8,8 @@
           item-text="name"
           item-value="url"
           label="Solo field"
-          @change="getManifests"
           solo
+          @change="getManifests"
         ></v-select>
       </v-col>
     </v-row>
