@@ -15,5 +15,6 @@
   "require": "Require",
   "filename": "Filename",
   "fileSize": "Size",
-  "fileUploadTime": "Upload"
+  "fileUploadTime": "Upload",
+  "root": "Root"
 }

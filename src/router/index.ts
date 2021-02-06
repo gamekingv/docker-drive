@@ -1,4 +1,4 @@
-import Vue, { Component } from 'vue';
+import Vue from 'vue';
 import VueRouter, { RouteConfig } from 'vue-router';
 import Files from '../views/Files.vue';
 
@@ -13,7 +13,7 @@ const routes: Array<RouteConfig> = [
   {
     path: '/about',
     name: 'About',
-    component: (): Promise<typeof import('*.vue')> => import('@/views/About.vue')
+    component: () => import('@/views/About.vue')
   }
 ];
 

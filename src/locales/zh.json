@@ -15,5 +15,6 @@
   "require": "必填",
   "filename": "文件名",
   "fileSize": "大小",
-  "fileUploadTime": "上传时间"
+  "fileUploadTime": "上传时间",
+  "root": "根目录"
 }
