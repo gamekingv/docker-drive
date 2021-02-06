@@ -13,7 +13,7 @@ const routes: Array<RouteConfig> = [
   {
     path: '/about',
     name: 'About',
-    component: (): Promise<typeof import('*.vue')> => import(/* webpackChunkName: "about" */ '../views/About.vue')
+    component: (): Promise<typeof import('*.vue')> => import('@/views/About.vue')
   }
 ];
 
