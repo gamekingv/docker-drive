@@ -12,5 +12,8 @@
   "password": "Password",
   "ok": "OK",
   "cancel": "Cancel",
-  "require": "Require"
+  "require": "Require",
+  "filename": "Filename",
+  "fileSize": "Size",
+  "fileUploadTime": "Upload"
 }

@@ -12,7 +12,20 @@
         ></v-select>
       </v-col>
     </v-row>
-    <HelloWorld :msg="result" />
+    <v-data-table
+      class="grey darken-3"
+      :headers="fileListHeader"
+      :items="fileList"
+      :items-per-page="10"
+      show-select
+    >
+      <template v-slot:[`item.size`]="{ item }">
+        {{ formatFileSize(item.size) }}
+      </template>
+      <template v-slot:[`item.uploadTime`]="{ item }">
+        {{ formatTime(item.uploadTime) }}
+      </template>
+    </v-data-table>
     <v-dialog v-model="loading" persistent width="300">
       <v-card color="primary" dark>
         <v-card-text>
@@ -76,9 +89,7 @@
 </template>
 
 <script lang="ts">
-// @ is an alias to /src
 import { Component, Vue } from 'vue-property-decorator';
-import HelloWorld from '@/components/HelloWorld.vue';
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 
 interface VForm extends Vue {
@@ -95,11 +106,16 @@ interface Repository {
   secret: string;
 }
 
-@Component({
-  components: {
-    HelloWorld
-  }
-})
+interface FileItem {
+  name: string;
+  type: string;
+  files?: FileItem[];
+  digest?: string;
+  size?: number;
+  uploadTime?: number;
+}
+
+@Component
 
 export default class Files extends Vue {
   $refs!: {
@@ -108,7 +124,7 @@ export default class Files extends Vue {
 
   private loading = false
   private loginForm = false
-  private beforeLogin!: { fn: string; arg: string[] }
+  private beforeLogin!: { fn: Function | undefined; arg: string[] }
   private result = ''
   private username = ''
   private password = ''
@@ -116,10 +132,17 @@ export default class Files extends Vue {
   private alertText = ''
   private alertColor = ''
   private activeRepositoryID!: symbol
-  private activeRepository!: Repository
+  private activeRepository!: Repository | undefined
   private repositories!: Repository[]
+  private root: FileItem = { name: 'root', type: 'folder', files: [] }
+  private fileList: FileItem[] = []
+  private fileListHeader = [
+    { text: this.$t('filename'), align: 'start', value: 'name' },
+    { text: this.$t('fileSize'), value: 'size', sortable: false },
+    { text: this.$t('fileUploadTime'), value: 'uploadTime' }
+  ]
 
-  async created(): Promise<void> {
+  created(): void {
     this.repositories = [
       {
         name: 'kdjvideo',
@@ -137,11 +160,14 @@ export default class Files extends Vue {
     ];
     this.activeRepositoryID = this.repositories[1].value;
     this.activeRepository = this.repositories[1];
-    await this.getManifests();
+    const config = JSON.parse('[{"name":"/IPX-597.mp4","size":2429763012,"digest":"sha256:66c037e96ec05c59636d78078d503b3654a71d28ae20be613f0601105bade2a3"},{"name":"/IPX-581.mp4","size":3255284521,"digest":"sha256:46dbfdbc373e177738b02bd235fd2b1a06d06d7e141a61b13e8b592be24b52d1"},{"name":"/[夜桜字幕组]2021年1月3D作品合集[BIG5+GB]V2/[夜桜字幕组][190602][SanaYaoi]Goblins cave vol.01[GB].mp4","size":21747736,"digest":"sha256:ae822faedaa45add16b3bc90849de0d9bdf002e7f30dfc2d3ea37ae1c3cec0a8"},{"name":"/[夜桜字幕组]2021年1月3D作品合集[BIG5+GB]V2/[夜桜字幕组][191222][PerfectDeadbeat]GADABOUT[GB].mp4","size":249068551,"digest":"sha256:b4c1bb7b71128c58e840c03a243cb2bae9814df8dba0e8d17be3fa6ed405af8a"},{"name":"/[夜桜字幕组]2021年1月3D作品合集[BIG5+GB]V2/[夜桜字幕组][171028][iLand]キモヲタ教師が、可愛い女生徒に 性活指導!![GB].mp4","size":286456914,"digest":"sha256:8f6f1877eb639536fd903e754a162aa00532e153fd9566042321e2cbd82a782c"},{"name":"/[夜桜字幕组]2021年1月3D作品合集[BIG5+GB]V2/[夜桜字幕组][181227][t japan]New Glass the Movie[自购][GB].mp4","size":486294574,"digest":"sha256:28bb2083eb728971775d85724703ddd7752181a40d917e9178e5369d340cb6c1"},{"name":"/[夜桜字幕组]2021年1月3D作品合集[BIG5+GB]V2/[夜桜字幕组][201225][WORLDPG ANIMATION]巫女神さま -The Motion Anime-[GB].mp4","size":492989609,"digest":"sha256:d90f123ba0b27e5c8712570fac9eba7fe89f7d6acbf95c1ae0c755432511812a"},{"name":"/[NC-Raws] 勇者鬥惡龍 達伊的大冒險 - 18 [WEB-DL][1080p][AVC AAC][CHT][MP4].mp4","size":890429223,"digest":"sha256:84e3005c84018e004aca5f65ca3ec0d81aba3eef419794b4bd6aa795d4806dd3"}]');
+    this.parseConfig(config);
+    this.fileList = this.getPath('/');
+    //this.getManifests();
   }
   private async getManifests(): Promise<void> {
     this.loading = true;
-    const [server, namespace, repository] = this.activeRepository.url.split('/');
+    const [server, namespace, repository] = this.activeRepository?.url.split('/') ?? [];
     if (!server || !namespace || !repository) {
       this.loading = false;
       return this.showAlert(`${this.$t('repositoryFormatError')}`, 'error');
@@ -167,13 +193,13 @@ export default class Files extends Vue {
         });
         const { data } = await this.requestSender(configURL, configInstance);
         const config = data?.fileItems;
-        if (config) this.result = JSON.stringify(config);
+        if (config) this.parseConfig(config);
         else this.showAlert(`${this.$t('loadConfigFailed')}`, 'error');
       }
       else this.showAlert(`${this.$t('loadConfigFailed')}`, 'error');
     }
     catch (error) {
-      if (error === -1) this.loginPromp('getManifests');
+      if (error === -1) this.loginPromp(this.getManifests);
       else if (typeof error === 'string') this.showAlert(error, 'error');
       else this.showAlert(`${this.$t('unknownError')}${error.toString()}`, 'error');
     }
@@ -181,7 +207,7 @@ export default class Files extends Vue {
   }
   private async requestSender(url: string, instance: AxiosInstance): Promise<AxiosResponse> {
     instance.defaults.timeout = 30000;
-    if (this.activeRepository.token) instance.defaults.headers.common['Authorization'] = `Bearer ${this.activeRepository.token}`;
+    if (this.activeRepository?.token) instance.defaults.headers.common['Authorization'] = `Bearer ${this.activeRepository.token}`;
     try {
       return await instance.request({ url });
     }
@@ -191,9 +217,8 @@ export default class Files extends Vue {
         if (status === 401) {
           const token = await this.getToken(headers['www-authenticate']);
           if (token) {
-            this.activeRepository.token = token;
-            console.log(this.activeRepository);
-            instance.defaults.headers.common['Authorization'] = `Bearer ${this.activeRepository.token}`;
+            if (this.activeRepository) this.activeRepository.token = token;
+            instance.defaults.headers.common['Authorization'] = `Bearer ${this.activeRepository?.token}`;
             try {
               return await instance.request({ url });
             }
@@ -209,35 +234,89 @@ export default class Files extends Vue {
       throw error;
     }
   }
-  private loginPromp(fn?: string, arg?: string[]): void {
-    this.loginForm = true;
-    this.beforeLogin = { fn: fn ?? '', arg: arg ?? [] };
-
-  }
-  private login(): void {
-    this.activeRepository.secret = btoa(`${this.username}:${this.password}`);
-    //this.beforeLogin.fn ?? this[this.beforeLogin.fn] ?? this[this.beforeLogin.fn](...this.beforeLogin.arg);
-  }
   private async getToken(authenticateHeader: string): Promise<string | undefined> {
     const [, realm, service, , scope] = authenticateHeader?.match(/^Bearer realm="([^"]*)",service="([^"]*)"(,scope="([^"]*)"|)/) ?? [];
     if (realm && service) {
       let authenticateURL = `${realm}?service=${service}`;
       if (scope) authenticateURL += `&scope=${scope}`;
       const headers: { 'Authorization'?: string } = {};
-      if (this.activeRepository.secret) headers['Authorization'] = `Basic ${this.activeRepository.secret}`;
+      if (this.activeRepository?.secret) headers['Authorization'] = `Basic ${this.activeRepository.secret}`;
       const { data } = await axios.get(authenticateURL, { headers, timeout: 5000 });
       return data.token;
     }
   }
+  private loginPromp(fn?: Function, arg?: string[]): void {
+    this.loginForm = true;
+    this.beforeLogin = { fn: fn, arg: arg ?? [] };
+  }
+  private login(): void {
+    if (this.activeRepository) this.activeRepository.secret = btoa(`${this.username}:${this.password}`);
+    if (this.beforeLogin.fn) this.beforeLogin.fn(...this.beforeLogin.arg);
+  }
   private switchRepository(): void {
-    this.activeRepository = this.repositories.find(e => e.value === this.activeRepositoryID) ?? {
-      name: '',
-      url: '',
-      value: Symbol(),
-      token: '',
-      secret: ''
-    };
+    this.activeRepository = this.repositories.find(e => e.value === this.activeRepositoryID);
     this.getManifests();
+  }
+  private parseConfig(config: FileItem[]): void {
+    this.root = { name: 'root', type: 'folder', files: [] };
+    config.forEach(({ name: pathString, size, digest, uploadTime }) => {
+      uploadTime = Date.now();
+      const path = pathString.substr(1).split('/');
+      const type = digest ? 'file' : 'folder';
+      let filePointer: FileItem = this.root;
+      for (let i = 0; i < path.length - 1; i++) {
+        const nextPointer = filePointer.files?.find(e => e.name === path[i]);
+        if (nextPointer) filePointer = nextPointer;
+        else {
+          const item: FileItem = {
+            name: path[i],
+            type: 'folder',
+            files: []
+          };
+          if (uploadTime && (!item.uploadTime || item.uploadTime < uploadTime)) item.uploadTime = uploadTime;
+          filePointer.files?.push(item);
+          filePointer = item;
+        }
+      }
+      if (type === 'folder') filePointer.files?.push({ name: path[path.length - 1], type, files: [] });
+      else filePointer.files?.push({
+        name: path[path.length - 1],
+        type,
+        size,
+        digest,
+        uploadTime
+      });
+    });
+  }
+  private getPath(pathString: string): FileItem[] {
+    const path = pathString === '/' ? [] : pathString.substr(1).split('/');
+    let filePointer: FileItem = this.root;
+    for (let i = 0; i < path.length; i++) {
+      const nextPointer = filePointer.files?.find(e => e.name === path[i]);
+      if (nextPointer && nextPointer.type === 'folder') filePointer = nextPointer;
+      else {
+        console.error('not such path');
+        break;
+      }
+    }
+    return filePointer.files ?? [];
+  }
+  private formatFileSize(fileSize: number): string {
+    if (!fileSize) return '-';
+    else if (fileSize < 1024) {
+      return fileSize + 'B';
+    } else if (fileSize < (1024 * 1024)) {
+      return `${(fileSize / 1024).toFixed(2)}KB`;
+    } else if (fileSize < (1024 * 1024 * 1024)) {
+      return `${(fileSize / (1024 * 1024)).toFixed(2)}MB`;
+    } else {
+      return `${(fileSize / (1024 * 1024 * 1024)).toFixed(2)}GB`;
+    }
+  }
+  private formatTime(time: number): string {
+    const date = new Date(time);
+    const addZero = (n: number): string => `0${n}`.substr(-2);
+    return `${date.getFullYear()}-${addZero(date.getMonth() + 1)}-${addZero(date.getDate())} ${addZero(date.getHours())}:${addZero(date.getMinutes())}`;
   }
   private showAlert(text: string, type?: string): void {
     this.alert = true;

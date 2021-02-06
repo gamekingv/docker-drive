@@ -12,5 +12,8 @@
   "password": "密码",
   "ok": "确认",
   "cancel": "取消",
-  "require": "必填"
+  "require": "必填",
+  "filename": "文件名",
+  "fileSize": "大小",
+  "fileUploadTime": "上传时间"
 }
