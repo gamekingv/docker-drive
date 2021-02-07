@@ -44,6 +44,9 @@
         {{ formatTime(item.uploadTime) }}
       </template>
     </v-data-table>
+    <v-dialog v-model="video" fullscreen content-class="video-container">
+      <video class="video" :src="videoURL" controls></video>
+    </v-dialog>
     <v-dialog v-model="loading" persistent width="300">
       <v-card color="primary" dark>
         <v-card-text>
@@ -142,6 +145,8 @@ export default class Files extends Vue {
 
   private loading = false
   private loginForm = false
+  private video = false
+  private videoURL = ''
   private beforeLogin!: { fn: Function | undefined; arg: string[] }
   private result = ''
   private username = ''
@@ -173,6 +178,12 @@ export default class Files extends Vue {
         name: 'test',
         value: Symbol(),
         url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/test',
+        token: '',
+        secret: ''
+      }, {
+        name: 'videorepo',
+        value: Symbol(),
+        url: 'ccr.ccs.tencentyun.com/videorepo/videorepo',
         token: '',
         secret: ''
       }
@@ -373,7 +384,13 @@ export default class Files extends Vue {
   private async itemClick(item: FileItem): Promise<void> {
     if (item.type === 'file') {
       const downloadURL = await this.getDownloadURL(item.digest);
-      if (downloadURL) console.log(downloadURL);
+      if (downloadURL) {
+        if (item.name.match(/\.(mp4|mkv)$/)) {
+          this.video = true;
+          this.videoURL = downloadURL;
+        }
+        else alert(downloadURL);
+      }
     }
     else {
       this.currentPath[this.currentPath.length - 1].disabled = false;
@@ -408,8 +425,21 @@ export default class Files extends Vue {
 }
 </script>
 
-<style scoped lang="scss">
+<style scope lang="scss">
 .clickable {
   cursor: pointer;
+}
+.video {
+  width: 100%;
+  max-height: 100%;
+  overflow: hidden;
+}
+</style>
+
+<style lang="scss">
+.video-container {
+  overflow: hidden !important;
+  background-color: black;
+  display: flex;
 }
 </style>
