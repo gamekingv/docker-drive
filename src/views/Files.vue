@@ -179,10 +179,10 @@ export default class Files extends Vue {
     ];
     this.activeRepositoryID = this.repositories[1].value;
     this.activeRepository = this.repositories[1];
-    const config = JSON.parse('[{"name":"/test1.mp4","size":2429763012,"digest":"sha256:66c037e96ec05c59636d78078d503b3654a71d28ae20be613f0601105bade2a3"},{"name":"/test2.mp4","size":3255284521,"digest":"sha256:46dbfdbc373e177738b02bd235fd2b1a06d06d7e141a61b13e8b592be24b52d1"},{"name":"/tset4/[夜桜字幕组][190602][SanaYaoi]Goblins cave vol.01[GB].mp4","size":21747736,"digest":"sha256:ae822faedaa45add16b3bc90849de0d9bdf002e7f30dfc2d3ea37ae1c3cec0a8"},{"name":"/tset4/[夜桜字幕组][191222][PerfectDeadbeat]GADABOUT[GB].mp4","size":249068551,"digest":"sha256:b4c1bb7b71128c58e840c03a243cb2bae9814df8dba0e8d17be3fa6ed405af8a"},{"name":"/tset4/[夜桜字幕组][171028][iLand]キモヲタ教師が、可愛い女生徒に 性活指導!![GB].mp4","size":286456914,"digest":"sha256:8f6f1877eb639536fd903e754a162aa00532e153fd9566042321e2cbd82a782c"},{"name":"/tset4/[夜桜字幕组][181227][t japan]New Glass the Movie[自购][GB].mp4","size":486294574,"digest":"sha256:28bb2083eb728971775d85724703ddd7752181a40d917e9178e5369d340cb6c1"},{"name":"/tset4/[夜桜字幕组][201225][WORLDPG ANIMATION]巫女神さま -The Motion Anime-[GB].mp4","size":492989609,"digest":"sha256:d90f123ba0b27e5c8712570fac9eba7fe89f7d6acbf95c1ae0c755432511812a"},{"name":"/[NC-Raws] 勇者鬥惡龍 達伊的大冒險 - 18 [WEB-DL][1080p][AVC AAC][CHT][MP4].mp4","size":890429223,"digest":"sha256:84e3005c84018e004aca5f65ca3ec0d81aba3eef419794b4bd6aa795d4806dd3"}]');
-    this.parseConfig(config);
-    this.fileList = this.getPath('/');
-    //this.getManifests();
+    // const config = JSON.parse('[{"name":"/test1.mp4","size":2429763012,"digest":"sha256:66c037e96ec05c59636d78078d503b3654a71d28ae20be613f0601105bade2a3"},{"name":"/test2.mp4","size":3255284521,"digest":"sha256:46dbfdbc373e177738b02bd235fd2b1a06d06d7e141a61b13e8b592be24b52d1"},{"name":"/tset4/[夜桜字幕组][190602][SanaYaoi]Goblins cave vol.01[GB].mp4","size":21747736,"digest":"sha256:ae822faedaa45add16b3bc90849de0d9bdf002e7f30dfc2d3ea37ae1c3cec0a8"},{"name":"/tset4/[夜桜字幕组][191222][PerfectDeadbeat]GADABOUT[GB].mp4","size":249068551,"digest":"sha256:b4c1bb7b71128c58e840c03a243cb2bae9814df8dba0e8d17be3fa6ed405af8a"},{"name":"/tset4/[夜桜字幕组][171028][iLand]キモヲタ教師が、可愛い女生徒に 性活指導!![GB].mp4","size":286456914,"digest":"sha256:8f6f1877eb639536fd903e754a162aa00532e153fd9566042321e2cbd82a782c"},{"name":"/tset4/[夜桜字幕组][181227][t japan]New Glass the Movie[自购][GB].mp4","size":486294574,"digest":"sha256:28bb2083eb728971775d85724703ddd7752181a40d917e9178e5369d340cb6c1"},{"name":"/tset4/[夜桜字幕组][201225][WORLDPG ANIMATION]巫女神さま -The Motion Anime-[GB].mp4","size":492989609,"digest":"sha256:d90f123ba0b27e5c8712570fac9eba7fe89f7d6acbf95c1ae0c755432511812a"},{"name":"/[NC-Raws] 勇者鬥惡龍 達伊的大冒險 - 18 [WEB-DL][1080p][AVC AAC][CHT][MP4].mp4","size":890429223,"digest":"sha256:84e3005c84018e004aca5f65ca3ec0d81aba3eef419794b4bd6aa795d4806dd3"}]');
+    // this.parseConfig(config);
+    // this.fileList = this.getPath('/');
+    this.getManifests();
   }
   private async getManifests(): Promise<void> {
     this.loading = true;
@@ -212,13 +212,16 @@ export default class Files extends Vue {
         });
         const { data } = await this.requestSender(configURL, configInstance);
         const config = data?.fileItems;
-        if (config) this.parseConfig(config);
+        if (config) {
+          this.parseConfig(config);
+          this.fileList = this.getPath('/');
+        }
         else this.showAlert(`${this.$t('loadConfigFailed')}`, 'error');
       }
       else this.showAlert(`${this.$t('loadConfigFailed')}`, 'error');
     }
     catch (error) {
-      if (error === -1) this.loginPromp(this.getManifests);
+      if (error === 'need login') this.loginPromp(this.getManifests);
       else if (typeof error === 'string') this.showAlert(error, 'error');
       else this.showAlert(`${this.$t('unknownError')}${error.toString()}`, 'error');
     }
@@ -243,7 +246,7 @@ export default class Files extends Vue {
             }
             catch (error) {
               const { status } = error.response;
-              if (status === 401) throw (-1);
+              if (status === 401) throw ('need login');
               else throw error;
             }
           }
@@ -264,6 +267,34 @@ export default class Files extends Vue {
       return data.token;
     }
   }
+  private async getDownloadURL(digest: string | undefined): Promise<string> {
+    if (!digest) return '';
+    let downloadURL = '';
+    const [server, namespace, repository] = this.activeRepository?.url.split('/') ?? [];
+    const url = `https://${server}/v2/${namespace}/${repository}/blobs/${digest}`;
+    const request = axios.CancelToken.source();
+    const instance = axios.create({
+      method: 'get',
+      headers: {
+        'repository': [server, namespace, repository].join('/')
+      },
+      cancelToken: request.token,
+      onDownloadProgress: (e) => {
+        downloadURL = e.currentTarget.responseURL;
+        request.cancel('cancel');
+      }
+    });
+    try {
+      await this.requestSender(url, instance);
+    }
+    catch (error) {
+      if (error.message === 'cancel') 'ok';
+      else if (error === 'need login') this.loginPromp();
+      else if (typeof error === 'string') this.showAlert(error, 'error');
+      else this.showAlert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+    }
+    return downloadURL;
+  }
   private loginPromp(fn?: Function, arg?: string[]): void {
     this.loginForm = true;
     this.beforeLogin = { fn: fn, arg: arg ?? [] };
@@ -274,6 +305,8 @@ export default class Files extends Vue {
   }
   private switchRepository(): void {
     this.activeRepository = this.repositories.find(e => e.value === this.activeRepositoryID);
+    this.currentPath = this.currentPath.slice(0);
+    this.fileList = [];
     this.getManifests();
   }
   private parseConfig(config: FileItem[]): void {
@@ -337,9 +370,10 @@ export default class Files extends Vue {
     const addZero = (n: number): string => `0${n}`.substr(-2);
     return `${date.getFullYear()}-${addZero(date.getMonth() + 1)}-${addZero(date.getDate())} ${addZero(date.getHours())}:${addZero(date.getMinutes())}`;
   }
-  private itemClick(item: FileItem): void {
+  private async itemClick(item: FileItem): Promise<void> {
     if (item.type === 'file') {
-      alert(item.name);
+      const downloadURL = await this.getDownloadURL(item.digest);
+      if (downloadURL) console.log(downloadURL);
     }
     else {
       this.currentPath[this.currentPath.length - 1].disabled = false;
