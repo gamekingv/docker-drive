@@ -1,7 +1,7 @@
 <template>
   <div id="files">
     <v-row>
-      <v-col cols="4" sm="3">
+      <v-col cols="6" sm="3">
         <v-select
           v-model="activeRepositoryID"
           :items="repositories"
@@ -11,6 +11,11 @@
           @change="switchRepository()"
         ></v-select>
       </v-col>
+      <v-col cols="6" sm="3">
+        <v-btn @click="commit()">测试</v-btn>
+      </v-col>
+    </v-row>
+    <v-row>
       <v-col cols="8" sm="3">
         <v-breadcrumbs :items="currentPath">
           <template v-slot:item="{ item }">
@@ -93,7 +98,7 @@
           <v-spacer></v-spacer>
           <v-btn
             color="blue darken-1"
-            @click="$refs.form.validate() && !login() && closeForm()"
+            @click="$refs.form.validate() && login()"
           >
             {{ $t("ok") }}
           </v-btn>
@@ -112,6 +117,7 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator';
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import { sha256 } from 'js-sha256';
 
 interface VForm extends Vue {
   validate(): boolean;
@@ -136,6 +142,12 @@ interface FileItem {
   uploadTime?: number;
 }
 
+interface Manifest {
+  mediaType: string;
+  size: number;
+  digest: string;
+}
+
 @Component
 
 export default class Files extends Vue {
@@ -147,7 +159,7 @@ export default class Files extends Vue {
   private loginForm = false
   private video = false
   private videoURL = ''
-  private beforeLogin!: { fn: Function | undefined; arg: string[] }
+  private beforeLogin!: { authenticateHeader: string | undefined; fn: Function | undefined; arg: string[] }
   private result = ''
   private username = ''
   private password = ''
@@ -159,6 +171,7 @@ export default class Files extends Vue {
   private repositories!: Repository[]
   private root: FileItem = { name: 'root', type: 'folder', files: [] }
   private currentPath = [{ text: `${this.$t('root')}`, disabled: true, id: Symbol() }]
+  private layers: Manifest[] = []
   private fileList: FileItem[] = []
   private fileListHeader = [
     { text: this.$t('filename'), align: 'start', value: 'name' },
@@ -188,8 +201,8 @@ export default class Files extends Vue {
         secret: ''
       }
     ];
-    this.activeRepositoryID = this.repositories[1].value;
-    this.activeRepository = this.repositories[1];
+    this.activeRepositoryID = this.repositories[2].value;
+    this.activeRepository = this.repositories[2];
     // const config = JSON.parse('[{"name":"/test1.mp4","size":2429763012,"digest":"sha256:66c037e96ec05c59636d78078d503b3654a71d28ae20be613f0601105bade2a3"},{"name":"/test2.mp4","size":3255284521,"digest":"sha256:46dbfdbc373e177738b02bd235fd2b1a06d06d7e141a61b13e8b592be24b52d1"},{"name":"/tset4/[夜桜字幕组][190602][SanaYaoi]Goblins cave vol.01[GB].mp4","size":21747736,"digest":"sha256:ae822faedaa45add16b3bc90849de0d9bdf002e7f30dfc2d3ea37ae1c3cec0a8"},{"name":"/tset4/[夜桜字幕组][191222][PerfectDeadbeat]GADABOUT[GB].mp4","size":249068551,"digest":"sha256:b4c1bb7b71128c58e840c03a243cb2bae9814df8dba0e8d17be3fa6ed405af8a"},{"name":"/tset4/[夜桜字幕组][171028][iLand]キモヲタ教師が、可愛い女生徒に 性活指導!![GB].mp4","size":286456914,"digest":"sha256:8f6f1877eb639536fd903e754a162aa00532e153fd9566042321e2cbd82a782c"},{"name":"/tset4/[夜桜字幕组][181227][t japan]New Glass the Movie[自购][GB].mp4","size":486294574,"digest":"sha256:28bb2083eb728971775d85724703ddd7752181a40d917e9178e5369d340cb6c1"},{"name":"/tset4/[夜桜字幕组][201225][WORLDPG ANIMATION]巫女神さま -The Motion Anime-[GB].mp4","size":492989609,"digest":"sha256:d90f123ba0b27e5c8712570fac9eba7fe89f7d6acbf95c1ae0c755432511812a"},{"name":"/[NC-Raws] 勇者鬥惡龍 達伊的大冒險 - 18 [WEB-DL][1080p][AVC AAC][CHT][MP4].mp4","size":890429223,"digest":"sha256:84e3005c84018e004aca5f65ca3ec0d81aba3eef419794b4bd6aa795d4806dd3"}]');
     // this.parseConfig(config);
     // this.fileList = this.getPath('/');
@@ -212,8 +225,10 @@ export default class Files extends Vue {
     });
     try {
       const { data } = await this.requestSender(manifestsURL, manifestsInstance);
+      const layers = data?.layers;
       const digest: string = data?.config?.digest;
-      if (digest) {
+      if (digest && layers) {
+        this.layers = layers;
         const configURL = `https://${server}/v2/${namespace}/${repository}/blobs/${digest}`;
         const configInstance = axios.create({
           method: 'get',
@@ -227,12 +242,16 @@ export default class Files extends Vue {
           this.parseConfig(config);
           this.fileList = this.getPath('/');
         }
-        else this.showAlert(`${this.$t('loadConfigFailed')}`, 'error');
+        else if (data?.files) {
+          this.root = data?.files;
+          this.fileList = this.getPath('/');
+        }
+        else throw `${this.$t('loadConfigFailed')}`;
       }
-      else this.showAlert(`${this.$t('loadConfigFailed')}`, 'error');
+      else throw `${this.$t('loadConfigFailed')}`;
     }
     catch (error) {
-      if (error === 'need login') this.loginPromp(this.getManifests);
+      if (error.message === 'need login') this.loginPromp(error.authenticateHeader, this.getManifests);
       else if (typeof error === 'string') this.showAlert(error, 'error');
       else this.showAlert(`${this.$t('unknownError')}${error.toString()}`, 'error');
     }
@@ -256,27 +275,30 @@ export default class Files extends Vue {
               return await instance.request({ url });
             }
             catch (error) {
-              const { status } = error.response;
-              if (status === 401) throw ('need login');
+              const { status, headers } = error.response;
+              if (status === 401) throw { message: 'need login', authenticateHeader: headers['www-authenticate'] };
               else throw error;
             }
           }
-          else throw (this.$t('getTokenFailed'));
+          else throw this.$t('getTokenFailed');
         }
       }
       throw error;
     }
   }
   private async getToken(authenticateHeader: string): Promise<string | undefined> {
+    if (!authenticateHeader) throw this.$t('getTokenFailed');
     const [, realm, service, , scope] = authenticateHeader?.match(/^Bearer realm="([^"]*)",service="([^"]*)"(,scope="([^"]*)"|)/) ?? [];
     if (realm && service) {
       let authenticateURL = `${realm}?service=${service}`;
       if (scope) authenticateURL += `&scope=${scope}`;
       const headers: { 'Authorization'?: string } = {};
       if (this.activeRepository?.secret) headers['Authorization'] = `Basic ${this.activeRepository.secret}`;
+      console.log(authenticateURL, headers['Authorization']);
       const { data } = await axios.get(authenticateURL, { headers, timeout: 5000 });
       return data.token;
     }
+    else throw this.$t('getTokenFailed');
   }
   private async getDownloadURL(digest: string | undefined): Promise<string> {
     if (!digest) return '';
@@ -306,12 +328,71 @@ export default class Files extends Vue {
     }
     return downloadURL;
   }
-  private loginPromp(fn?: Function, arg?: string[]): void {
-    this.loginForm = true;
-    this.beforeLogin = { fn: fn, arg: arg ?? [] };
+  private async getUploadURL(): Promise<string> {
+    const [server, namespace, repository] = this.activeRepository?.url.split('/') ?? [];
+    if (!server || !namespace || !repository) throw `${this.$t('repositoryFormatError')}`;
+    const instance = axios.create({
+      method: 'post',
+      headers: {
+        'repository': [server, namespace, repository].join('/')
+      }
+    });
+    const url = `https://${server}/v2/${namespace}/${repository}/blobs/uploads/`;
+    const { headers } = await this.requestSender(url, instance);
+    if (headers['location']) return headers['location'] as string;
+    else throw `${this.$t('getUploadURLFailed')}`;
   }
-  private login(): void {
+  private async uploadConfig(): Promise<{ digest: string; size: number }> {
+    const [server, namespace, repository] = this.activeRepository?.url.split('/') ?? [];
+    if (!server || !namespace || !repository) throw `${this.$t('repositoryFormatError')}`;
+    const config = JSON.stringify({ files: this.root });
+    const size = config.length;
+    const digest = `sha256:${sha256.hex(config)}`;
+    const url = await this.getUploadURL();
+    const instance = axios.create({
+      method: 'put',
+      headers: {
+        'Content-Type': 'application/octet-stream',
+        'repository': [server, namespace, repository].join('/')
+      }
+    });
+    //await this.requestSender(`${url}&digest=${digest}`, instance);
+    return { digest, size };
+  }
+  private async commit(): Promise<void> {
+    try {
+      const { digest, size } = await this.uploadConfig();
+      const manifest = {
+        schemaVersion: 2,
+        mediaType: 'application/vnd.docker.distribution.manifest.v2+json',
+        config: {
+          mediaType: 'application/vnd.docker.container.image.v1+json',
+          size,
+          digest
+        },
+        layers: this.layers
+      };
+      console.log(JSON.stringify(manifest));
+    }
+    catch (error) {
+      if (error.message === 'need login') this.loginPromp(error.authenticateHeader, this.commit);
+      else if (typeof error === 'string') this.showAlert(error, 'error');
+      else this.showAlert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+    }
+  }
+  private loginPromp(authenticateHeader?: string, fn?: Function, arg: string[] = []): void {
+    this.loginForm = true;
+    this.beforeLogin = { authenticateHeader, fn, arg };
+  }
+  private async login(): Promise<void> {
     if (this.activeRepository) this.activeRepository.secret = btoa(`${this.username}:${this.password}`);
+    this.closeForm();
+    this.loading = true;
+    if (this.beforeLogin.authenticateHeader) {
+      const token = await this.getToken(this.beforeLogin.authenticateHeader);
+      if (token && this.activeRepository) this.activeRepository.token = token;
+    }
+    this.loading = false;
     if (this.beforeLogin.fn) this.beforeLogin.fn(...this.beforeLogin.arg);
   }
   private switchRepository(): void {
@@ -358,8 +439,7 @@ export default class Files extends Vue {
       const nextPointer = filePointer.files?.find(e => e.name === path[i]);
       if (nextPointer && nextPointer.type === 'folder') filePointer = nextPointer;
       else {
-        console.error('not such path');
-        break;
+        return this.root.files as FileItem[];
       }
     }
     return filePointer.files ?? [];
@@ -410,12 +490,12 @@ export default class Files extends Vue {
         this.fileList = this.getPath(this.currentPath.slice(1).reduce((s, a) => `${s}/${a.text}`, ''));
       }
     }
-    else console.error('not such path');
+    else this.fileList = this.getPath('/');
   }
-  private showAlert(text: string, type?: string): void {
+  private showAlert(text: string, type = ''): void {
     this.alert = true;
     this.alertText = text;
-    this.alertColor = type ?? '';
+    this.alertColor = type;
   }
   private closeForm(): void {
     this.$refs.form.reset();

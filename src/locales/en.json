@@ -16,5 +16,6 @@
   "filename": "Filename",
   "fileSize": "Size",
   "fileUploadTime": "Upload",
-  "root": "Root"
+  "root": "Root",
+  "getUploadURLFailed": "Get upload url failed"
 }
