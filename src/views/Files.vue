@@ -118,6 +118,7 @@
 import { Component, Vue } from 'vue-property-decorator';
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { sha256 } from 'js-sha256';
+import { Buffer } from 'buffer';
 
 interface VForm extends Vue {
   validate(): boolean;
@@ -186,19 +187,19 @@ export default class Files extends Vue {
         value: Symbol(),
         url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/kdjvideo',
         token: '',
-        secret: ''
+        secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
       }, {
         name: 'test',
         value: Symbol(),
         url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/test',
         token: '',
-        secret: ''
+        secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
       }, {
         name: 'videorepo',
         value: Symbol(),
         url: 'ccr.ccs.tencentyun.com/videorepo/videorepo',
         token: '',
-        secret: ''
+        secret: 'MTAwMDA2NjU1MDMyOmtkajNAdGVuY2VudA=='
       }
     ];
     this.activeRepositoryID = this.repositories[2].value;
@@ -258,8 +259,9 @@ export default class Files extends Vue {
     this.loading = false;
   }
   private async requestSender(url: string, instance: AxiosInstance): Promise<AxiosResponse> {
+    if (!this.activeRepository) throw this.$t('unknownError');
     instance.defaults.timeout = 30000;
-    if (this.activeRepository?.token) instance.defaults.headers.common['Authorization'] = `Bearer ${this.activeRepository.token}`;
+    if (this.activeRepository.token) instance.defaults.headers.common['Authorization'] = `Bearer ${this.activeRepository.token}`;
     try {
       return await instance.request({ url });
     }
@@ -270,7 +272,7 @@ export default class Files extends Vue {
           const token = await this.getToken(headers['www-authenticate']);
           if (token) {
             if (this.activeRepository) this.activeRepository.token = token;
-            instance.defaults.headers.common['Authorization'] = `Bearer ${this.activeRepository?.token}`;
+            instance.defaults.headers.common['Authorization'] = `Bearer ${this.activeRepository.token}`;
             try {
               return await instance.request({ url });
             }
@@ -294,7 +296,6 @@ export default class Files extends Vue {
       if (scope) authenticateURL += `&scope=${scope}`;
       const headers: { 'Authorization'?: string } = {};
       if (this.activeRepository?.secret) headers['Authorization'] = `Basic ${this.activeRepository.secret}`;
-      console.log(authenticateURL, headers['Authorization']);
       const { data } = await axios.get(authenticateURL, { headers, timeout: 5000 });
       return data.token;
     }
@@ -345,7 +346,7 @@ export default class Files extends Vue {
   private async uploadConfig(): Promise<{ digest: string; size: number }> {
     const [server, namespace, repository] = this.activeRepository?.url.split('/') ?? [];
     if (!server || !namespace || !repository) throw `${this.$t('repositoryFormatError')}`;
-    const config = JSON.stringify({ files: this.root });
+    const config = Buffer.from(JSON.stringify({ files: this.root }), 'utf-8');
     const size = config.length;
     const digest = `sha256:${sha256.hex(config)}`;
     const url = await this.getUploadURL();
@@ -356,11 +357,17 @@ export default class Files extends Vue {
         'repository': [server, namespace, repository].join('/')
       }
     });
-    //await this.requestSender(`${url}&digest=${digest}`, instance);
+    instance.interceptors.request.use(e => {
+      e.data = new Blob([config], { type: 'application/octet-stream' });
+      return e;
+    });
+    await this.requestSender(`${url}&digest=${digest}`, instance);
     return { digest, size };
   }
   private async commit(): Promise<void> {
     try {
+      const [server, namespace, repository] = this.activeRepository?.url.split('/') ?? [];
+      if (!server || !namespace || !repository) throw `${this.$t('repositoryFormatError')}`;
       const { digest, size } = await this.uploadConfig();
       const manifest = {
         schemaVersion: 2,
@@ -372,7 +379,19 @@ export default class Files extends Vue {
         },
         layers: this.layers
       };
-      console.log(JSON.stringify(manifest));
+      const manifestsURL = `https://${server}/v2/${namespace}/${repository}/manifests/latest`;
+      const manifestsInstance = axios.create({
+        method: 'put',
+        headers: {
+          'Content-Type': 'application/vnd.docker.distribution.manifest.v2+json',
+          'repository': [server, namespace, repository].join('/')
+        }
+      });
+      manifestsInstance.interceptors.request.use(e => {
+        e.data = JSON.stringify(manifest);
+        return e;
+      });
+      await this.requestSender(manifestsURL, manifestsInstance);
     }
     catch (error) {
       if (error.message === 'need login') this.loginPromp(error.authenticateHeader, this.commit);
@@ -385,12 +404,19 @@ export default class Files extends Vue {
     this.beforeLogin = { authenticateHeader, fn, arg };
   }
   private async login(): Promise<void> {
-    if (this.activeRepository) this.activeRepository.secret = btoa(`${this.username}:${this.password}`);
+    if (!this.activeRepository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
+    this.activeRepository.secret = btoa(`${this.username}:${this.password}`);
     this.closeForm();
     this.loading = true;
     if (this.beforeLogin.authenticateHeader) {
-      const token = await this.getToken(this.beforeLogin.authenticateHeader);
-      if (token && this.activeRepository) this.activeRepository.token = token;
+      try {
+        const token = await this.getToken(this.beforeLogin.authenticateHeader);
+        if (token) this.activeRepository.token = token;
+      }
+      catch (error) {
+        if (typeof error === 'string') this.showAlert(error, 'error');
+        else this.showAlert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+      }
     }
     this.loading = false;
     if (this.beforeLogin.fn) this.beforeLogin.fn(...this.beforeLogin.arg);
