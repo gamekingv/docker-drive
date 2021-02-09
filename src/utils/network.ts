@@ -151,7 +151,26 @@ export default {
       e.data = new Blob([file], { type: 'application/octet-stream' });
       return e;
     });
+
+    function modifyHeader(details: chrome.webRequest.WebRequestHeadersDetails): chrome.webRequest.BlockingResponse {
+      if (details.requestHeaders)
+        for (let i = 0; i < details.requestHeaders.length; ++i) {
+          if (details.requestHeaders[i].name === 'User-Agent') {
+            details.requestHeaders[i].value = 'Docker-Client/19.03.8-ce (linux)';
+            break;
+          }
+        }
+      return { requestHeaders: details.requestHeaders };
+    }
+    chrome.webRequest.onBeforeSendHeaders.addListener(modifyHeader,
+      { urls: [`${url}&digest=${digest}`] },
+      ['blocking', 'requestHeaders']
+    );
+
     await this.requestSender(`${url}&digest=${digest}`, instance, repository);
+
+    chrome.webRequest.onBeforeSendHeaders.removeListener(modifyHeader);
+
     return { digest, size };
   },
   async commit(config: { files: FileItem; layers: Manifest[] }, repository: Repository): Promise<void> {
