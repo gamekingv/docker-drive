@@ -16,7 +16,9 @@
     "types": [
       "webpack-env",
       "vuetify",
-      "webpack"
+      "chrome",
+      "webpack",
+      "crypto-js"
     ],
     "paths": {
       "@/*": [

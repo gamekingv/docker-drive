@@ -12,6 +12,12 @@
         ></v-select>
       </v-col>
       <v-col cols="6" sm="3">
+        <v-file-input
+          v-model="uploadFiles"
+          multiple
+          show-size
+          label="File input"
+        ></v-file-input>
         <v-btn @click="commit()">测试</v-btn>
       </v-col>
     </v-row>
@@ -116,9 +122,9 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator';
-import axios, { AxiosInstance, AxiosResponse } from 'axios';
-import { sha256 } from 'js-sha256';
-import { Buffer } from 'buffer';
+import axios from 'axios';
+import CryptoJS from 'crypto-js';
+import network from '@/utils/network';
 
 interface VForm extends Vue {
   validate(): boolean;
@@ -173,6 +179,7 @@ export default class Files extends Vue {
   private root: FileItem = { name: 'root', type: 'folder', files: [] }
   private currentPath = [{ text: `${this.$t('root')}`, disabled: true, id: Symbol() }]
   private layers: Manifest[] = []
+  private uploadFiles: File[] = []
   private fileList: FileItem[] = []
   private fileListHeader = [
     { text: this.$t('filename'), align: 'start', value: 'name' },
@@ -204,133 +211,57 @@ export default class Files extends Vue {
     ];
     this.activeRepositoryID = this.repositories[2].value;
     this.activeRepository = this.repositories[2];
-    // const config = JSON.parse('[{"name":"/test1.mp4","size":2429763012,"digest":"sha256:66c037e96ec05c59636d78078d503b3654a71d28ae20be613f0601105bade2a3"},{"name":"/test2.mp4","size":3255284521,"digest":"sha256:46dbfdbc373e177738b02bd235fd2b1a06d06d7e141a61b13e8b592be24b52d1"},{"name":"/tset4/[夜桜字幕组][190602][SanaYaoi]Goblins cave vol.01[GB].mp4","size":21747736,"digest":"sha256:ae822faedaa45add16b3bc90849de0d9bdf002e7f30dfc2d3ea37ae1c3cec0a8"},{"name":"/tset4/[夜桜字幕组][191222][PerfectDeadbeat]GADABOUT[GB].mp4","size":249068551,"digest":"sha256:b4c1bb7b71128c58e840c03a243cb2bae9814df8dba0e8d17be3fa6ed405af8a"},{"name":"/tset4/[夜桜字幕组][171028][iLand]キモヲタ教師が、可愛い女生徒に 性活指導!![GB].mp4","size":286456914,"digest":"sha256:8f6f1877eb639536fd903e754a162aa00532e153fd9566042321e2cbd82a782c"},{"name":"/tset4/[夜桜字幕组][181227][t japan]New Glass the Movie[自购][GB].mp4","size":486294574,"digest":"sha256:28bb2083eb728971775d85724703ddd7752181a40d917e9178e5369d340cb6c1"},{"name":"/tset4/[夜桜字幕组][201225][WORLDPG ANIMATION]巫女神さま -The Motion Anime-[GB].mp4","size":492989609,"digest":"sha256:d90f123ba0b27e5c8712570fac9eba7fe89f7d6acbf95c1ae0c755432511812a"},{"name":"/[NC-Raws] 勇者鬥惡龍 達伊的大冒險 - 18 [WEB-DL][1080p][AVC AAC][CHT][MP4].mp4","size":890429223,"digest":"sha256:84e3005c84018e004aca5f65ca3ec0d81aba3eef419794b4bd6aa795d4806dd3"}]');
-    // this.parseConfig(config);
-    // this.fileList = this.getPath('/');
-    this.getManifests();
+    this.getConfig();
   }
-  private async getManifests(): Promise<void> {
+  private async getConfig(): Promise<void> {
+    if (!this.activeRepository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
     this.loading = true;
-    const [server, namespace, repository] = this.activeRepository?.url.split('/') ?? [];
-    if (!server || !namespace || !repository) {
-      this.loading = false;
-      return this.showAlert(`${this.$t('repositoryFormatError')}`, 'error');
-    }
-    const manifestsURL = `https://${server}/v2/${namespace}/${repository}/manifests/latest`;
-    const manifestsInstance = axios.create({
-      method: 'get',
-      headers: {
-        'Accept': 'application/vnd.docker.distribution.manifest.v2+json',
-        'repository': [server, namespace, repository].join('/')
-      }
-    });
     try {
-      const { data } = await this.requestSender(manifestsURL, manifestsInstance);
-      const layers = data?.layers;
-      const digest: string = data?.config?.digest;
-      if (digest && layers) {
-        this.layers = layers;
-        const configURL = `https://${server}/v2/${namespace}/${repository}/blobs/${digest}`;
-        const configInstance = axios.create({
-          method: 'get',
-          headers: {
-            'repository': [server, namespace, repository].join('/')
-          }
-        });
-        const { data } = await this.requestSender(configURL, configInstance);
-        const config = data?.fileItems;
-        if (config) {
-          this.parseConfig(config);
-          this.fileList = this.getPath('/');
-        }
-        else if (data?.files) {
-          this.root = data?.files;
-          this.fileList = this.getPath('/');
-        }
-        else throw `${this.$t('loadConfigFailed')}`;
-      }
+      const { config, layers } = await network.getManifests(this.activeRepository);
+      this.layers = layers;
+      if (config.fileItems) this.parseConfig(config.fileItems);
+      else if (config.files) this.root = config.files;
       else throw `${this.$t('loadConfigFailed')}`;
+      this.fileList = this.getPath('/');
     }
     catch (error) {
-      if (error.message === 'need login') this.loginPromp(error.authenticateHeader, this.getManifests);
-      else if (typeof error === 'string') this.showAlert(error, 'error');
+      if (error.message === 'need login') this.loginPromp(error.authenticateHeader, this.getConfig);
+      else if (typeof error === 'string') this.showAlert(`${this.$t(error)}`, 'error');
       else this.showAlert(`${this.$t('unknownError')}${error.toString()}`, 'error');
     }
     this.loading = false;
   }
-  private async requestSender(url: string, instance: AxiosInstance): Promise<AxiosResponse> {
-    if (!this.activeRepository) throw this.$t('unknownError');
-    instance.defaults.timeout = 30000;
-    if (this.activeRepository.token) instance.defaults.headers.common['Authorization'] = `Bearer ${this.activeRepository.token}`;
-    try {
-      return await instance.request({ url });
-    }
-    catch (error) {
-      if (error.response) {
-        const { status, headers } = error.response;
-        if (status === 401) {
-          const token = await this.getToken(headers['www-authenticate']);
-          if (token) {
-            if (this.activeRepository) this.activeRepository.token = token;
-            instance.defaults.headers.common['Authorization'] = `Bearer ${this.activeRepository.token}`;
-            try {
-              return await instance.request({ url });
-            }
-            catch (error) {
-              const { status, headers } = error.response;
-              if (status === 401) throw { message: 'need login', authenticateHeader: headers['www-authenticate'] };
-              else throw error;
-            }
-          }
-          else throw this.$t('getTokenFailed');
-        }
-      }
-      throw error;
-    }
-  }
-  private async getToken(authenticateHeader: string): Promise<string | undefined> {
-    if (!authenticateHeader) throw this.$t('getTokenFailed');
-    const [, realm, service, , scope] = authenticateHeader?.match(/^Bearer realm="([^"]*)",service="([^"]*)"(,scope="([^"]*)"|)/) ?? [];
-    if (realm && service) {
-      let authenticateURL = `${realm}?service=${service}`;
-      if (scope) authenticateURL += `&scope=${scope}`;
-      const headers: { 'Authorization'?: string } = {};
-      if (this.activeRepository?.secret) headers['Authorization'] = `Basic ${this.activeRepository.secret}`;
-      const { data } = await axios.get(authenticateURL, { headers, timeout: 5000 });
-      return data.token;
-    }
-    else throw this.$t('getTokenFailed');
-  }
-  private async getDownloadURL(digest: string | undefined): Promise<string> {
-    if (!digest) return '';
+  private async getDownloadURL(digest: string | undefined): Promise<string | undefined> {
+    if (!digest || !this.activeRepository) return;
     let downloadURL = '';
-    const [server, namespace, repository] = this.activeRepository?.url.split('/') ?? [];
-    const url = `https://${server}/v2/${namespace}/${repository}/blobs/${digest}`;
-    const request = axios.CancelToken.source();
-    const instance = axios.create({
-      method: 'get',
-      headers: {
-        'repository': [server, namespace, repository].join('/')
-      },
-      cancelToken: request.token,
-      onDownloadProgress: (e) => {
-        downloadURL = e.currentTarget.responseURL;
-        request.cancel('cancel');
-      }
-    });
     try {
-      await this.requestSender(url, instance);
+      const [server, namespace, repository] = this.activeRepository.url.split('/') ?? [];
+      if (!server || !namespace || !repository) throw `${this.$t('repositoryFormatError')}`;
+      const url = `https://${server}/v2/${namespace}/${repository}/blobs/${digest}`;
+      const request = axios.CancelToken.source();
+      const instance = axios.create({
+        method: 'get',
+        headers: {
+          'repository': [server, namespace, repository].join('/')
+        },
+        cancelToken: request.token,
+        onDownloadProgress: (e) => {
+          downloadURL = e.currentTarget.responseURL;
+          request.cancel('cancel');
+        }
+      });
+      await network.requestSender(url, instance, this.activeRepository);
     }
     catch (error) {
-      if (error.message === 'cancel') 'ok';
-      else if (error === 'need login') this.loginPromp();
-      else if (typeof error === 'string') this.showAlert(error, 'error');
-      else this.showAlert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+      if (error === 'need login') this.loginPromp();
+      else if (typeof error === 'string') this.showAlert(`${this.$t(error)}`, 'error');
+      else if (error.message !== 'cancel') this.showAlert(`${this.$t('unknownError')}${error.toString()}`, 'error');
     }
     return downloadURL;
   }
   private async getUploadURL(): Promise<string> {
-    const [server, namespace, repository] = this.activeRepository?.url.split('/') ?? [];
+    if (!this.activeRepository) throw 'unknownError';
+    const [server, namespace, repository] = this.activeRepository.url.split('/') ?? [];
     if (!server || !namespace || !repository) throw `${this.$t('repositoryFormatError')}`;
     const instance = axios.create({
       method: 'post',
@@ -339,16 +270,17 @@ export default class Files extends Vue {
       }
     });
     const url = `https://${server}/v2/${namespace}/${repository}/blobs/uploads/`;
-    const { headers } = await this.requestSender(url, instance);
+    const { headers } = await network.requestSender(url, instance, this.activeRepository);
     if (headers['location']) return headers['location'] as string;
     else throw `${this.$t('getUploadURLFailed')}`;
   }
   private async uploadConfig(): Promise<{ digest: string; size: number }> {
-    const [server, namespace, repository] = this.activeRepository?.url.split('/') ?? [];
+    if (!this.activeRepository) throw 'unknownError';
+    const [server, namespace, repository] = this.activeRepository.url.split('/') ?? [];
     if (!server || !namespace || !repository) throw `${this.$t('repositoryFormatError')}`;
-    const config = Buffer.from(JSON.stringify({ files: this.root }), 'utf-8');
+    const config = JSON.stringify({ files: this.root });
     const size = config.length;
-    const digest = `sha256:${sha256.hex(config)}`;
+    const digest = `sha256:${CryptoJS.SHA256(config)}`;
     const url = await this.getUploadURL();
     const instance = axios.create({
       method: 'put',
@@ -361,12 +293,13 @@ export default class Files extends Vue {
       e.data = new Blob([config], { type: 'application/octet-stream' });
       return e;
     });
-    await this.requestSender(`${url}&digest=${digest}`, instance);
+    await network.requestSender(`${url}&digest=${digest}`, instance, this.activeRepository);
     return { digest, size };
   }
   private async commit(): Promise<void> {
     try {
-      const [server, namespace, repository] = this.activeRepository?.url.split('/') ?? [];
+      if (!this.activeRepository) throw 'unknownError';
+      const [server, namespace, repository] = this.activeRepository.url.split('/') ?? [];
       if (!server || !namespace || !repository) throw `${this.$t('repositoryFormatError')}`;
       const { digest, size } = await this.uploadConfig();
       const manifest = {
@@ -391,13 +324,20 @@ export default class Files extends Vue {
         e.data = JSON.stringify(manifest);
         return e;
       });
-      await this.requestSender(manifestsURL, manifestsInstance);
+      await network.requestSender(manifestsURL, manifestsInstance, this.activeRepository);
     }
     catch (error) {
       if (error.message === 'need login') this.loginPromp(error.authenticateHeader, this.commit);
-      else if (typeof error === 'string') this.showAlert(error, 'error');
+      else if (typeof error === 'string') this.showAlert(`${this.$t(error)}`, 'error');
       else this.showAlert(`${this.$t('unknownError')}${error.toString()}`, 'error');
     }
+  }
+  private async upload(): Promise<void> {
+    this.loading = true;
+    for (const file of this.uploadFiles) {
+      console.log(await this.hashFile(file));
+    }
+    this.loading = false;
   }
   private loginPromp(authenticateHeader?: string, fn?: Function, arg: string[] = []): void {
     this.loginForm = true;
@@ -410,11 +350,11 @@ export default class Files extends Vue {
     this.loading = true;
     if (this.beforeLogin.authenticateHeader) {
       try {
-        const token = await this.getToken(this.beforeLogin.authenticateHeader);
+        const token = await network.getToken(this.beforeLogin.authenticateHeader, this.activeRepository);
         if (token) this.activeRepository.token = token;
       }
       catch (error) {
-        if (typeof error === 'string') this.showAlert(error, 'error');
+        if (typeof error === 'string') this.showAlert(`${this.$t(error)}`, 'error');
         else this.showAlert(`${this.$t('unknownError')}${error.toString()}`, 'error');
       }
     }
@@ -425,7 +365,7 @@ export default class Files extends Vue {
     this.activeRepository = this.repositories.find(e => e.value === this.activeRepositoryID);
     this.currentPath = this.currentPath.slice(0);
     this.fileList = [];
-    this.getManifests();
+    this.getConfig();
   }
   private parseConfig(config: FileItem[]): void {
     this.root = { name: 'root', type: 'folder', files: [] };
@@ -487,6 +427,40 @@ export default class Files extends Vue {
     const addZero = (n: number): string => `0${n}`.substr(-2);
     return `${date.getFullYear()}-${addZero(date.getMonth() + 1)}-${addZero(date.getDate())} ${addZero(date.getHours())}:${addZero(date.getMinutes())}`;
   }
+  private async hashFile(file: File): Promise<string> {
+    return new Promise((res, rej) => {
+      let currentChunk = 0;
+      let reader: FileReader | null = new FileReader();
+      const contractFile = file;
+      const blobSlice = File.prototype.slice;
+      const chunkSize = 6 * 1024 * 1024;
+      const chunks = Math.ceil(contractFile.size / chunkSize);
+      const SHA256 = CryptoJS.algo.SHA256.create();
+      const start = currentChunk * chunkSize;
+      const end = start + chunkSize >= contractFile.size ? contractFile.size : start + chunkSize;
+      reader.readAsArrayBuffer(blobSlice.call(contractFile, start, end));
+      reader.onload = function (e): void {
+        if (!e.target?.result) return rej(e);
+        const i8a = new Uint8Array(e.target.result as ArrayBuffer);
+        const a = [];
+        for (let i = 0; i < i8a.length; i += 4) {
+          a.push(i8a[i] << 24 | i8a[i + 1] << 16 | i8a[i + 2] << 8 | i8a[i + 3]);
+        }
+        SHA256.update(CryptoJS.lib.WordArray.create(a, i8a.length));
+        currentChunk += 1;
+        if (currentChunk < chunks) {
+          const start = currentChunk * chunkSize;
+          const end = start + chunkSize >= contractFile.size ? contractFile.size : start + chunkSize;
+          reader?.readAsArrayBuffer(blobSlice.call(contractFile, start, end));
+        }
+      };
+      reader.onloadend = (): void => {
+        res(SHA256.finalize().toString());
+        reader = null;
+      };
+      reader.onerror = rej;
+    });
+  }
   private async itemClick(item: FileItem): Promise<void> {
     if (item.type === 'file') {
       const downloadURL = await this.getDownloadURL(item.digest);
@@ -495,7 +469,9 @@ export default class Files extends Vue {
           this.video = true;
           this.videoURL = downloadURL;
         }
-        else alert(downloadURL);
+        else {
+          chrome.downloads.download({ url: downloadURL, filename: item.name });
+        }
       }
     }
     else {
