@@ -156,7 +156,7 @@ export default {
       if (details.requestHeaders)
         for (let i = 0; i < details.requestHeaders.length; ++i) {
           if (details.requestHeaders[i].name === 'User-Agent') {
-            details.requestHeaders[i].value = 'Docker-Client/19.03.8-ce (linux)';
+            //details.requestHeaders[i].value = 'Docker-Client/19.03.8-ce (linux)';
             break;
           }
         }
