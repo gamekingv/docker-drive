@@ -139,7 +139,7 @@ export default {
     const digest = `sha256:${await this.hashFile(file)}`;
     const url = await this.getUploadURL(repository);
     const instance = axios.create({
-      method: 'put',
+      method: 'post',
       headers: {
         'Content-Type': 'application/octet-stream',
         'repository': [server, namespace, image].join('/')
@@ -163,13 +163,21 @@ export default {
       return { requestHeaders: details.requestHeaders };
     }
     chrome.webRequest.onBeforeSendHeaders.addListener(modifyHeader,
-      { urls: [`${url}&digest=${digest}`] },
+      { urls: [url] },
       ['blocking', 'requestHeaders']
     );
 
-    await this.requestSender(`${url}&digest=${digest}`, instance, repository);
-
+    const { headers } = await this.requestSender(url, instance, repository);
     chrome.webRequest.onBeforeSendHeaders.removeListener(modifyHeader);
+    const checkInstance = axios.create({
+      method: 'put',
+      headers: {
+        'repository': [server, namespace, image].join('/')
+      },
+      timeout: 5000,
+      onUploadProgress: e => onUploadProgress(e)
+    });
+    await this.requestSender(`${headers['location']}&digest=${digest}`, checkInstance, repository);
 
     return { digest, size };
   },
