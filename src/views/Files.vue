@@ -1,7 +1,7 @@
 <template>
   <div id="files">
     <v-row>
-      <v-col cols="6" sm="3">
+      <v-col cols="6">
         <v-select
           v-model="activeRepositoryID"
           :items="repositories"
@@ -11,18 +11,18 @@
           @change="switchRepository()"
         ></v-select>
       </v-col>
-      <v-col cols="6" sm="3">
+      <v-col cols="6">
         <v-file-input
           v-model="uploadFiles"
           multiple
           show-size
           label="File input"
         ></v-file-input>
-        <v-btn @click="commit()">测试</v-btn>
+        <v-btn @click="upload()">测试</v-btn>
       </v-col>
     </v-row>
     <v-row>
-      <v-col cols="8" sm="3">
+      <v-col cols="12">
         <v-breadcrumbs :items="currentPath">
           <template v-slot:item="{ item }">
             <v-breadcrumbs-item
@@ -122,37 +122,13 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator';
-import axios from 'axios';
-import CryptoJS from 'crypto-js';
 import network from '@/utils/network';
+import { Repository, FileItem, Manifest } from '@/utils/types';
 
 interface VForm extends Vue {
   validate(): boolean;
   reset(): void;
   resetValidation(): void;
-}
-
-interface Repository {
-  name: string;
-  url: string;
-  value: symbol;
-  token: string;
-  secret: string;
-}
-
-interface FileItem {
-  name: string;
-  type: string;
-  files?: FileItem[];
-  digest?: string;
-  size?: number;
-  uploadTime?: number;
-}
-
-interface Manifest {
-  mediaType: string;
-  size: number;
-  digest: string;
 }
 
 @Component
@@ -186,6 +162,9 @@ export default class Files extends Vue {
     { text: this.$t('fileSize'), value: 'size', sortable: false },
     { text: this.$t('fileUploadTime'), value: 'uploadTime' }
   ]
+  get currentPathString(): string {
+    return this.currentPath.slice(1).reduce((s, a) => `${s}/${a.text}`, '');
+  }
 
   created(): void {
     this.repositories = [
@@ -231,113 +210,27 @@ export default class Files extends Vue {
     }
     this.loading = false;
   }
-  private async getDownloadURL(digest: string | undefined): Promise<string | undefined> {
-    if (!digest || !this.activeRepository) return;
-    let downloadURL = '';
+  private async upload(): Promise<void> {
+    if (!this.activeRepository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
+    this.loading = true;
+    const currentPath = this.currentPathString;
     try {
-      const [server, namespace, repository] = this.activeRepository.url.split('/') ?? [];
-      if (!server || !namespace || !repository) throw `${this.$t('repositoryFormatError')}`;
-      const url = `https://${server}/v2/${namespace}/${repository}/blobs/${digest}`;
-      const request = axios.CancelToken.source();
-      const instance = axios.create({
-        method: 'get',
-        headers: {
-          'repository': [server, namespace, repository].join('/')
-        },
-        cancelToken: request.token,
-        onDownloadProgress: (e) => {
-          downloadURL = e.currentTarget.responseURL;
-          request.cancel('cancel');
-        }
-      });
-      await network.requestSender(url, instance, this.activeRepository);
+      const { digest, size } = await network.uploadFile(this.uploadFiles[0], this.activeRepository, this.onUploadProgress);
+      const folder = this.getPath(currentPath, true);
+      folder.push({ name: this.uploadFiles[0].name, digest, size, type: 'file', uploadTime: Date.now() });
+      this.layers.push({ mediaType: 'application/vnd.docker.image.rootfs.diff.tar.gzip', digest, size });
+      await network.commit({ files: this.root, layers: this.layers }, this.activeRepository);
+      if (currentPath === this.currentPathString) this.fileList = this.getPath(currentPath);
     }
     catch (error) {
-      if (error === 'need login') this.loginPromp();
-      else if (typeof error === 'string') this.showAlert(`${this.$t(error)}`, 'error');
-      else if (error.message !== 'cancel') this.showAlert(`${this.$t('unknownError')}${error.toString()}`, 'error');
-    }
-    return downloadURL;
-  }
-  private async getUploadURL(): Promise<string> {
-    if (!this.activeRepository) throw 'unknownError';
-    const [server, namespace, repository] = this.activeRepository.url.split('/') ?? [];
-    if (!server || !namespace || !repository) throw `${this.$t('repositoryFormatError')}`;
-    const instance = axios.create({
-      method: 'post',
-      headers: {
-        'repository': [server, namespace, repository].join('/')
-      }
-    });
-    const url = `https://${server}/v2/${namespace}/${repository}/blobs/uploads/`;
-    const { headers } = await network.requestSender(url, instance, this.activeRepository);
-    if (headers['location']) return headers['location'] as string;
-    else throw `${this.$t('getUploadURLFailed')}`;
-  }
-  private async uploadConfig(): Promise<{ digest: string; size: number }> {
-    if (!this.activeRepository) throw 'unknownError';
-    const [server, namespace, repository] = this.activeRepository.url.split('/') ?? [];
-    if (!server || !namespace || !repository) throw `${this.$t('repositoryFormatError')}`;
-    const config = JSON.stringify({ files: this.root });
-    const size = config.length;
-    const digest = `sha256:${CryptoJS.SHA256(config)}`;
-    const url = await this.getUploadURL();
-    const instance = axios.create({
-      method: 'put',
-      headers: {
-        'Content-Type': 'application/octet-stream',
-        'repository': [server, namespace, repository].join('/')
-      }
-    });
-    instance.interceptors.request.use(e => {
-      e.data = new Blob([config], { type: 'application/octet-stream' });
-      return e;
-    });
-    await network.requestSender(`${url}&digest=${digest}`, instance, this.activeRepository);
-    return { digest, size };
-  }
-  private async commit(): Promise<void> {
-    try {
-      if (!this.activeRepository) throw 'unknownError';
-      const [server, namespace, repository] = this.activeRepository.url.split('/') ?? [];
-      if (!server || !namespace || !repository) throw `${this.$t('repositoryFormatError')}`;
-      const { digest, size } = await this.uploadConfig();
-      const manifest = {
-        schemaVersion: 2,
-        mediaType: 'application/vnd.docker.distribution.manifest.v2+json',
-        config: {
-          mediaType: 'application/vnd.docker.container.image.v1+json',
-          size,
-          digest
-        },
-        layers: this.layers
-      };
-      const manifestsURL = `https://${server}/v2/${namespace}/${repository}/manifests/latest`;
-      const manifestsInstance = axios.create({
-        method: 'put',
-        headers: {
-          'Content-Type': 'application/vnd.docker.distribution.manifest.v2+json',
-          'repository': [server, namespace, repository].join('/')
-        }
-      });
-      manifestsInstance.interceptors.request.use(e => {
-        e.data = JSON.stringify(manifest);
-        return e;
-      });
-      await network.requestSender(manifestsURL, manifestsInstance, this.activeRepository);
-    }
-    catch (error) {
-      if (error.message === 'need login') this.loginPromp(error.authenticateHeader, this.commit);
+      if (error.message === 'need login') this.loginPromp(error.authenticateHeader, this.upload);
       else if (typeof error === 'string') this.showAlert(`${this.$t(error)}`, 'error');
       else this.showAlert(`${this.$t('unknownError')}${error.toString()}`, 'error');
     }
-  }
-  private async upload(): Promise<void> {
-    this.loading = true;
-    for (const file of this.uploadFiles) {
-      console.log(await this.hashFile(file));
-    }
     this.loading = false;
+  }
+  private onUploadProgress(e: ProgressEvent): void {
+    console.log(e);
   }
   private loginPromp(authenticateHeader?: string, fn?: Function, arg: string[] = []): void {
     this.loginForm = true;
@@ -398,17 +291,19 @@ export default class Files extends Vue {
       });
     });
   }
-  private getPath(pathString: string): FileItem[] {
+  private getPath(pathString: string, reference = false): FileItem[] {
     const path = pathString === '/' ? [] : pathString.substr(1).split('/');
     let filePointer: FileItem = this.root;
     for (let i = 0; i < path.length; i++) {
       const nextPointer = filePointer.files?.find(e => e.name === path[i]);
       if (nextPointer && nextPointer.type === 'folder') filePointer = nextPointer;
       else {
-        return this.root.files as FileItem[];
+        if (reference) return this.root.files as FileItem[];
+        else return JSON.parse(JSON.stringify(this.root.files));
       }
     }
-    return filePointer.files ?? [];
+    if (reference) return filePointer.files ?? [];
+    else return JSON.parse(JSON.stringify(filePointer.files ?? []));
   }
   private formatFileSize(fileSize: number): string {
     if (!fileSize) return '-';
@@ -427,57 +322,33 @@ export default class Files extends Vue {
     const addZero = (n: number): string => `0${n}`.substr(-2);
     return `${date.getFullYear()}-${addZero(date.getMonth() + 1)}-${addZero(date.getDate())} ${addZero(date.getHours())}:${addZero(date.getMinutes())}`;
   }
-  private async hashFile(file: File): Promise<string> {
-    return new Promise((res, rej) => {
-      let currentChunk = 0;
-      let reader: FileReader | null = new FileReader();
-      const contractFile = file;
-      const blobSlice = File.prototype.slice;
-      const chunkSize = 6 * 1024 * 1024;
-      const chunks = Math.ceil(contractFile.size / chunkSize);
-      const SHA256 = CryptoJS.algo.SHA256.create();
-      const start = currentChunk * chunkSize;
-      const end = start + chunkSize >= contractFile.size ? contractFile.size : start + chunkSize;
-      reader.readAsArrayBuffer(blobSlice.call(contractFile, start, end));
-      reader.onload = function (e): void {
-        if (!e.target?.result) return rej(e);
-        const i8a = new Uint8Array(e.target.result as ArrayBuffer);
-        const a = [];
-        for (let i = 0; i < i8a.length; i += 4) {
-          a.push(i8a[i] << 24 | i8a[i + 1] << 16 | i8a[i + 2] << 8 | i8a[i + 3]);
-        }
-        SHA256.update(CryptoJS.lib.WordArray.create(a, i8a.length));
-        currentChunk += 1;
-        if (currentChunk < chunks) {
-          const start = currentChunk * chunkSize;
-          const end = start + chunkSize >= contractFile.size ? contractFile.size : start + chunkSize;
-          reader?.readAsArrayBuffer(blobSlice.call(contractFile, start, end));
-        }
-      };
-      reader.onloadend = (): void => {
-        res(SHA256.finalize().toString());
-        reader = null;
-      };
-      reader.onerror = rej;
-    });
-  }
   private async itemClick(item: FileItem): Promise<void> {
     if (item.type === 'file') {
-      const downloadURL = await this.getDownloadURL(item.digest);
-      if (downloadURL) {
-        if (item.name.match(/\.(mp4|mkv)$/)) {
-          this.video = true;
-          this.videoURL = downloadURL;
+      if (!item.digest || !this.activeRepository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
+      try {
+        const downloadURL = await network.getDownloadURL(item.digest, this.activeRepository);
+        console.log('未完成');
+        if (downloadURL) {
+          if (item.name.match(/\.(mp4|mkv)$/)) {
+            this.video = true;
+            this.videoURL = downloadURL;
+          }
+          else {
+            chrome.downloads.download({ url: downloadURL, filename: item.name });
+          }
         }
-        else {
-          chrome.downloads.download({ url: downloadURL, filename: item.name });
-        }
+        else return this.showAlert(`${this.$t('getDownloadURLFailed')}`, 'error');
+      }
+      catch (error) {
+        if (error.message === 'need login') this.loginPromp(error.authenticateHeader);
+        else if (typeof error === 'string') this.showAlert(`${this.$t(error)}`, 'error');
+        else this.showAlert(`${this.$t('unknownError')}${error.toString()}`, 'error');
       }
     }
     else {
       this.currentPath[this.currentPath.length - 1].disabled = false;
       this.currentPath.push({ text: item.name, disabled: true, id: Symbol() });
-      this.fileList = this.getPath(this.currentPath.slice(1).reduce((s, a) => `${s}/${a.text}`, ''));
+      this.fileList = this.getPath(this.currentPathString);
     }
   }
   private pathClick(id: symbol): void {
@@ -489,7 +360,7 @@ export default class Files extends Vue {
         this.fileList = this.getPath('/');
       }
       else {
-        this.fileList = this.getPath(this.currentPath.slice(1).reduce((s, a) => `${s}/${a.text}`, ''));
+        this.fileList = this.getPath(this.currentPathString);
       }
     }
     else this.fileList = this.getPath('/');
@@ -520,7 +391,7 @@ export default class Files extends Vue {
 
 <style lang="scss">
 .video-container {
-  overflow: hidden !important;
+  overflow: hidden;
   background-color: black;
   display: flex;
 }

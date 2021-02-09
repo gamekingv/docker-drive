@@ -17,5 +17,6 @@
   "fileSize": "Size",
   "fileUploadTime": "Upload",
   "root": "Root",
-  "getUploadURLFailed": "Get upload url failed"
+  "getUploadURLFailed": "Get upload url failed",
+  "getDownloadURLFailed": "Get download url failed"
 }

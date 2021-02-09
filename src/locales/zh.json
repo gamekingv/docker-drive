@@ -17,5 +17,6 @@
   "fileSize": "大小",
   "fileUploadTime": "上传时间",
   "root": "根目录",
-  "getUploadURLFailed": "获取上传链接失败"
+  "getUploadURLFailed": "获取上传链接失败",
+  "getDownloadURLFailed": "获取下载链接失败"
 }
