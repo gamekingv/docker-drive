@@ -229,6 +229,9 @@ export default class Files extends Vue {
     }
     this.loading = false;
   }
+  private remove(): void {
+
+  }
   private onUploadProgress(e: ProgressEvent): void {
     console.log(e);
   }

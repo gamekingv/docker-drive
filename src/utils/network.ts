@@ -113,10 +113,11 @@ export default {
     if (headers['location']) return headers['location'] as string;
     else throw 'getUploadURLFailed';
   },
-  async uploadConfig(config: string, repository: Repository): Promise<{ digest: string; size: number }> {
+  async uploadFile(file: File | string, repository: Repository, onUploadProgress?: (progressEvent: ProgressEvent) => void): Promise<{ digest: string; size: number }> {
     const [server, namespace, image] = repository.url.split('/') ?? [];
-    const size = config.length;
-    const digest = `sha256:${CryptoJS.SHA256(config)}`;
+    const timeout = typeof file === 'string' ? 10000 : 0;
+    const size = typeof file === 'string' ? file.length : file.size;
+    const digest = `sha256:${typeof file === 'string' ? CryptoJS.SHA256(file) : await this.hashFile(file)}`;
     const url = await this.getUploadURL(repository);
     const instance = axios.create({
       method: 'put',
@@ -124,66 +125,31 @@ export default {
         'Content-Type': 'application/octet-stream',
         'repository': [server, namespace, image].join('/')
       },
-      timeout: 10000
-    });
-    instance.interceptors.request.use(e => {
-      e.data = new Blob([config], { type: 'application/octet-stream' });
-      return e;
-    });
-    await this.requestSender(`${url}&digest=${digest}`, instance, repository);
-    return { digest, size };
-  },
-  async uploadFile(file: File, repository: Repository, onUploadProgress: Function): Promise<{ digest: string; size: number }> {
-    const [server, namespace, image] = repository.url.split('/') ?? [];
-    const size = file.size;
-    const digest = `sha256:${await this.hashFile(file)}`;
-    const url = await this.getUploadURL(repository);
-    const instance = axios.create({
-      method: 'post',
-      headers: {
-        'Content-Type': 'application/octet-stream',
-        'repository': [server, namespace, image].join('/')
-      },
-      timeout: 0,
-      onUploadProgress: e => onUploadProgress(e)
+      timeout,
+      onUploadProgress
     });
     instance.interceptors.request.use(e => {
       e.data = new Blob([file], { type: 'application/octet-stream' });
       return e;
     });
-
-    function modifyHeader(details: chrome.webRequest.WebRequestHeadersDetails): chrome.webRequest.BlockingResponse {
-      if (details.requestHeaders)
-        for (let i = 0; i < details.requestHeaders.length; ++i) {
-          if (details.requestHeaders[i].name === 'User-Agent') {
-            //details.requestHeaders[i].value = 'Docker-Client/19.03.8-ce (linux)';
-            break;
-          }
-        }
-      return { requestHeaders: details.requestHeaders };
-    }
-    chrome.webRequest.onBeforeSendHeaders.addListener(modifyHeader,
-      { urls: [url] },
-      ['blocking', 'requestHeaders']
-    );
-
-    const { headers } = await this.requestSender(url, instance, repository);
-    chrome.webRequest.onBeforeSendHeaders.removeListener(modifyHeader);
-    const checkInstance = axios.create({
-      method: 'put',
+    await this.requestSender(`${url}&digest=${digest}`, instance, repository);
+    return { digest, size };
+  },
+  async removeFile(digest: string, repository: Repository): Promise<void> {
+    const [server, namespace, image] = repository.url.split('/') ?? [];
+    const url = `https://${server}/v2/${namespace}/${image}/blobs/${digest}`;
+    const instance = axios.create({
+      method: 'delete',
       headers: {
         'repository': [server, namespace, image].join('/')
       },
-      timeout: 5000,
-      onUploadProgress: e => onUploadProgress(e)
+      timeout: 10000
     });
-    await this.requestSender(`${headers['location']}&digest=${digest}`, checkInstance, repository);
-
-    return { digest, size };
+    await this.requestSender(url, instance, repository);
   },
   async commit(config: { files: FileItem; layers: Manifest[] }, repository: Repository): Promise<void> {
     const [server, namespace, image] = repository.url.split('/') ?? [];
-    const { digest, size } = await this.uploadConfig(JSON.stringify({ files: config.files }), repository);
+    const { digest, size } = await this.uploadFile(JSON.stringify({ files: config.files }), repository);
     const manifest = {
       schemaVersion: 2,
       mediaType: 'application/vnd.docker.distribution.manifest.v2+json',
@@ -210,37 +176,28 @@ export default {
     await this.requestSender(url, instance, repository);
   },
   async hashFile(file: File): Promise<string> {
-    return new Promise((res, rej) => {
-      let currentChunk = 0;
-      let reader: FileReader | null = new FileReader();
-      const contractFile = file;
-      const blobSlice = File.prototype.slice;
-      const chunkSize = 6 * 1024 * 1024;
-      const chunks = Math.ceil(contractFile.size / chunkSize);
-      const SHA256 = CryptoJS.algo.SHA256.create();
-      const start = currentChunk * chunkSize;
-      const end = start + chunkSize >= contractFile.size ? contractFile.size : start + chunkSize;
-      reader.readAsArrayBuffer(blobSlice.call(contractFile, start, end));
-      reader.onload = function (e): void {
-        if (!e.target?.result) return rej(e);
-        const i8a = new Uint8Array(e.target.result as ArrayBuffer);
-        const a = [];
-        for (let i = 0; i < i8a.length; i += 4) {
-          a.push(i8a[i] << 24 | i8a[i + 1] << 16 | i8a[i + 2] << 8 | i8a[i + 3]);
-        }
-        SHA256.update(CryptoJS.lib.WordArray.create(a, i8a.length));
-        currentChunk += 1;
-        if (currentChunk < chunks) {
-          const start = currentChunk * chunkSize;
-          const end = start + chunkSize >= contractFile.size ? contractFile.size : start + chunkSize;
-          reader?.readAsArrayBuffer(blobSlice.call(contractFile, start, end));
-        }
-      };
-      reader.onloadend = (): void => {
-        res(SHA256.finalize().toString());
-        reader = null;
-      };
-      reader.onerror = rej;
-    });
+    const algo = CryptoJS.algo.SHA256.create();
+    const chunkSize = 20 * 1024 * 1024;
+    let promise = Promise.resolve();
+    for (let index = 0; index < file.size; index += chunkSize) {
+      promise = promise.then(() => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e): void => {
+            if (!e.target?.result) return reject(e);
+            const i8a = new Uint8Array(e.target.result as ArrayBuffer);
+            const a = [];
+            for (let i = 0; i < i8a.length; i += 4) {
+              a.push(i8a[i] << 24 | i8a[i + 1] << 16 | i8a[i + 2] << 8 | i8a[i + 3]);
+            }
+            const wordArray = CryptoJS.lib.WordArray.create(a, i8a.length);
+            algo.update(wordArray);
+            resolve();
+          };
+          reader.readAsArrayBuffer(file.slice(index, index + chunkSize));
+        });
+      });
+    }
+    return promise.then(() => algo.finalize().toString());
   }
 };
