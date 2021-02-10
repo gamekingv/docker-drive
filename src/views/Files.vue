@@ -252,8 +252,12 @@ export default class Files extends Vue {
     if (!this.activeRepository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
     this.loading = true;
     try {
-      await this.remove(this.selectedFiles, this.currentPathString, this.activeRepository);
-      await network.commit({ files: this.root, layers: this.layers }, this.activeRepository);
+      try {
+        await this.remove(this.selectedFiles, this.currentPathString, this.activeRepository);
+      }
+      finally {
+        await network.commit({ files: this.root, layers: this.layers }, this.activeRepository);
+      }
     }
     catch (error) {
       if (error.message === 'need login') this.loginPromp(error.authenticateHeader, this.removeSelected);
