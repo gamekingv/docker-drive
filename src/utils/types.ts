@@ -13,6 +13,7 @@ interface FileItem {
     digest?: string;
     size?: number;
     uploadTime?: number;
+    id: symbol;
 }
 
 interface Manifest {

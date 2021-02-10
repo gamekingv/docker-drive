@@ -4,7 +4,6 @@ import { Repository, FileItem, Manifest } from '@/utils/types';
 
 export default {
   async requestSender(url: string, instance: AxiosInstance, repository: Repository): Promise<AxiosResponse> {
-    //instance.defaults.timeout = 30000;
     if (repository.token) instance.defaults.headers.common['Authorization'] = `Bearer ${repository.token}`;
     try {
       return await instance.request({ url });

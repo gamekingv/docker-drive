@@ -18,7 +18,9 @@
           show-size
           label="File input"
         ></v-file-input>
-        <v-btn @click="upload()">测试</v-btn>
+        <v-btn @click="upload()">测试上传</v-btn>
+        <v-btn @click="addFolder('test2')">测试新建文件夹test2</v-btn>
+        <v-btn @click="removeSelected()">测试删除</v-btn>
       </v-col>
     </v-row>
     <v-row>
@@ -37,10 +39,12 @@
       </v-col>
     </v-row>
     <v-data-table
+      v-model="selectedFiles"
       class="grey darken-3"
       :headers="fileListHeader"
-      :items="fileList"
+      :items="displayList"
       :items-per-page="10"
+      item-key="name"
       show-select
     >
       <template v-slot:[`item.name`]="{ item }">
@@ -152,18 +156,23 @@ export default class Files extends Vue {
   private activeRepositoryID!: symbol
   private activeRepository!: Repository | undefined
   private repositories!: Repository[]
-  private root: FileItem = { name: 'root', type: 'folder', files: [] }
+  private root: FileItem = { name: 'root', type: 'folder', files: [], id: Symbol() }
   private currentPath = [{ text: `${this.$t('root')}`, disabled: true, id: Symbol() }]
   private layers: Manifest[] = []
   private uploadFiles: File[] = []
-  private fileList: FileItem[] = []
-  private fileListHeader = [
+  private selectedFiles: FileItem[] = []
+  private readonly fileListHeader = [
     { text: this.$t('filename'), align: 'start', value: 'name' },
     { text: this.$t('fileSize'), value: 'size', sortable: false },
     { text: this.$t('fileUploadTime'), value: 'uploadTime' }
   ]
   get currentPathString(): string {
+    if (this.currentPath.length === 1) return '/';
     return this.currentPath.slice(1).reduce((s, a) => `${s}/${a.text}`, '');
+  }
+
+  get displayList(): FileItem[] {
+    return this.getPath(this.currentPathString);
   }
 
   created(): void {
@@ -198,10 +207,7 @@ export default class Files extends Vue {
     try {
       const { config, layers } = await network.getManifests(this.activeRepository);
       this.layers = layers;
-      if (config.fileItems) this.parseConfig(config.fileItems);
-      else if (config.files) this.root = config.files;
-      else throw `${this.$t('loadConfigFailed')}`;
-      this.fileList = this.getPath('/');
+      this.parseConfig(config);
     }
     catch (error) {
       if (error.message === 'need login') this.loginPromp(error.authenticateHeader, this.getConfig);
@@ -216,11 +222,10 @@ export default class Files extends Vue {
     const currentPath = this.currentPathString;
     try {
       const { digest, size } = await network.uploadFile(this.uploadFiles[0], this.activeRepository, this.onUploadProgress);
-      const folder = this.getPath(currentPath, true);
-      folder.push({ name: this.uploadFiles[0].name, digest, size, type: 'file', uploadTime: Date.now() });
+      const folder = this.getPath(currentPath);
+      folder.push({ name: this.uploadFiles[0].name, digest, size, type: 'file', uploadTime: Date.now(), id: Symbol() });
       this.layers.push({ mediaType: 'application/vnd.docker.image.rootfs.diff.tar.gzip', digest, size });
       await network.commit({ files: this.root, layers: this.layers }, this.activeRepository);
-      if (currentPath === this.currentPathString) this.fileList = this.getPath(currentPath);
     }
     catch (error) {
       if (error.message === 'need login') this.loginPromp(error.authenticateHeader, this.upload);
@@ -229,8 +234,54 @@ export default class Files extends Vue {
     }
     this.loading = false;
   }
-  private remove(): void {
-
+  private async addFolder(name: string): Promise<void> {
+    if (!this.activeRepository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
+    this.loading = true;
+    try {
+      this.displayList.push({ name: name, type: 'folder', files: [], id: Symbol(), uploadTime: Date.now() });
+      await network.commit({ files: this.root, layers: this.layers }, this.activeRepository);
+    }
+    catch (error) {
+      if (error.message === 'need login') this.loginPromp(error.authenticateHeader, this.upload);
+      else if (typeof error === 'string') this.showAlert(`${this.$t(error)}`, 'error');
+      else this.showAlert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+    }
+    this.loading = false;
+  }
+  private async removeSelected(): Promise<void> {
+    if (!this.activeRepository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
+    this.loading = true;
+    try {
+      await this.remove(this.selectedFiles, this.currentPathString, this.activeRepository);
+      await network.commit({ files: this.root, layers: this.layers }, this.activeRepository);
+    }
+    catch (error) {
+      if (error.message === 'need login') this.loginPromp(error.authenticateHeader, this.removeSelected);
+      else if (typeof error === 'string') this.showAlert(`${this.$t(error)}`, 'error');
+      else this.showAlert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+    }
+    this.loading = false;
+  }
+  private async remove(files: FileItem[], path: string, repository: Repository): Promise<void> {
+    for (const file of files) {
+      const currentPath = this.getPath(path);
+      if (file.type === 'file') {
+        const digest = file.digest as string;
+        try {
+          await network.removeFile(digest, repository);
+        }
+        catch (e) {
+          if (e.response?.status !== 404) throw e;
+        }
+        const layerIndex = this.layers.findIndex(e => e.digest === file.digest);
+        if (layerIndex > 0) this.layers.splice(layerIndex, 1);
+      }
+      else {
+        await this.remove(file.files as FileItem[], `${currentPath}/${file.name}`, repository);
+      }
+      const listIndex = currentPath.findIndex(e => e.id === file.id);
+      if (listIndex > 0) currentPath.splice(listIndex, 1);
+    }
   }
   private onUploadProgress(e: ProgressEvent): void {
     console.log(e);
@@ -259,54 +310,56 @@ export default class Files extends Vue {
   }
   private switchRepository(): void {
     this.activeRepository = this.repositories.find(e => e.value === this.activeRepositoryID);
-    this.currentPath = this.currentPath.slice(0);
-    this.fileList = [];
+    this.currentPath = this.currentPath.slice(0, 1);
+    this.root.files = [];
     this.getConfig();
   }
-  private parseConfig(config: FileItem[]): void {
-    this.root = { name: 'root', type: 'folder', files: [] };
-    config.forEach(({ name: pathString, size, digest, uploadTime }) => {
-      uploadTime = Date.now();
-      const path = pathString.substr(1).split('/');
-      const type = digest ? 'file' : 'folder';
-      let filePointer: FileItem = this.root;
-      for (let i = 0; i < path.length - 1; i++) {
-        const nextPointer = filePointer.files?.find(e => e.name === path[i]);
-        if (nextPointer) filePointer = nextPointer;
-        else {
-          const item: FileItem = {
-            name: path[i],
-            type: 'folder',
-            files: []
-          };
-          if (uploadTime && (!item.uploadTime || item.uploadTime < uploadTime)) item.uploadTime = uploadTime;
-          filePointer.files?.push(item);
-          filePointer = item;
+  private parseConfig(config: { fileItems?: FileItem[]; files?: FileItem }): void {
+    if (config.fileItems) {
+      config.fileItems.forEach(({ name: pathString, size, digest, uploadTime }) => {
+        if (!uploadTime) uploadTime = Date.now();
+        const path = pathString.substr(1).split('/');
+        const type = digest ? 'file' : 'folder';
+        let filePointer: FileItem = this.root;
+        const id = Symbol();
+        for (let i = 0; i < path.length - 1; i++) {
+          const nextPointer = filePointer.files?.find(e => e.name === path[i]);
+          const id = Symbol();
+          if (nextPointer) filePointer = nextPointer;
+          else {
+            const item: FileItem = { name: path[i], type: 'folder', files: [], id };
+            if (!item.uploadTime || item.uploadTime < uploadTime) item.uploadTime = uploadTime;
+            filePointer.files?.push(item);
+            filePointer = item;
+          }
         }
-      }
-      if (type === 'folder') filePointer.files?.push({ name: path[path.length - 1], type, files: [] });
-      else filePointer.files?.push({
-        name: path[path.length - 1],
-        type,
-        size,
-        digest,
-        uploadTime
+        if (type === 'folder') filePointer.files?.push({ name: path[path.length - 1], type, files: [], id });
+        else filePointer.files?.push({ name: path[path.length - 1], type, size, digest, uploadTime, id });
       });
-    });
+    }
+    else if (config.files) {
+      const addID = (files: FileItem[]): void => {
+        files.forEach(file => {
+          file.id = Symbol();
+          if (file.files) addID(file.files);
+        });
+      };
+      addID(config.files.files as FileItem[]);
+      this.root.files = config.files.files;
+    }
+    else throw `${this.$t('loadConfigFailed')}`;
   }
-  private getPath(pathString: string, reference = false): FileItem[] {
+  private getPath(pathString: string): FileItem[] {
     const path = pathString === '/' ? [] : pathString.substr(1).split('/');
     let filePointer: FileItem = this.root;
     for (let i = 0; i < path.length; i++) {
       const nextPointer = filePointer.files?.find(e => e.name === path[i]);
       if (nextPointer && nextPointer.type === 'folder') filePointer = nextPointer;
       else {
-        if (reference) return this.root.files as FileItem[];
-        else return JSON.parse(JSON.stringify(this.root.files));
+        return this.root.files as FileItem[];
       }
     }
-    if (reference) return filePointer.files ?? [];
-    else return JSON.parse(JSON.stringify(filePointer.files ?? []));
+    return filePointer.files ?? [];
   }
   private formatFileSize(fileSize: number): string {
     if (!fileSize) return '-';
@@ -351,7 +404,6 @@ export default class Files extends Vue {
     else {
       this.currentPath[this.currentPath.length - 1].disabled = false;
       this.currentPath.push({ text: item.name, disabled: true, id: Symbol() });
-      this.fileList = this.getPath(this.currentPathString);
     }
   }
   private pathClick(id: symbol): void {
@@ -359,14 +411,7 @@ export default class Files extends Vue {
     if (typeof currentIndex === 'number') {
       this.currentPath = this.currentPath.slice(0, currentIndex + 1);
       this.currentPath[this.currentPath.length - 1].disabled = true;
-      if (currentIndex === 0) {
-        this.fileList = this.getPath('/');
-      }
-      else {
-        this.fileList = this.getPath(this.currentPathString);
-      }
     }
-    else this.fileList = this.getPath('/');
   }
   private showAlert(text: string, type = ''): void {
     this.alert = true;
