@@ -1,8 +1,7 @@
 import registerPromiseWorker from 'promise-worker/register';
 import CryptoJS from 'crypto-js';
 
-registerPromiseWorker((message) => {
-    const file = message.file;
+registerPromiseWorker(({ file }) => {
     const algo = CryptoJS.algo.SHA256.create();
     const chunkSize = 20 * 1024 * 1024;
     let promise = Promise.resolve();

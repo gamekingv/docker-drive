@@ -177,7 +177,10 @@ export default {
     await this.requestSender(url, instance, repository);
   },
   async hashFile(file: File): Promise<string> {
-    const worker = new PromiseWorker(new hashWorker());
-    return worker.postMessage({ file });
+    const worker = new hashWorker();
+    const promiseWorker = new PromiseWorker(worker);
+    const hash = await promiseWorker.postMessage({ file });
+    worker.terminate();
+    return hash;
   }
 };
