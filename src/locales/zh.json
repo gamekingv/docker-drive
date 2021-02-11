@@ -21,5 +21,6 @@
   "getDownloadURLFailed": "获取下载链接失败",
   "newName": "新名称",
   "newFolderName": "新文件夹名",
-  "duplicate": "已存在同名文件或文件夹"
+  "duplicate": "已存在同名文件或文件夹",
+  "moveTo": "移动到"
 }

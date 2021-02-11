@@ -1,6 +1,8 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import CryptoJS from 'crypto-js';
 import { Repository, FileItem, Manifest } from '@/utils/types';
+import PromiseWorker from 'promise-worker';
+import hashWorker from '@/utils/hash.worker';
 
 export default {
   async requestSender(url: string, instance: AxiosInstance, repository: Repository): Promise<AxiosResponse> {
@@ -175,28 +177,7 @@ export default {
     await this.requestSender(url, instance, repository);
   },
   async hashFile(file: File): Promise<string> {
-    const algo = CryptoJS.algo.SHA256.create();
-    const chunkSize = 20 * 1024 * 1024;
-    let promise = Promise.resolve();
-    for (let index = 0; index < file.size; index += chunkSize) {
-      promise = promise.then(() => {
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = (e): void => {
-            if (!e.target?.result) return reject(e);
-            const i8a = new Uint8Array(e.target.result as ArrayBuffer);
-            const a = [];
-            for (let i = 0; i < i8a.length; i += 4) {
-              a.push(i8a[i] << 24 | i8a[i + 1] << 16 | i8a[i + 2] << 8 | i8a[i + 3]);
-            }
-            const wordArray = CryptoJS.lib.WordArray.create(a, i8a.length);
-            algo.update(wordArray);
-            resolve();
-          };
-          reader.readAsArrayBuffer(file.slice(index, index + chunkSize));
-        });
-      });
-    }
-    return promise.then(() => algo.finalize().toString());
+    const worker = new PromiseWorker(new hashWorker());
+    return worker.postMessage({ file });
   }
 };

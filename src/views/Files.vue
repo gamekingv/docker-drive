@@ -22,6 +22,7 @@
         <v-btn @click="addFolderAction()">测试新建文件夹</v-btn>
         <v-btn @click="removeSelected()">测试删除</v-btn>
         <v-btn @click="renameAction(selectedFiles[0])">测试重命名</v-btn>
+        <v-btn @click="moveAction()">测试移动</v-btn>
       </v-col>
     </v-row>
     <v-row>
@@ -85,6 +86,8 @@
               ? $t("newName")
               : actionType === "addFolder"
               ? $t("newFolderName")
+              : actionType === "move"
+              ? $t("moveTo")
               : ""
           }}</span>
         </v-card-title>
@@ -133,6 +136,21 @@
                     required
                   ></v-text-field>
                 </v-col>
+                <v-col v-if="actionType === 'move'" cols="12">
+                  <v-treeview
+                    rounded
+                    hoverable
+                    activatable
+                    :items="[folderList]"
+                    item-children="files"
+                  >
+                    <template v-slot:prepend="{ open }">
+                      <v-icon>
+                        {{ open ? "mdi-folder-open" : "mdi-folder" }}
+                      </v-icon>
+                    </template>
+                  </v-treeview>
+                </v-col>
               </v-row>
             </v-form>
           </v-container>
@@ -147,7 +165,9 @@
                   ? login()
                   : actionType === 'rename'
                   ? rename()
-                  : actionType === 'addFolder' && addFolder())
+                  : actionType === 'addFolder'
+                  ? addFolder()
+                  : actionType === 'move' && move())
             "
           >
             {{ $t("ok") }}
@@ -226,6 +246,7 @@ export default class Files extends Vue {
   private layers: Manifest[] = []
   private uploadFiles: File[] = []
   private selectedFiles: FileItem[] = []
+  private folderList!: FileItem
   private readonly fileListHeader = [
     { text: this.$t('filename'), align: 'start', value: 'name' },
     { text: this.$t('fileSize'), value: 'size', sortable: false },
@@ -287,12 +308,10 @@ export default class Files extends Vue {
     const currentPathString = this.currentPathString;
     try {
       const { digest, size } = await network.uploadFile(this.uploadFiles[0], this.activeRepository, this.onUploadProgress);
-      const root = JSON.parse(JSON.stringify(this.root));
-      const folder = this.getPath(currentPathString, root);
-      const layers = JSON.parse(JSON.stringify(this.layers));
-      folder.push({ name: this.uploadFiles[0].name, digest, size, type: 'file', uploadTime: Date.now(), id: Symbol() });
-      layers.push({ mediaType: 'application/vnd.docker.image.rootfs.diff.tar.gzip', digest, size });
-      await network.commit({ files: root, layers }, this.activeRepository);
+      const cache = { root: JSON.parse(JSON.stringify(this.root)), layers: JSON.parse(JSON.stringify(this.layers)) };
+      this.getPath(currentPathString, cache.root).push({ name: this.uploadFiles[0].name, digest, size, type: 'file', uploadTime: Date.now(), id: Symbol() });
+      cache.layers.push({ mediaType: 'application/vnd.docker.image.rootfs.diff.tar.gzip', digest, size });
+      await network.commit({ files: cache.root, layers: cache.layers }, this.activeRepository);
       this.getPath(currentPathString).push({ name: this.uploadFiles[0].name, digest, size, type: 'file', uploadTime: Date.now(), id: Symbol() });
       this.layers.push({ mediaType: 'application/vnd.docker.image.rootfs.diff.tar.gzip', digest, size });
     }
@@ -313,9 +332,9 @@ export default class Files extends Vue {
     this.closeForm();
     this.loading = true;
     try {
-      const root = JSON.parse(JSON.stringify(this.root));
-      this.getPath(this.currentPathString, root).push({ name: name, type: 'folder', files: [], id: Symbol(), uploadTime: Date.now() });
-      await network.commit({ files: root, layers: this.layers }, this.activeRepository);
+      const cache = { root: JSON.parse(JSON.stringify(this.root)) };
+      this.getPath(this.currentPathString, cache.root).push({ name: name, type: 'folder', files: [], id: Symbol(), uploadTime: Date.now() });
+      await network.commit({ files: cache.root, layers: this.layers }, this.activeRepository);
       this.displayList.push({ name: name, type: 'folder', files: [], id: Symbol(), uploadTime: Date.now() });
     }
     catch (error) {
@@ -329,13 +348,12 @@ export default class Files extends Vue {
     if (!this.activeRepository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
     this.loading = true;
     try {
-      const root = JSON.parse(JSON.stringify(this.root));
-      const layers = JSON.parse(JSON.stringify(this.layers));
+      const cache = { root: JSON.parse(JSON.stringify(this.root)), layers: JSON.parse(JSON.stringify(this.layers)) };
       try {
-        await this.remove(this.selectedFiles, this.currentPathString, this.activeRepository, root, layers, false);
+        await this.remove(this.selectedFiles, this.currentPathString, this.activeRepository, cache.root, cache.layers, false);
       }
       finally {
-        await network.commit({ files: root, layers }, this.activeRepository);
+        await network.commit({ files: cache.root, layers: cache.layers }, this.activeRepository);
         await this.remove(this.selectedFiles, this.currentPathString, this.activeRepository, this.root, this.layers, true);
       }
     }
@@ -379,11 +397,11 @@ export default class Files extends Vue {
     this.closeForm();
     this.loading = true;
     try {
-      const root = JSON.parse(JSON.stringify(this.root));
-      const renameItem = this.getPath(this.currentPathString, root).find(e => e.name === this.renameItem.name);
+      const cache = { root: JSON.parse(JSON.stringify(this.root)) };
+      const renameItem = this.getPath(this.currentPathString, cache.root).find(e => e.name === this.renameItem.name);
       if (renameItem) renameItem.name = name;
       else throw 'unknownError';
-      await network.commit({ files: root, layers: this.layers }, this.activeRepository);
+      await network.commit({ files: cache.root, layers: this.layers }, this.activeRepository);
       this.renameItem.name = name;
     }
     catch (error) {
@@ -393,8 +411,38 @@ export default class Files extends Vue {
     }
     this.loading = false;
   }
+  private moveAction(): void {
+    this.actionType = 'move';
+    this.action = true;
+    this.folderList = { name: `${this.$t('root')}`, type: 'folder', files: [], id: this.root.id };
+    const filterFolder = (filterFiles: FileItem[], rootFiles: FileItem[]): void => {
+      for (const file of rootFiles) {
+        if (file.type === 'folder') {
+          const filterFile = { name: file.name, type: 'folder', files: [], id: file.id };
+          filterFiles.push(filterFile);
+          filterFolder(filterFile.files, file.files as FileItem[]);
+        }
+      }
+    };
+    filterFolder(this.folderList.files as FileItem[], this.root.files as FileItem[]);
+  }
   private async move(): Promise<void> {
-    console.log();
+    // if (!this.activeRepository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
+    // const name = this.folderName;
+    // this.closeForm();
+    // this.loading = true;
+    // try {
+    //   const cache = { root: JSON.parse(JSON.stringify(this.root)) };
+    //   this.getPath(this.currentPathString, cache.root).push({ name: name, type: 'folder', files: [], id: Symbol(), uploadTime: Date.now() });
+    //   await network.commit({ files: cache.root, layers: this.layers }, this.activeRepository);
+    //   this.displayList.push({ name: name, type: 'folder', files: [], id: Symbol(), uploadTime: Date.now() });
+    // }
+    // catch (error) {
+    //   if (error.message === 'need login') this.loginAction(error.authenticateHeader);
+    //   else if (typeof error === 'string') this.showAlert(`${this.$t(error)}`, 'error');
+    //   else this.showAlert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+    // }
+    // this.loading = false;
   }
   private onUploadProgress(e: ProgressEvent): void {
     console.log(e);

@@ -1,6 +1,6 @@
 module.exports = {
   transpileDependencies: [
-      'vuetify'
+    'vuetify'
   ],
 
   productionSourceMap: false,
@@ -15,5 +15,14 @@ module.exports = {
   },
 
   outputDir: 'extension/dist',
-  publicPath: ''
+  publicPath: '',
+
+  parallel: false,
+  configureWebpack: config => {
+    config.module.rules.unshift({
+      test: /\.worker\.ts$/,
+      use: ['worker-loader'],
+      exclude: /node_modules/
+    });
+  },
 };

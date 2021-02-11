@@ -21,5 +21,6 @@
   "getDownloadURLFailed": "Get download url failed",
   "newName": "Name",
   "newFolderName": "Folder name",
-  "duplicate": "A file/folder with the same name already exists"
+  "duplicate": "A file/folder with the same name already exists",
+  "moveTo": "Move to"
 }
