@@ -13,10 +13,13 @@
   "ok": "OK",
   "cancel": "Cancel",
   "require": "Require",
-  "filename": "Filename",
+  "filename": "Name",
   "fileSize": "Size",
   "fileUploadTime": "Upload",
   "root": "Root",
   "getUploadURLFailed": "Get upload url failed",
-  "getDownloadURLFailed": "Get download url failed"
+  "getDownloadURLFailed": "Get download url failed",
+  "newName": "Name",
+  "newFolderName": "Folder name",
+  "duplicate": "A file/folder with the same name already exists"
 }

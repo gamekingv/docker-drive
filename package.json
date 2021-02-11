@@ -66,11 +66,11 @@
       "vue/multiline-html-element-content-newline": "off",
       "vue/html-self-closing": "off",
       "quotes": [
-        "error",
+        "warn",
         "single"
       ],
       "semi": [
-        "error"
+        "warn"
       ],
       "no-var": "error",
       "no-console": "warn"
