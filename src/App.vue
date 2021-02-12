@@ -136,7 +136,7 @@ interface Task {
   filters: {
     sizeFormat(fileSize: number): string {
       if (fileSize < 1024) {
-        return fileSize + 'B';
+        return `${fileSize}B`;
       } else if (fileSize < (1024 * 1024)) {
         return `${(fileSize / 1024).toFixed(0)}KB`;
       } else if (fileSize < (1024 * 1024 * 1024)) {
@@ -180,11 +180,11 @@ export default class APP extends Vue {
       file: undefined,
       status: '开始校验',
       progress: {
-        uploadedSize: 0,
-        totalSize: 0,
+        uploadedSize: 5,
+        totalSize: 4,
       },
-      speed: 0,
-      remainingTime: 0,
+      speed: 1555,
+      remainingTime: 3500,
       path: '/',
       lastUpdate: {
         time: 0,
@@ -196,11 +196,11 @@ export default class APP extends Vue {
       file: undefined,
       status: '开始校验',
       progress: {
-        uploadedSize: 0,
-        totalSize: 0,
+        uploadedSize: 2,
+        totalSize: 3,
       },
-      speed: 0,
-      remainingTime: 0,
+      speed: 1,
+      remainingTime: 59,
       path: '/',
       lastUpdate: {
         time: 0,
@@ -211,8 +211,8 @@ export default class APP extends Vue {
   private remainingFormat(remainingTime: number): string {
     if (!remainingTime) return '';
     let timeString = '';
-    if (remainingTime < 60) timeString = `${remainingTime}${this.$t('second')}`;
-    else if (remainingTime < 60 * 60) timeString = `${(remainingTime / 60).toFixed(0)}${this.$t('minute')}`;
+    if (remainingTime < 60) timeString = ` ${remainingTime}${this.$t('second')}`;
+    else if (remainingTime < 60 * 60) timeString = ` ${(remainingTime / 60).toFixed(0)}${this.$t('minute')}`;
     else timeString = `${this.$t('over1h')}`;
     return ` ( ${this.$t('remaining', [timeString])} ) `;
   }
