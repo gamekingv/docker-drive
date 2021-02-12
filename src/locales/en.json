@@ -23,5 +23,9 @@
   "duplicate": "A file/folder with the same name already exists",
   "moveTo": "Move to",
   "someFilenameConflict": "Some file name conflict",
-  "taskList": "Task List"
+  "taskList": "Task List",
+  "second": "s",
+  "minute": "m",
+  "over1h": "Over 1h",
+  "remaining": "{0} remaining"
 }

@@ -58,30 +58,33 @@
         <template v-for="(task, index) in taskList">
           <v-list-item :key="task.id" class="mb-2">
             <v-list-item-content>
-              <v-list-item-title class="mb-2">{{
-                task.name
-              }}</v-list-item-title>
+              <v-list-item-title>{{ task.name }}</v-list-item-title>
               <v-list-item-subtitle>
                 <v-progress-linear
-                  class="justify-space-between"
-                  :value="task.progress"
+                  :value="task.progress | progressPercentage"
                   height="25"
                 >
-                  <div
-                    class="d-flex justify-space-between px-2"
-                    style="width: 100%"
-                  >
-                    <strong>{{ `${task.speed}M/s` }}</strong>
-                    <strong>{{ `${task.progress}%` }}</strong>
-                    <strong>{{ `${task.remainingTime}分钟` }}</strong>
-                  </div>
+                  <strong v-if="task.status === 'uploading'">{{
+                    task.progress | progressPercentage
+                  }}</strong>
+                  <strong v-else>{{ task.status }}</strong>
                 </v-progress-linear>
+              </v-list-item-subtitle>
+
+              <v-list-item-subtitle>
+                <div class="d-flex justify-space-between" style="width: 100%">
+                  <strong v-if="task.progress.totalSize !== 0"
+                    >{{ task.speed | sizeFormat }}{{ "/s"
+                    }}{{ remainingFormat(task.remainingTime) }}</strong
+                  >
+                  <strong v-if="task.progress.totalSize !== 0"
+                    >{{ task.progress.uploadedSize | sizeFormat }}{{ "/"
+                    }}{{ task.progress.totalSize | sizeFormat }}</strong
+                  >
+                </div>
               </v-list-item-subtitle>
             </v-list-item-content>
             <v-list-item-action>
-              <v-list-item-action-text>{{
-                `${task.remainingTime}分钟`
-              }}</v-list-item-action-text>
               <v-btn icon small><v-icon small> mdi-close </v-icon></v-btn>
             </v-list-item-action>
           </v-list-item>
@@ -116,14 +119,38 @@ interface Task {
   name: string;
   file: File | undefined;
   status: string;
-  progress: number;
+  progress: {
+    uploadedSize: number;
+    totalSize: number;
+  };
   speed: number;
   remainingTime: number;
-  uploadStartTime: number;
-  uploadEndTime: number;
+  path: string;
+  lastUpdate: {
+    time: number;
+    size: number;
+  };
 }
 
-@Component
+@Component({
+  filters: {
+    sizeFormat(fileSize: number): string {
+      if (fileSize < 1024) {
+        return fileSize + 'B';
+      } else if (fileSize < (1024 * 1024)) {
+        return `${(fileSize / 1024).toFixed(0)}KB`;
+      } else if (fileSize < (1024 * 1024 * 1024)) {
+        return `${(fileSize / (1024 * 1024)).toFixed(0)}MB`;
+      } else {
+        return `${(fileSize / (1024 * 1024 * 1024)).toFixed(0)}GB`;
+      }
+    },
+    progressPercentage({ uploadedSize, totalSize }: { uploadedSize: number; totalSize: number }): string {
+      if (totalSize === 0) return '0%';
+      return `${(uploadedSize / totalSize * 100).toFixed(1)}%`;
+    }
+  }
+})
 
 export default class APP extends Vue {
   private drawer = true
@@ -135,23 +162,59 @@ export default class APP extends Vue {
       id: Symbol(),
       name: 'test1',
       file: undefined,
-      status: '开始校验',
-      progress: 55,
-      speed: 3,
-      remainingTime: 3,
-      uploadStartTime: 0,
-      uploadEndTime: 0
+      status: 'uploading',
+      progress: {
+        uploadedSize: 452542450,
+        totalSize: 1220101010,
+      },
+      speed: 3101000,
+      remainingTime: 131231233,
+      path: '/',
+      lastUpdate: {
+        time: 0,
+        size: 0
+      }
     }, {
       id: Symbol(),
       name: 'test2',
       file: undefined,
       status: '开始校验',
-      progress: 55,
-      speed: 3,
-      remainingTime: 3,
-      uploadStartTime: 0,
-      uploadEndTime: 0
+      progress: {
+        uploadedSize: 0,
+        totalSize: 0,
+      },
+      speed: 0,
+      remainingTime: 0,
+      path: '/',
+      lastUpdate: {
+        time: 0,
+        size: 0
+      }
+    }, {
+      id: Symbol(),
+      name: 'test2',
+      file: undefined,
+      status: '开始校验',
+      progress: {
+        uploadedSize: 0,
+        totalSize: 0,
+      },
+      speed: 0,
+      remainingTime: 0,
+      path: '/',
+      lastUpdate: {
+        time: 0,
+        size: 0
+      }
     });
+  }
+  private remainingFormat(remainingTime: number): string {
+    if (!remainingTime) return '';
+    let timeString = '';
+    if (remainingTime < 60) timeString = `${remainingTime}${this.$t('second')}`;
+    else if (remainingTime < 60 * 60) timeString = `${(remainingTime / 60).toFixed(0)}${this.$t('minute')}`;
+    else timeString = `${this.$t('over1h')}`;
+    return ` ( ${this.$t('remaining', [timeString])} ) `;
   }
 }
 </script>

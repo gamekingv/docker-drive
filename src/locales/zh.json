@@ -23,5 +23,9 @@
   "duplicate": "已存在同名文件或文件夹",
   "moveTo": "移动到",
   "someFilenameConflict": "部分文件名冲突",
-  "taskList": "任务列表"
+  "taskList": "任务列表",
+  "second": "秒",
+  "minute": "分钟",
+  "over1h": "超过1小时",
+  "remaining": "剩余{0}"
 }
