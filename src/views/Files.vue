@@ -284,6 +284,7 @@ export default class Files extends Vue {
     { text: this.$t('fileSize'), value: 'size', sortable: false },
     { text: this.$t('fileUploadTime'), value: 'uploadTime' }
   ]
+
   get currentPathString(): string {
     if (this.currentPath.length === 1) return '/';
     return this.currentPath.slice(1).reduce((s, a) => `${s}/${a.text}`, '');
