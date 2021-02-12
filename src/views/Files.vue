@@ -32,7 +32,7 @@
             <v-breadcrumbs-item
               :disabled="item.disabled"
               :class="{ clickable: !item.disabled }"
-              @click="!item.disabled && pathClick(item.id)"
+              @click.stop="!item.disabled && pathClick(item.id)"
             >
               {{ item.text }}
             </v-breadcrumbs-item>
@@ -50,7 +50,7 @@
       show-select
     >
       <template v-slot:[`item.name`]="{ item }">
-        <span class="clickable" @click="itemClick(item)">
+        <span class="clickable" @click.stop="itemClick(item)">
           {{ item.name }}
         </span>
       </template>
@@ -62,21 +62,42 @@
       </template>
     </v-data-table>
     <v-dialog v-model="video" fullscreen content-class="video-container">
-      <video class="video" :src="videoURL" controls></video>
+      <v-hover v-slot="{ hover }">
+        <div class="video">
+          <video
+            class="video"
+            :src="video ? videoURL : ''"
+            controls
+            @pause="videoEventHandler"
+            @play="videoEventHandler"
+          ></video>
+          <v-fade-transition>
+            <v-overlay
+              v-if="!isVideoPlay || hover"
+              class="video-overlay"
+              opacity="1"
+              color="transparent"
+            >
+              <v-toolbar min-width="100vw" absolute color="transparent" flat>
+                <v-toolbar-title>{{ video ? videoTitle : "" }}</v-toolbar-title>
+                <v-spacer></v-spacer>
+                <v-btn
+                  style="pointer-events: auto"
+                  icon
+                  @click.stop="video = false"
+                >
+                  <v-icon large>mdi-close</v-icon>
+                </v-btn>
+              </v-toolbar>
+            </v-overlay>
+          </v-fade-transition>
+        </div>
+      </v-hover>
     </v-dialog>
-    <v-dialog v-model="loading" persistent width="300">
-      <v-card color="primary" dark>
-        <v-card-text>
-          {{ $t("loading") }}
-          <v-progress-linear
-            indeterminate
-            color="white"
-            class="mb-0"
-          ></v-progress-linear>
-        </v-card-text>
-      </v-card>
-    </v-dialog>
-    <v-dialog v-model="action" persistent max-width="400px">
+    <v-overlay :value="loading">
+      <v-progress-circular indeterminate size="64"></v-progress-circular>
+    </v-overlay>
+    <v-dialog v-model="action" persistent scrollable :max-width="400">
       <v-card>
         <v-card-title>
           <span class="headline">{{
@@ -161,7 +182,7 @@
           <v-spacer></v-spacer>
           <v-btn
             color="blue darken-1"
-            @click="
+            @click.stop="
               $refs.form.validate() &&
                 (actionType === 'login'
                   ? login()
@@ -174,7 +195,7 @@
           >
             {{ $t("ok") }}
           </v-btn>
-          <v-btn color="error" text @click="closeForm()">
+          <v-btn color="error" text @click.stop="closeForm()">
             {{ $t("cancel") }}
           </v-btn>
         </v-card-actions>
@@ -195,6 +216,12 @@ interface VForm extends Vue {
   validate(): boolean;
   reset(): void;
   resetValidation(): void;
+}
+
+interface FolderList {
+  name: string;
+  files: FolderList[];
+  id: string;
 }
 
 @Component({
@@ -228,6 +255,8 @@ export default class Files extends Vue {
   private loading = false
   private video = false
   private videoURL = ''
+  private videoTitle = ''
+  private isVideoPlay = false
   private beforeLogin!: { authenticateHeader: string | undefined; fn: Function | undefined; arg: string[] }
   private result = ''
   private action = false
@@ -248,8 +277,8 @@ export default class Files extends Vue {
   private layers: Manifest[] = []
   private uploadFiles: File[] = []
   private selectedFiles: FileItem[] = []
-  private folderList = { name: `${this.$t('root')}`, files: [], id: '/' }
-  private selectedFolder: FileItem[] = []
+  private folderList: FolderList = { name: `${this.$t('root')}`, files: [], id: '/' }
+  private selectedFolder: string[] = []
   private readonly fileListHeader = [
     { text: this.$t('filename'), align: 'start', value: 'name' },
     { text: this.$t('fileSize'), value: 'size', sortable: false },
@@ -290,9 +319,9 @@ export default class Files extends Vue {
     this.activeRepository = this.repositories[2];
     const config = '{"files":{"name":"root","type":"folder","files":[{"name":"怪病醫拉姆尼（僅限港澳台地區） 5.mkv","type":"file","size":792728956,"digest":"sha256:d5abb089fde002ff57cd9f2484bcab1a0498476ec3366791a8c310f95b344217","uploadTime":1612791892642},{"name":"burpsuite_pro_v1.5.18.jar","digest":"sha256:40b917c1a9034ec0c0698968c2bbbcde2e07a842043015843a30fcdd11f31b5d","size":9408739,"type":"file","uploadTime":1612921193702},{"name":"新番","type":"folder","files":[{"name":"[桜都字幕组]2021年01月合集","type":"folder","files":[{"name":"[桜都字幕组][GOLD BEAR]装煌聖姫イースフィア ～淫虐の洗脳改造～ 後編.chs.mp4","digest":"sha256:d2744be7c39d1d7f4be87a6f8596db8060122f6ae5524bad0680d7a37361d195","size":468191180,"type":"file","uploadTime":1613023430271},{"name":"[桜都字幕组][nur]背徳の境界 ～女教師のウラ側～.chs.mp4","digest":"sha256:3195a9ca7f84b63b7ecd8256124a74ade2c1cc35ea8f690048e8d5a5e33b7c7f","size":384584279,"type":"file","uploadTime":1613030194741},{"name":"[桜都字幕组][PoRO]White Blue ～白衣の往生際～.chs.mp4","digest":"sha256:676539ec3b02b812fc2df2c8764ae991450d3d48ae01dca87a36a73129db200c","size":402076633,"type":"file","uploadTime":1613031195140}],"uploadTime":1613023235774}],"uploadTime":1613023230496}]}}';
     this.parseConfig(JSON.parse(config));
-    //this.getConfig();
+    // this.getConfig();
   }
-  private async getConfig(): Promise<void> {
+  private async getConfig(path?: string): Promise<void> {
     if (!this.activeRepository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
     this.loading = true;
     try {
@@ -300,6 +329,11 @@ export default class Files extends Vue {
       this.layers = layers;
       this.parseConfig(config);
       this.currentPath = [{ text: `${this.$t('root')}`, disabled: true, id: Symbol() }];
+      if (path && path !== '/') {
+        path.substr(1).split('/').forEach(e => this.currentPath.push({ text: e, disabled: false, id: Symbol() }));
+        this.currentPath[0].disabled = false;
+        this.currentPath[this.currentPath.length - 1].disabled = true;
+      }
     }
     catch (error) {
       if (error.message === 'need login') this.loginAction(error.authenticateHeader, this.getConfig);
@@ -361,7 +395,7 @@ export default class Files extends Vue {
       }
       finally {
         await network.commit({ files: cache.root, layers: cache.layers }, this.activeRepository);
-        await this.getConfig();
+        await this.getConfig(this.currentPathString);
       }
     }
     catch (error) {
@@ -422,7 +456,7 @@ export default class Files extends Vue {
     this.actionType = 'move';
     this.action = true;
     this.folderList = { name: `${this.$t('root')}`, files: [], id: '/' };
-    const filterFolder = (filterFiles: { name: string; id: string; files: { name: string; id: string }[] }, rootFiles: FileItem): void => {
+    const filterFolder = (filterFiles: FolderList, rootFiles: FileItem): void => {
       for (const file of rootFiles.files as FileItem[]) {
         if (file.type === 'folder') {
           const filterFile = { name: file.name, files: [], id: `${filterFiles.id === '/' ? '' : filterFiles.id}/${file.name}` };
@@ -434,23 +468,31 @@ export default class Files extends Vue {
     filterFolder(this.folderList, this.root);
   }
   private async move(): Promise<void> {
-    console.log(this.selectedFolder);
-    // if (!this.activeRepository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
-    // const name = this.folderName;
-    // this.closeForm();
-    // this.loading = true;
-    // try {
-    //   const cache = { root: JSON.parse(JSON.stringify(this.root)) };
-    //   this.getPath(this.currentPathString, cache.root).push({ name: name, type: 'folder', files: [], id: Symbol(), uploadTime: Date.now() });
-    //   await network.commit({ files: cache.root, layers: this.layers }, this.activeRepository);
-    //   this.displayList.push({ name: name, type: 'folder', files: [], id: Symbol(), uploadTime: Date.now() });
-    // }
-    // catch (error) {
-    //   if (error.message === 'need login') this.loginAction(error.authenticateHeader);
-    //   else if (typeof error === 'string') this.showAlert(`${this.$t(error)}`, 'error');
-    //   else this.showAlert(`${this.$t('unknownError')}${error.toString()}`, 'error');
-    // }
-    // this.loading = false;
+    if (!this.activeRepository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
+    const dPath = this.selectedFolder[0];
+    this.closeForm();
+    if (dPath === this.currentPathString) return;
+    this.loading = true;
+    try {
+      const cache = { root: JSON.parse(JSON.stringify(this.root)) };
+      const dFolder = this.getPath(dPath, cache.root);
+      const sFolder = this.getPath(this.currentPathString, cache.root);
+      const failFiles: FileItem[] = [];
+      this.selectedFiles.forEach(file => {
+        const index = sFolder.findIndex(e => e.name === file.name);
+        if (dFolder.some(e => e.name === file.name)) failFiles.push(file);
+        else dFolder.push(...sFolder.splice(index, 1));
+      });
+      await network.commit({ files: cache.root, layers: this.layers }, this.activeRepository);
+      this.getConfig(this.currentPathString);
+      if (failFiles.length > 0) throw 'someFilenameConflict';
+    }
+    catch (error) {
+      if (error.message === 'need login') this.loginAction(error.authenticateHeader);
+      else if (typeof error === 'string') this.showAlert(`${this.$t(error)}`, 'error');
+      else this.showAlert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+    }
+    this.loading = false;
   }
   private onUploadProgress(e: ProgressEvent): void {
     console.log(e);
@@ -540,8 +582,9 @@ export default class Files extends Vue {
         console.log('未完成');
         if (downloadURL) {
           if (item.name.match(/\.(mp4|mkv)$/)) {
-            this.video = true;
             this.videoURL = downloadURL;
+            this.videoTitle = item.name;
+            this.video = true;
           }
           else {
             chrome.downloads.download({ url: downloadURL, filename: item.name });
@@ -580,6 +623,10 @@ export default class Files extends Vue {
     this.action = false;
     this.actionType = '';
   }
+  private videoEventHandler(e: Event): void {
+    if (e.type === 'play') this.isVideoPlay = true;
+    else this.isVideoPlay = false;
+  }
 }
 </script>
 
@@ -591,6 +638,12 @@ export default class Files extends Vue {
   width: 100%;
   max-height: 100%;
   overflow: hidden;
+}
+.video-overlay {
+  background-image: linear-gradient(black, transparent 25%);
+  pointer-events: none;
+  align-items: unset;
+  justify-content: unset;
 }
 </style>
 

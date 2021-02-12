@@ -2,7 +2,6 @@
   "name": "Docker 网盘",
   "files": "浏览文件",
   "repositories": "仓库管理",
-  "loading": "正在加载...",
   "getTokenFailed": "获取token失败",
   "unknownError": "出现未知错误：",
   "repositoryFormatError": "仓库连接格式错误",
@@ -22,5 +21,7 @@
   "newName": "新名称",
   "newFolderName": "新文件夹名",
   "duplicate": "已存在同名文件或文件夹",
-  "moveTo": "移动到"
+  "moveTo": "移动到",
+  "someFilenameConflict": "部分文件名冲突",
+  "taskList": "任务列表"
 }

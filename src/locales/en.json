@@ -2,7 +2,6 @@
   "name": "Docker Drive",
   "files": "All Files",
   "repositories": "Repositories",
-  "loading": "Loading...",
   "getTokenFailed": "Get token failed",
   "unknownError": "Unknown error: ",
   "repositoryFormatError": "Repository link format error",
@@ -22,5 +21,7 @@
   "newName": "Name",
   "newFolderName": "Folder name",
   "duplicate": "A file/folder with the same name already exists",
-  "moveTo": "Move to"
+  "moveTo": "Move to",
+  "someFilenameConflict": "Some file name conflict",
+  "taskList": "Task List"
 }

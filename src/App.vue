@@ -35,10 +35,68 @@
         </v-list-item>
       </v-list>
     </v-navigation-drawer>
+    <v-navigation-drawer
+      v-model="taskListPanel"
+      right
+      temporary
+      absolute
+      :width="500"
+      style="max-width: 90vw"
+    >
+      <v-list>
+        <v-list-item class="mb-2">
+          <v-list-item-content>
+            <v-list-item-title class="text-h6 text-center">{{
+              $t("taskList")
+            }}</v-list-item-title>
+          </v-list-item-content>
+        </v-list-item>
 
+        <v-list-item class="mb-2">
+          <v-list-item-content>
+            <v-list-item-title>Task Name</v-list-item-title>
+            <v-list-item-subtitle>
+              <v-progress-linear value="55" height="25">
+                <strong>55%</strong>
+              </v-progress-linear>
+            </v-list-item-subtitle>
+          </v-list-item-content>
+        </v-list-item>
+
+        <v-divider inset></v-divider>
+
+        <v-list-item class="mb-2">
+          <v-list-item-content>
+            <v-list-item-title>Task Name</v-list-item-title>
+            <v-list-item-subtitle>
+              <v-progress-linear value="55" height="25">
+                <strong>55%</strong>
+              </v-progress-linear>
+            </v-list-item-subtitle>
+          </v-list-item-content>
+        </v-list-item>
+
+        <v-divider inset></v-divider>
+
+        <v-list-item class="mb-2">
+          <v-list-item-content>
+            <v-list-item-title>Task Name</v-list-item-title>
+            <v-list-item-subtitle>
+              <v-progress-linear value="55" height="25">
+                <strong>55%</strong>
+              </v-progress-linear>
+            </v-list-item-subtitle>
+          </v-list-item-content>
+        </v-list-item>
+      </v-list>
+    </v-navigation-drawer>
     <v-app-bar absolute elevate-on-scroll scroll-target="#main-container" app>
       <v-app-bar-nav-icon @click.stop="drawer = !drawer"></v-app-bar-nav-icon>
       <v-toolbar-title>{{ $t("name") }}</v-toolbar-title>
+      <v-spacer></v-spacer>
+      <v-btn icon @click.stop="taskListPanel = !taskListPanel"
+        ><v-icon>mdi-calendar-check-outline</v-icon></v-btn
+      >
     </v-app-bar>
 
     <v-main id="main" class="grey darken-3">
@@ -61,6 +119,8 @@ import { Vue, Component } from 'vue-property-decorator';
 @Component
 
 export default class APP extends Vue {
-  drawer = true
+  private drawer = true
+  private taskListPanel = false
+  private taskList = []
 }
 </script>
