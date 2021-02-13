@@ -27,5 +27,8 @@
   "second": " 秒",
   "minute": " 分钟",
   "over1h": "超过 1 小时",
-  "remaining": "剩余{0}"
+  "remaining": "剩余{0}",
+  "waitingStart": "等待开始",
+  "hashing": "正在校验",
+  "waitingUpload": "等待上传"
 }

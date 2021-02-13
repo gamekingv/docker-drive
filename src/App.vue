@@ -67,18 +67,30 @@
                   <strong v-if="task.status === 'uploading'">{{
                     task.progress | progressPercentage
                   }}</strong>
-                  <strong v-else>{{ task.status }}</strong>
+                  <strong v-else>{{ $t(task.status) }}</strong>
                 </v-progress-linear>
               </v-list-item-subtitle>
 
               <v-list-item-subtitle>
-                <div class="d-flex justify-space-between" style="width: 100%">
-                  <strong v-if="task.progress.totalSize !== 0"
+                <div
+                  :class="[
+                    'd-flex',
+                    task.status === 'uploading'
+                      ? 'justify-space-between'
+                      : 'justify-end',
+                  ]"
+                  style="width: 100%"
+                >
+                  <strong v-if="task.status === 'uploading'"
                     >{{ task.speed | sizeFormat }}{{ "/s"
                     }}{{ remainingFormat(task.remainingTime) }}</strong
                   >
                   <strong v-if="task.progress.totalSize !== 0"
-                    >{{ task.progress.uploadedSize | sizeFormat }}{{ "/"
+                    >{{
+                      (task.status === "uploading"
+                        ? task.progress.uploadedSize
+                        : undefined) | sizeFormat
+                    }}{{ task.status === "uploading" ? "/" : ""
                     }}{{ task.progress.totalSize | sizeFormat }}</strong
                   >
                 </div>
@@ -135,6 +147,7 @@ interface Task {
 @Component({
   filters: {
     sizeFormat(fileSize: number): string {
+      if (fileSize !== 0 && !fileSize) return '';
       if (fileSize < 1024) {
         return `${fileSize}B`;
       } else if (fileSize < (1024 * 1024)) {
@@ -178,9 +191,9 @@ export default class APP extends Vue {
       id: Symbol(),
       name: 'test2',
       file: undefined,
-      status: '开始校验',
+      status: 'uploading',
       progress: {
-        uploadedSize: 5,
+        uploadedSize: 0,
         totalSize: 4,
       },
       speed: 1555,
@@ -194,7 +207,7 @@ export default class APP extends Vue {
       id: Symbol(),
       name: 'test2',
       file: undefined,
-      status: '开始校验',
+      status: 'hashing',
       progress: {
         uploadedSize: 2,
         totalSize: 3,

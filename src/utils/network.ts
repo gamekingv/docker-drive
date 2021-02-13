@@ -54,7 +54,8 @@ export default {
       headers: {
         'Accept': 'application/vnd.docker.distribution.manifest.v2+json',
         'repository': [server, namespace, image].join('/')
-      }
+      },
+      timeout: 30000
     });
     const { data } = await this.requestSender(manifestsURL, manifestsInstance, repository);
     const layers = data?.layers;
@@ -66,7 +67,7 @@ export default {
         headers: {
           'repository': [server, namespace, image].join('/')
         },
-        timeout: 10000
+        timeout: 30000
       });
       const { data } = await this.requestSender(configURL, configInstance, repository);
       if (data) return { config: data, layers };
@@ -107,18 +108,17 @@ export default {
       headers: {
         'repository': [server, namespace, image].join('/')
       },
-      timeout: 5000
+      timeout: 10000
     });
     const url = `https://${server}/v2/${namespace}/${image}/blobs/uploads/`;
     const { headers } = await this.requestSender(url, instance, repository);
     if (headers['location']) return headers['location'] as string;
     else throw 'getUploadURLFailed';
   },
-  async uploadFile(file: File | string, repository: Repository, onUploadProgress?: (progressEvent: ProgressEvent) => void): Promise<{ digest: string; size: number }> {
+  async uploadConfig(config: string, repository: Repository): Promise<{ digest: string; size: number }> {
     const [server, namespace, image] = repository.url.split('/') ?? [];
-    const timeout = typeof file === 'string' ? 10000 : 0;
-    const size = typeof file === 'string' ? file.length : file.size;
-    const digest = `sha256:${typeof file === 'string' ? CryptoJS.SHA256(file) : await this.hashFile(file)}`;
+    const size = config.length;
+    const digest = `sha256:${CryptoJS.SHA256(config)}`;
     const url = await this.getUploadURL(repository);
     const instance = axios.create({
       method: 'put',
@@ -126,14 +126,41 @@ export default {
         'Content-Type': 'application/octet-stream',
         'repository': [server, namespace, image].join('/')
       },
-      timeout,
-      onUploadProgress
+      timeout: 30000
     });
     instance.interceptors.request.use(e => {
-      e.data = new Blob([file], { type: 'application/octet-stream' });
+      e.data = new Blob([config], { type: 'application/octet-stream' });
       return e;
     });
     await this.requestSender(`${url}&digest=${digest}`, instance, repository);
+    return { digest, size };
+  },
+  async uploadFile(file: File, repository: Repository, onUploadProgress: (progressEvent: ProgressEvent) => void): Promise<{ digest: string; size: number }> {
+    const [server, namespace, image] = repository.url.split('/') ?? [];
+    const size = file.size;
+    const digest = `sha256:${await this.hashFile(file)}`;
+    const url = await this.getUploadURL(repository);
+    const patchInstance = axios.create({
+      method: 'patch',
+      headers: {
+        'Content-Type': 'application/octet-stream',
+        'repository': [server, namespace, image].join('/')
+      },
+      onUploadProgress
+    });
+    patchInstance.interceptors.request.use(e => {
+      e.data = new Blob([file], { type: 'application/octet-stream' });
+      return e;
+    });
+    const { headers } = await this.requestSender(`${url}`, patchInstance, repository);
+    const instance = axios.create({
+      method: 'put',
+      headers: {
+        'repository': [server, namespace, image].join('/')
+      },
+      timeout: 10000
+    });
+    await this.requestSender(`${headers['location']}&digest=${digest}`, instance, repository);
     return { digest, size };
   },
   async removeFile(digest: string, repository: Repository): Promise<void> {
@@ -150,7 +177,7 @@ export default {
   },
   async commit(config: { files: FileItem; layers: Manifest[] }, repository: Repository): Promise<void> {
     const [server, namespace, image] = repository.url.split('/') ?? [];
-    const { digest, size } = await this.uploadFile(JSON.stringify({ files: config.files }), repository);
+    const { digest, size } = await this.uploadConfig(JSON.stringify({ files: config.files }), repository);
     const manifest = {
       schemaVersion: 2,
       mediaType: 'application/vnd.docker.distribution.manifest.v2+json',

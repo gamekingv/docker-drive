@@ -27,5 +27,8 @@
   "second": "s",
   "minute": "m",
   "over1h": "Over 1h",
-  "remaining": "{0} remaining"
+  "remaining": "{0} remaining",
+  "waitingStart": "Waiting to start",
+  "hashing": "Hashing",
+  "waitingUpload": "Waiting to upload"
 }
