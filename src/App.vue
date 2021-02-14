@@ -235,11 +235,8 @@ interface Task {
 })
 
 export default class APP extends Vue {
-  $refs!: {
-    form: VForm;
-  }
-
-  @Ref() readonly child!: Files
+  @Ref() private readonly child!: Files
+  @Ref() private readonly form!: VForm
 
   private loading = false
   private drawer = true
@@ -255,7 +252,7 @@ export default class APP extends Vue {
   private alertText = ''
   private alertColor = ''
 
-  created(): void {
+  private created(): void {
     this.repositories.push({
       name: 'kdjvideo',
       value: Symbol(),
@@ -366,8 +363,8 @@ export default class APP extends Vue {
     console.log(e);
   }
   private closeForm(): void {
-    this.$refs.form.reset();
-    this.$refs.form.resetValidation();
+    this.form.reset();
+    this.form.resetValidation();
     this.action = false;
   }
   private showAlert(text: string, type = ''): void {

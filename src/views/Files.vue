@@ -161,7 +161,7 @@
           <v-btn
             color="blue darken-1"
             @click.stop="
-              $refs.form.validate() &&
+              form.validate() &&
                 (actionType === 'rename'
                   ? rename()
                   : actionType === 'addFolder'
@@ -181,7 +181,7 @@
 </template>
 
 <script lang="ts">
-import { Component, Vue, Prop, PropSync, Emit } from 'vue-property-decorator';
+import { Vue, Component, Prop, PropSync, Emit, Ref } from 'vue-property-decorator';
 import network from '@/utils/network';
 import { Repository, FileItem, Manifest, VForm } from '@/utils/types';
 
@@ -215,20 +215,19 @@ interface FolderList {
 })
 
 export default class Files extends Vue {
-  $refs!: {
-    form: VForm;
-  }
+
+  @Ref() private readonly form!: VForm
 
   @Emit()
-  loading(): void { return; }
+  private loading(): void { return; }
   @Emit()
-  loaded(): void { return; }
+  private loaded(): void { return; }
   @Emit()
-  login(authenticateHeader?: string, fn?: Function, arg?: string[]): void { ({ authenticateHeader, fn, arg }); }
+  private login(authenticateHeader?: string, fn?: Function, arg?: string[]): void { ({ authenticateHeader, fn, arg }); }
   @Emit()
-  alert(text: string, type: string): void { ({ text, type }); }
+  private alert(text: string, type: string): void { ({ text, type }); }
   @Emit()
-  upload(Files: File[]): { file: File; path: string }[] { return Files.map(file => ({ file, path: this.currentPathString })); }
+  private upload(Files: File[]): { file: File; path: string }[] { return Files.map(file => ({ file, path: this.currentPathString })); }
 
   @Prop(Array) private readonly repositories!: Repository[]
   @PropSync('active') private activeRepositoryID: symbol | undefined
@@ -256,18 +255,18 @@ export default class Files extends Vue {
     { text: this.$t('fileUploadTime'), value: 'uploadTime' }
   ]
 
-  get currentPathString(): string {
+  private get currentPathString(): string {
     if (this.currentPath.length === 1) return '/';
     return this.currentPath.slice(1).reduce((s, a) => `${s}/${a.text}`, '');
   }
-  get displayList(): FileItem[] {
+  private get displayList(): FileItem[] {
     return this.getPath(this.currentPathString);
   }
-  get activeRepository(): Repository | undefined {
+  private get activeRepository(): Repository | undefined {
     return this.repositories.find(e => e.value === this.activeRepositoryID);
   }
 
-  created(): void {
+  private created(): void {
     // const config = '{"files":{"name":"root","type":"folder","files":[{"name":"怪病醫拉姆尼（僅限港澳台地區） 5.mkv","type":"file","size":792728956,"digest":"sha256:d5abb089fde002ff57cd9f2484bcab1a0498476ec3366791a8c310f95b344217","uploadTime":1612791892642},{"name":"burpsuite_pro_v1.5.18.jar","digest":"sha256:40b917c1a9034ec0c0698968c2bbbcde2e07a842043015843a30fcdd11f31b5d","size":9408739,"type":"file","uploadTime":1612921193702},{"name":"新番","type":"folder","files":[{"name":"[桜都字幕组]2021年01月合集","type":"folder","files":[{"name":"[桜都字幕组][GOLD BEAR]装煌聖姫イースフィア ～淫虐の洗脳改造～ 後編.chs.mp4","digest":"sha256:d2744be7c39d1d7f4be87a6f8596db8060122f6ae5524bad0680d7a37361d195","size":468191180,"type":"file","uploadTime":1613023430271},{"name":"[桜都字幕组][nur]背徳の境界 ～女教師のウラ側～.chs.mp4","digest":"sha256:3195a9ca7f84b63b7ecd8256124a74ade2c1cc35ea8f690048e8d5a5e33b7c7f","size":384584279,"type":"file","uploadTime":1613030194741},{"name":"[桜都字幕组][PoRO]White Blue ～白衣の往生際～.chs.mp4","digest":"sha256:676539ec3b02b812fc2df2c8764ae991450d3d48ae01dca87a36a73129db200c","size":402076633,"type":"file","uploadTime":1613031195140}],"uploadTime":1613023235774}],"uploadTime":1613023230496}]}}';
     // this.root.files = network.parseConfig(JSON.parse(config));
     this.getConfig();
@@ -482,8 +481,8 @@ export default class Files extends Vue {
     }
   }
   private closeForm(): void {
-    this.$refs.form.reset();
-    this.$refs.form.resetValidation();
+    this.form.reset();
+    this.form.resetValidation();
     this.action = false;
     this.actionType = '';
   }
