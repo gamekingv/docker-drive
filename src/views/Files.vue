@@ -271,7 +271,7 @@ export default class Files extends Vue {
     // this.root.files = network.parseConfig(JSON.parse(config));
     this.getConfig();
   }
-  async getConfig(path?: string): Promise<void> {
+  public async getConfig(path?: string): Promise<void> {
     if (!this.activeRepository) return this.alert(`${this.$t('unknownError')}`, 'error');
     this.loading();
     try {
