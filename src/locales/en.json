@@ -30,5 +30,6 @@
   "remaining": "{0} remaining",
   "waitingStart": "Waiting to start",
   "hashing": "Hashing",
-  "waitingUpload": "Waiting to upload"
+  "waitingUpload": "Waiting to upload",
+  "complete": "Complete"
 }

@@ -46,7 +46,7 @@ export default {
     }
     else throw 'getTokenFailed';
   },
-  async getManifests(repository: Repository): Promise<{ config: { files?: FileItem; fileItems?: FileItem[] }; layers: Manifest[] }> {
+  async getManifests(repository: Repository): Promise<{ config: { files?: FileItem[]; fileItems?: FileItem[] }; layers: Manifest[] }> {
     const [server, namespace, image] = repository.url.split('/') ?? [];
     const manifestsURL = `https://${server}/v2/${namespace}/${image}/manifests/latest`;
     const manifestsInstance = axios.create({
@@ -74,6 +74,45 @@ export default {
       else throw 'loadConfigFailed';
     }
     else throw 'loadConfigFailed';
+  },
+  parseConfig(config: { fileItems?: FileItem[]; files?: FileItem[] }): FileItem[] {
+    let list!: FileItem[];
+    if (config.fileItems) {
+      const cacheRoot = { name: 'root', type: 'folder', files: [], id: Symbol() };
+      config.fileItems.forEach(({ name: pathString, size, digest, uploadTime }) => {
+        if (!uploadTime) uploadTime = Date.now();
+        const path = pathString.substr(1).split('/');
+        const type = digest ? 'file' : 'folder';
+        let filePointer: FileItem = cacheRoot;
+        const id = Symbol();
+        for (let i = 0; i < path.length - 1; i++) {
+          const nextPointer = filePointer.files?.find(e => e.name === path[i]);
+          const id = Symbol();
+          if (nextPointer) filePointer = nextPointer;
+          else {
+            const item: FileItem = { name: path[i], type: 'folder', files: [], id };
+            if (!item.uploadTime || item.uploadTime < uploadTime) item.uploadTime = uploadTime;
+            filePointer.files?.push(item);
+            filePointer = item;
+          }
+        }
+        if (type === 'folder') filePointer.files?.push({ name: path[path.length - 1], type, files: [], id });
+        else filePointer.files?.push({ name: path[path.length - 1], type, size, digest, uploadTime, id });
+      });
+      list = cacheRoot.files;
+    }
+    else if (config.files) {
+      const addID = (files: FileItem[]): void => {
+        files.forEach(file => {
+          file.id = Symbol();
+          if (file.files) addID(file.files);
+        });
+      };
+      addID(config.files);
+      list = config.files;
+    }
+    else throw 'loadConfigFailed';
+    return list;
   },
   async getDownloadURL(digest: string, repository: Repository): Promise<string> {
     const [server, namespace, image] = repository.url.split('/') ?? [];
@@ -138,7 +177,6 @@ export default {
   async uploadFile(file: File, repository: Repository, onUploadProgress: (progressEvent: ProgressEvent) => void): Promise<{ digest: string; size: number }> {
     const [server, namespace, image] = repository.url.split('/') ?? [];
     const size = file.size;
-    const digest = `sha256:${await this.hashFile(file)}`;
     const url = await this.getUploadURL(repository);
     const patchInstance = axios.create({
       method: 'patch',
@@ -152,7 +190,7 @@ export default {
       e.data = new Blob([file], { type: 'application/octet-stream' });
       return e;
     });
-    const { headers } = await this.requestSender(`${url}`, patchInstance, repository);
+    const [{ headers }, digest] = await Promise.all([this.requestSender(`${url}`, patchInstance, repository), this.hashFile(file)]);
     const instance = axios.create({
       method: 'put',
       headers: {
@@ -175,7 +213,7 @@ export default {
     });
     await this.requestSender(url, instance, repository);
   },
-  async commit(config: { files: FileItem; layers: Manifest[] }, repository: Repository): Promise<void> {
+  async commit(config: { files: FileItem[]; layers: Manifest[] }, repository: Repository): Promise<void> {
     const [server, namespace, image] = repository.url.split('/') ?? [];
     const { digest, size } = await this.uploadConfig(JSON.stringify({ files: config.files }), repository);
     const manifest = {

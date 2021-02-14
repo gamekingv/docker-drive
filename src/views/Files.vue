@@ -18,7 +18,7 @@
           show-size
           label="File input"
         ></v-file-input>
-        <v-btn @click="upload()">测试上传</v-btn>
+        <v-btn @click="upload(uploadFiles)">测试上传</v-btn>
         <v-btn @click="addFolderAction()">测试新建文件夹</v-btn>
         <v-btn @click="removeSelected()">测试删除</v-btn>
         <v-btn @click="renameAction(selectedFiles[0])">测试重命名</v-btn>
@@ -94,16 +94,11 @@
         </div>
       </v-hover>
     </v-dialog>
-    <v-overlay :value="loading">
-      <v-progress-circular indeterminate size="64"></v-progress-circular>
-    </v-overlay>
     <v-dialog v-model="action" persistent scrollable :max-width="400">
       <v-card>
         <v-card-title>
           <span class="headline">{{
-            actionType === "login"
-              ? $t("needLogin")
-              : actionType === "rename"
+            actionType === "rename"
               ? $t("newName")
               : actionType === "addFolder"
               ? $t("newFolderName")
@@ -116,23 +111,6 @@
           <v-container>
             <v-form ref="form" lazy-validation>
               <v-row>
-                <v-col v-if="actionType === 'login'" cols="12">
-                  <v-text-field
-                    v-model="username"
-                    :label="$t('account')"
-                    :rules="[(v) => !!v || $t('require')]"
-                    required
-                  ></v-text-field>
-                </v-col>
-                <v-col v-if="actionType === 'login'" cols="12">
-                  <v-text-field
-                    v-model="password"
-                    :label="$t('password')"
-                    :rules="[(v) => !!v || $t('require')]"
-                    type="password"
-                    required
-                  ></v-text-field>
-                </v-col>
                 <v-col v-if="actionType === 'rename'" cols="12">
                   <v-text-field
                     v-model="newName"
@@ -184,9 +162,7 @@
             color="blue darken-1"
             @click.stop="
               $refs.form.validate() &&
-                (actionType === 'login'
-                  ? login()
-                  : actionType === 'rename'
+                (actionType === 'rename'
                   ? rename()
                   : actionType === 'addFolder'
                   ? addFolder()
@@ -201,22 +177,13 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-    <v-snackbar v-model="alert" :color="alertColor" :timeout="5000" top right>
-      {{ alertText }}
-    </v-snackbar>
   </div>
 </template>
 
 <script lang="ts">
-import { Component, Vue } from 'vue-property-decorator';
+import { Component, Vue, Prop, PropSync, Emit } from 'vue-property-decorator';
 import network from '@/utils/network';
-import { Repository, FileItem, Manifest } from '@/utils/types';
-
-interface VForm extends Vue {
-  validate(): boolean;
-  reset(): void;
-  resetValidation(): void;
-}
+import { Repository, FileItem, Manifest, VForm } from '@/utils/types';
 
 interface FolderList {
   name: string;
@@ -229,7 +196,7 @@ interface FolderList {
     formatFileSize(fileSize: number): string {
       if (!fileSize) return '-';
       else if (fileSize < 1024) {
-        return `${fileSize}B`;
+        return `${fileSize.toFixed(2)}B`;
       } else if (fileSize < (1024 * 1024)) {
         return `${(fileSize / 1024).toFixed(2)}KB`;
       } else if (fileSize < (1024 * 1024 * 1024)) {
@@ -252,26 +219,30 @@ export default class Files extends Vue {
     form: VForm;
   }
 
-  private loading = false
+  @Emit()
+  loading(): void { return; }
+  @Emit()
+  loaded(): void { return; }
+  @Emit()
+  login(authenticateHeader?: string, fn?: Function, arg?: string[]): void { ({ authenticateHeader, fn, arg }); }
+  @Emit()
+  alert(text: string, type: string): void { ({ text, type }); }
+  @Emit()
+  upload(Files: File[]): { file: File; path: string }[] { return Files.map(file => ({ file, path: this.currentPathString })); }
+
+  @Prop(Array) private readonly repositories!: Repository[]
+  @PropSync('active') private activeRepositoryID: symbol | undefined
+
   private video = false
   private videoURL = ''
   private videoTitle = ''
   private isVideoPlay = false
-  private beforeLogin!: { authenticateHeader: string | undefined; fn: Function | undefined; arg: string[] }
   private result = ''
   private action = false
   private actionType = ''
-  private username = ''
-  private password = ''
   private renameItem!: FileItem
   private newName = ''
   private folderName = ''
-  private alert = false
-  private alertText = ''
-  private alertColor = ''
-  private activeRepositoryID!: symbol
-  private activeRepository!: Repository | undefined
-  private repositories!: Repository[]
   private root: FileItem = { name: 'root', type: 'folder', files: [], id: Symbol() }
   private currentPath = [{ text: `${this.$t('root')}`, disabled: true, id: Symbol() }]
   private layers: Manifest[] = []
@@ -289,46 +260,25 @@ export default class Files extends Vue {
     if (this.currentPath.length === 1) return '/';
     return this.currentPath.slice(1).reduce((s, a) => `${s}/${a.text}`, '');
   }
-
   get displayList(): FileItem[] {
     return this.getPath(this.currentPathString);
   }
+  get activeRepository(): Repository | undefined {
+    return this.repositories.find(e => e.value === this.activeRepositoryID);
+  }
 
   created(): void {
-    this.repositories = [
-      {
-        name: 'kdjvideo',
-        value: Symbol(),
-        url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/kdjvideo',
-        token: '',
-        secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
-      }, {
-        name: 'test',
-        value: Symbol(),
-        url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/test',
-        token: '',
-        secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
-      }, {
-        name: 'videorepo',
-        value: Symbol(),
-        url: 'ccr.ccs.tencentyun.com/videorepo/videorepo',
-        token: '',
-        secret: 'MTAwMDA2NjU1MDMyOmtkajNAdGVuY2VudA=='
-      }
-    ];
-    this.activeRepositoryID = this.repositories[2].value;
-    this.activeRepository = this.repositories[2];
     // const config = '{"files":{"name":"root","type":"folder","files":[{"name":"怪病醫拉姆尼（僅限港澳台地區） 5.mkv","type":"file","size":792728956,"digest":"sha256:d5abb089fde002ff57cd9f2484bcab1a0498476ec3366791a8c310f95b344217","uploadTime":1612791892642},{"name":"burpsuite_pro_v1.5.18.jar","digest":"sha256:40b917c1a9034ec0c0698968c2bbbcde2e07a842043015843a30fcdd11f31b5d","size":9408739,"type":"file","uploadTime":1612921193702},{"name":"新番","type":"folder","files":[{"name":"[桜都字幕组]2021年01月合集","type":"folder","files":[{"name":"[桜都字幕组][GOLD BEAR]装煌聖姫イースフィア ～淫虐の洗脳改造～ 後編.chs.mp4","digest":"sha256:d2744be7c39d1d7f4be87a6f8596db8060122f6ae5524bad0680d7a37361d195","size":468191180,"type":"file","uploadTime":1613023430271},{"name":"[桜都字幕组][nur]背徳の境界 ～女教師のウラ側～.chs.mp4","digest":"sha256:3195a9ca7f84b63b7ecd8256124a74ade2c1cc35ea8f690048e8d5a5e33b7c7f","size":384584279,"type":"file","uploadTime":1613030194741},{"name":"[桜都字幕组][PoRO]White Blue ～白衣の往生際～.chs.mp4","digest":"sha256:676539ec3b02b812fc2df2c8764ae991450d3d48ae01dca87a36a73129db200c","size":402076633,"type":"file","uploadTime":1613031195140}],"uploadTime":1613023235774}],"uploadTime":1613023230496}]}}';
-    // this.parseConfig(JSON.parse(config));
+    // this.root.files = network.parseConfig(JSON.parse(config));
     this.getConfig();
   }
-  private async getConfig(path?: string): Promise<void> {
-    if (!this.activeRepository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
-    this.loading = true;
+  public async getConfig(path?: string): Promise<void> {
+    if (!this.activeRepository) return this.alert(`${this.$t('unknownError')}`, 'error');
+    this.loading();
     try {
       const { config, layers } = await network.getManifests(this.activeRepository);
       this.layers = layers;
-      this.parseConfig(config);
+      this.root.files = network.parseConfig(config);
       this.currentPath = [{ text: `${this.$t('root')}`, disabled: true, id: Symbol() }];
       if (path && path !== '/') {
         path.substr(1).split('/').forEach(e => this.currentPath.push({ text: e, disabled: false, id: Symbol() }));
@@ -337,74 +287,53 @@ export default class Files extends Vue {
       }
     }
     catch (error) {
-      if (error.message === 'need login') this.loginAction(error.authenticateHeader, this.getConfig);
-      else if (typeof error === 'string') this.showAlert(`${this.$t(error)}`, 'error');
-      else this.showAlert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+      if (error.message === 'need login') this.login(error.authenticateHeader, this.getConfig);
+      else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
+      else this.alert(`${this.$t('unknownError')}${error.toString()}`, 'error');
     }
-    this.loading = false;
-  }
-  private async upload(): Promise<void> {
-    if (!this.activeRepository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
-    this.loading = true;
-    // console.log(await network.hashFile(this.uploadFiles[0]));
-    const currentPathString = this.currentPathString;
-    try {
-      const { digest, size } = await network.uploadFile(this.uploadFiles[0], this.activeRepository, this.onUploadProgress);
-      const cache = { root: JSON.parse(JSON.stringify(this.root)), layers: JSON.parse(JSON.stringify(this.layers)) };
-      this.getPath(currentPathString, cache.root).push({ name: this.uploadFiles[0].name, digest, size, type: 'file', uploadTime: Date.now(), id: Symbol() });
-      cache.layers.push({ mediaType: 'application/vnd.docker.image.rootfs.diff.tar.gzip', digest, size });
-      await network.commit({ files: cache.root, layers: cache.layers }, this.activeRepository);
-      this.getPath(currentPathString).push({ name: this.uploadFiles[0].name, digest, size, type: 'file', uploadTime: Date.now(), id: Symbol() });
-      this.layers.push({ mediaType: 'application/vnd.docker.image.rootfs.diff.tar.gzip', digest, size });
-    }
-    catch (error) {
-      if (error.message === 'need login') this.loginAction(error.authenticateHeader, this.upload);
-      else if (typeof error === 'string') this.showAlert(`${this.$t(error)}`, 'error');
-      else this.showAlert(`${this.$t('unknownError')}${error.toString()}`, 'error');
-    }
-    this.loading = false;
+    this.loaded();
   }
   private addFolderAction(): void {
     this.actionType = 'addFolder';
     this.action = true;
   }
   private async addFolder(): Promise<void> {
-    if (!this.activeRepository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
+    if (!this.activeRepository) return this.alert(`${this.$t('unknownError')}`, 'error');
     const name = this.folderName;
     this.closeForm();
-    this.loading = true;
+    this.loading();
     try {
       const cache = { root: JSON.parse(JSON.stringify(this.root)) };
       this.getPath(this.currentPathString, cache.root).push({ name: name, type: 'folder', files: [], id: Symbol(), uploadTime: Date.now() });
-      await network.commit({ files: cache.root, layers: this.layers }, this.activeRepository);
+      await network.commit({ files: cache.root.files, layers: this.layers }, this.activeRepository);
       this.displayList.push({ name: name, type: 'folder', files: [], id: Symbol(), uploadTime: Date.now() });
     }
     catch (error) {
-      if (error.message === 'need login') this.loginAction(error.authenticateHeader);
-      else if (typeof error === 'string') this.showAlert(`${this.$t(error)}`, 'error');
-      else this.showAlert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+      if (error.message === 'need login') this.login(error.authenticateHeader);
+      else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
+      else this.alert(`${this.$t('unknownError')}${error.toString()}`, 'error');
     }
-    this.loading = false;
+    this.loaded();
   }
   private async removeSelected(): Promise<void> {
-    if (!this.activeRepository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
-    this.loading = true;
+    if (!this.activeRepository) return this.alert(`${this.$t('unknownError')}`, 'error');
+    this.loading();
     try {
       const cache = { root: JSON.parse(JSON.stringify(this.root)), layers: JSON.parse(JSON.stringify(this.layers)) };
       try {
         await this.remove(this.selectedFiles, this.currentPathString, this.activeRepository, cache.root, cache.layers);
       }
       finally {
-        await network.commit({ files: cache.root, layers: cache.layers }, this.activeRepository);
+        await network.commit({ files: cache.root.files, layers: cache.layers }, this.activeRepository);
         await this.getConfig(this.currentPathString);
       }
     }
     catch (error) {
-      if (error.message === 'need login') this.loginAction(error.authenticateHeader, this.removeSelected);
-      else if (typeof error === 'string') this.showAlert(`${this.$t(error)}`, 'error');
-      else this.showAlert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+      if (error.message === 'need login') this.login(error.authenticateHeader, this.removeSelected);
+      else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
+      else this.alert(`${this.$t('unknownError')}${error.toString()}`, 'error');
     }
-    this.loading = false;
+    this.loaded();
   }
   private async remove(files: FileItem[], path: string, repository: Repository, root: FileItem, layers: Manifest[]): Promise<void> {
     for (const file of files) {
@@ -434,24 +363,24 @@ export default class Files extends Vue {
     this.action = true;
   }
   private async rename(): Promise<void> {
-    if (!this.activeRepository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
+    if (!this.activeRepository) return this.alert(`${this.$t('unknownError')}`, 'error');
     const name = this.newName;
     this.closeForm();
-    this.loading = true;
+    this.loading();
     try {
       const cache = { root: JSON.parse(JSON.stringify(this.root)) };
       const renameItem = this.getPath(this.currentPathString, cache.root).find(e => e.name === this.renameItem.name);
       if (renameItem) renameItem.name = name;
       else throw 'unknownError';
-      await network.commit({ files: cache.root, layers: this.layers }, this.activeRepository);
+      await network.commit({ files: cache.root.files, layers: this.layers }, this.activeRepository);
       this.renameItem.name = name;
     }
     catch (error) {
-      if (error.message === 'need login') this.loginAction(error.authenticateHeader);
-      else if (typeof error === 'string') this.showAlert(`${this.$t(error)}`, 'error');
-      else this.showAlert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+      if (error.message === 'need login') this.login(error.authenticateHeader);
+      else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
+      else this.alert(`${this.$t('unknownError')}${error.toString()}`, 'error');
     }
-    this.loading = false;
+    this.loaded();
   }
   private moveAction(): void {
     this.actionType = 'move';
@@ -469,11 +398,11 @@ export default class Files extends Vue {
     filterFolder(this.folderList, this.root);
   }
   private async move(): Promise<void> {
-    if (!this.activeRepository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
+    if (!this.activeRepository) return this.alert(`${this.$t('unknownError')}`, 'error');
     const dPath = this.selectedFolder[0];
     this.closeForm();
     if (dPath === this.currentPathString) return;
-    this.loading = true;
+    this.loading();
     try {
       const cache = { root: JSON.parse(JSON.stringify(this.root)) };
       const dFolder = this.getPath(dPath, cache.root);
@@ -484,90 +413,29 @@ export default class Files extends Vue {
         if (dFolder.some(e => e.name === file.name)) failFiles.push(file);
         else dFolder.push(...sFolder.splice(index, 1));
       });
-      await network.commit({ files: cache.root, layers: this.layers }, this.activeRepository);
+      await network.commit({ files: cache.root.files, layers: this.layers }, this.activeRepository);
       this.getConfig(this.currentPathString);
       if (failFiles.length > 0) throw 'someFilenameConflict';
     }
     catch (error) {
-      if (error.message === 'need login') this.loginAction(error.authenticateHeader);
-      else if (typeof error === 'string') this.showAlert(`${this.$t(error)}`, 'error');
-      else this.showAlert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+      if (error.message === 'need login') this.login(error.authenticateHeader);
+      else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
+      else this.alert(`${this.$t('unknownError')}${error.toString()}`, 'error');
     }
-    this.loading = false;
-  }
-  private onUploadProgress(e: ProgressEvent): void {
-    console.log(e);
-  }
-  private loginAction(authenticateHeader?: string, fn?: Function, arg: string[] = []): void {
-    this.actionType = 'login';
-    this.action = true;
-    this.beforeLogin = { authenticateHeader, fn, arg };
-  }
-  private async login(): Promise<void> {
-    if (!this.activeRepository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
-    this.activeRepository.secret = btoa(`${this.username}:${this.password}`);
-    this.closeForm();
-    this.loading = true;
-    if (this.beforeLogin.authenticateHeader) {
-      try {
-        const token = await network.getToken(this.beforeLogin.authenticateHeader, this.activeRepository);
-        if (token) this.activeRepository.token = token;
-      }
-      catch (error) {
-        if (typeof error === 'string') this.showAlert(`${this.$t(error)}`, 'error');
-        else this.showAlert(`${this.$t('unknownError')}${error.toString()}`, 'error');
-      }
-    }
-    this.loading = false;
-    if (this.beforeLogin.fn) this.beforeLogin.fn(...this.beforeLogin.arg);
+    this.loaded();
   }
   private switchRepository(): void {
-    this.activeRepository = this.repositories.find(e => e.value === this.activeRepositoryID);
-    this.currentPath = this.currentPath.slice(0, 1);
-    this.root.files = [];
-    this.getConfig();
-  }
-  private parseConfig(config: { fileItems?: FileItem[]; files?: FileItem }): void {
-    if (config.fileItems) {
-      config.fileItems.forEach(({ name: pathString, size, digest, uploadTime }) => {
-        if (!uploadTime) uploadTime = Date.now();
-        const path = pathString.substr(1).split('/');
-        const type = digest ? 'file' : 'folder';
-        let filePointer: FileItem = this.root;
-        const id = Symbol();
-        for (let i = 0; i < path.length - 1; i++) {
-          const nextPointer = filePointer.files?.find(e => e.name === path[i]);
-          const id = Symbol();
-          if (nextPointer) filePointer = nextPointer;
-          else {
-            const item: FileItem = { name: path[i], type: 'folder', files: [], id };
-            if (!item.uploadTime || item.uploadTime < uploadTime) item.uploadTime = uploadTime;
-            filePointer.files?.push(item);
-            filePointer = item;
-          }
-        }
-        if (type === 'folder') filePointer.files?.push({ name: path[path.length - 1], type, files: [], id });
-        else filePointer.files?.push({ name: path[path.length - 1], type, size, digest, uploadTime, id });
-      });
-    }
-    else if (config.files) {
-      const addID = (files: FileItem[]): void => {
-        files.forEach(file => {
-          file.id = Symbol();
-          if (file.files) addID(file.files);
-        });
-      };
-      addID(config.files.files as FileItem[]);
-      this.root.files = config.files.files;
-    }
-    else throw `${this.$t('loadConfigFailed')}`;
+    this.$nextTick(() => {
+      this.currentPath = this.currentPath.slice(0, 1);
+      this.getConfig();
+    });
   }
   private getPath(pathString: string, root?: FileItem): FileItem[] {
     const path = pathString === '/' ? [] : pathString.substr(1).split('/');
     let filePointer: FileItem = root ? root : this.root;
     for (let i = 0; i < path.length; i++) {
       const nextPointer = filePointer.files?.find(e => e.name === path[i]);
-      if (nextPointer && nextPointer.type === 'folder') filePointer = nextPointer;
+      if (nextPointer?.type === 'folder') filePointer = nextPointer;
       else {
         return (root ? root.files : this.root.files) as FileItem[];
       }
@@ -576,8 +444,8 @@ export default class Files extends Vue {
   }
   private async itemClick(item: FileItem): Promise<void> {
     if (item.type === 'file') {
-      if (!item.digest || !this.activeRepository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
-      this.loading = true;
+      if (!item.digest || !this.activeRepository) return this.alert(`${this.$t('unknownError')}`, 'error');
+      this.loading();
       try {
         const downloadURL = await network.getDownloadURL(item.digest, this.activeRepository);
         console.log('未完成');
@@ -591,14 +459,14 @@ export default class Files extends Vue {
             chrome.downloads.download({ url: downloadURL, filename: item.name });
           }
         }
-        else this.showAlert(`${this.$t('getDownloadURLFailed')}`, 'error');
+        else this.alert(`${this.$t('getDownloadURLFailed')}`, 'error');
       }
       catch (error) {
-        if (error.message === 'need login') this.loginAction(error.authenticateHeader);
-        else if (typeof error === 'string') this.showAlert(`${this.$t(error)}`, 'error');
-        else this.showAlert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+        if (error.message === 'need login') this.login(error.authenticateHeader);
+        else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
+        else this.alert(`${this.$t('unknownError')}${error.toString()}`, 'error');
       }
-      this.loading = false;
+      this.loaded();
     }
     else {
       this.currentPath[this.currentPath.length - 1].disabled = false;
@@ -612,11 +480,6 @@ export default class Files extends Vue {
       this.currentPath = this.currentPath.slice(0, currentIndex + 1);
       this.currentPath[this.currentPath.length - 1].disabled = true;
     }
-  }
-  private showAlert(text: string, type = ''): void {
-    this.alert = true;
-    this.alertText = text;
-    this.alertColor = type;
   }
   private closeForm(): void {
     this.$refs.form.reset();

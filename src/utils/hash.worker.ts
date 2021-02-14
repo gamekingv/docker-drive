@@ -20,11 +20,12 @@ registerPromiseWorker(({ file }) => {
                     algo.update(wordArray);
                     resolve();
                 };
+                reader.onerror = reject;
                 reader.readAsArrayBuffer(file.slice(index, index + chunkSize));
             });
         });
     }
-    return promise.then(() => algo.finalize().toString());
+    return promise.then(() => `sha256:${algo.finalize().toString()}`);
 });
 
 export default {} as typeof Worker & { new(): Worker };

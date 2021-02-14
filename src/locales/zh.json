@@ -30,5 +30,6 @@
   "remaining": "剩余{0}",
   "waitingStart": "等待开始",
   "hashing": "正在校验",
-  "waitingUpload": "等待上传"
+  "waitingUpload": "等待上传",
+  "complete": "上传完成"
 }

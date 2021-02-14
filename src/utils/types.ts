@@ -22,8 +22,15 @@ interface Manifest {
     digest: string;
 }
 
+interface VForm extends Vue {
+    validate(): boolean;
+    reset(): void;
+    resetValidation(): void;
+}
+
 export {
     Repository,
     FileItem,
-    Manifest
+    Manifest,
+    VForm
 };
