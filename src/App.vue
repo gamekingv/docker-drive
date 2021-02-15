@@ -402,11 +402,11 @@ export default class APP extends Vue {
     }
     catch (error) {
       if (error.message === 'manually cancel') task.status = 'cancel';
-      else if (error.message === 'need login') this.loginAction(error.authenticateHeader, this.upload);
       else {
         task.cancelToken.cancel();
         task.hashWorker.terminate();
-        if (typeof error === 'string') task.status = `${this.$t('uploadError')}${this.$t(error)}`;
+        if (error.message === 'need login') this.loginAction(error.authenticateHeader, this.upload);
+        else if (typeof error === 'string') task.status = `${this.$t('uploadError')}${this.$t(error)}`;
         else task.status = `${this.$t('unknownError')}${error.toString()}`;
       }
     }
