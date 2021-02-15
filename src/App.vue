@@ -139,7 +139,10 @@
               <v-btn
                 icon
                 small
-                @click="task.cancelToken.cancel('manually cancel')"
+                @click="
+                  task.cancelToken.cancel('manually cancel');
+                  task.hashWorker.terminate();
+                "
                 ><v-icon small> mdi-close </v-icon></v-btn
               >
             </v-list-item-action>
@@ -212,6 +215,7 @@ import { Vue, Component, Ref, Watch } from 'vue-property-decorator';
 import axios, { CancelTokenSource } from 'axios';
 import { Repository, VForm, FileItem } from '@/utils/types';
 import network from '@/utils/network';
+import hashWorker from '@/utils/hash.worker';
 import Files from '@/views/Files.vue';
 
 interface Task {
@@ -232,6 +236,7 @@ interface Task {
   };
   timer?: number | NodeJS.Timeout;
   cancelToken: CancelTokenSource;
+  hashWorker: Worker;
 }
 
 @Component({
@@ -373,7 +378,8 @@ export default class APP extends Vue {
           task.lastUpdate.time = now;
           task.lastUpdate.size = task.progress.uploadedSize;
         }, 1000),
-        cancelToken: axios.CancelToken.source()
+        cancelToken: axios.CancelToken.source(),
+        hashWorker: new hashWorker()
       };
       this.taskList.push(task);
     });
@@ -382,9 +388,8 @@ export default class APP extends Vue {
   private async upload(task: Task): Promise<void> {
     const activeRepository = this.repositories.find(e => e.value === this.active);
     if (!activeRepository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
-    // this.loading = true;
     try {
-      const { digest, size } = await network.uploadFile(task.file as File, activeRepository, this.onUploadProgress.bind(this, task.id), task.cancelToken);
+      const { digest, size } = await network.uploadFile(task.file as File, activeRepository, this.onUploadProgress.bind(this, task.id), task.cancelToken, task.hashWorker);
       task.status = 'hashing';
       task.file = undefined;
       const { config, layers } = await network.getManifests(activeRepository);
@@ -400,11 +405,11 @@ export default class APP extends Vue {
       else if (error.message === 'need login') this.loginAction(error.authenticateHeader, this.upload);
       else {
         task.cancelToken.cancel();
+        task.hashWorker.terminate();
         if (typeof error === 'string') task.status = `${this.$t('uploadError')}${this.$t(error)}`;
         else task.status = `${this.$t('unknownError')}${error.toString()}`;
       }
     }
-    // this.loading = false;
   }
   private onUploadProgress(id: symbol, e: ProgressEvent): void {
     const { loaded } = e;

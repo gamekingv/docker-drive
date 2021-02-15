@@ -2,7 +2,6 @@ import axios, { AxiosInstance, AxiosResponse, CancelTokenSource } from 'axios';
 import CryptoJS from 'crypto-js';
 import { Repository, FileItem, Manifest } from '@/utils/types';
 import PromiseWorker from 'promise-worker';
-import hashWorker from '@/utils/hash.worker';
 
 export default {
   async requestSender(url: string, instance: AxiosInstance, repository: Repository): Promise<AxiosResponse> {
@@ -174,7 +173,7 @@ export default {
     await this.requestSender(`${url}&digest=${digest}`, instance, repository);
     return { digest, size };
   },
-  async uploadFile(file: File, repository: Repository, onUploadProgress: (progressEvent: ProgressEvent) => void, cancelToken: CancelTokenSource): Promise<{ digest: string; size: number }> {
+  async uploadFile(file: File, repository: Repository, onUploadProgress: (progressEvent: ProgressEvent) => void, cancelToken: CancelTokenSource, hashWorker: Worker): Promise<{ digest: string; size: number }> {
     const [server, namespace, image] = repository.url.split('/') ?? [];
     const size = file.size;
     const url = await this.getUploadURL(repository);
@@ -191,7 +190,7 @@ export default {
       e.data = new Blob([file], { type: 'application/octet-stream' });
       return e;
     });
-    const [{ headers }, digest] = await Promise.all([this.requestSender(`${url}`, patchInstance, repository), this.hashFile(file)]);
+    const [{ headers }, digest] = await Promise.all([this.requestSender(`${url}`, patchInstance, repository), this.hashFile(file, hashWorker)]);
     const instance = axios.create({
       method: 'put',
       headers: {
@@ -243,8 +242,7 @@ export default {
     });
     await this.requestSender(url, instance, repository);
   },
-  async hashFile(file: File): Promise<string> {
-    const worker = new hashWorker();
+  async hashFile(file: File, worker: Worker): Promise<string> {
     const promiseWorker = new PromiseWorker(worker);
     const hash = await promiseWorker.postMessage({ file });
     worker.terminate();
