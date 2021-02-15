@@ -81,10 +81,10 @@
       :width="500"
       style="max-width: 90vw"
     >
-      <div class="text-h5 text-center my-4">{{ $t("taskList") }}</div>
+      <div class="text-h5 text-center my-3">{{ $t("taskList") }}</div>
       <v-list>
         <template v-for="(task, index) in taskList">
-          <v-list-item :key="task.id" class="mb-2">
+          <v-list-item :key="task.id" class="my-2">
             <v-list-item-content>
               <v-list-item-title>{{ task.name }}</v-list-item-title>
               <v-list-item-subtitle>
