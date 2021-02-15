@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import axios, { AxiosInstance, AxiosResponse, CancelTokenSource } from 'axios';
 import CryptoJS from 'crypto-js';
 import { Repository, FileItem, Manifest } from '@/utils/types';
 import PromiseWorker from 'promise-worker';
@@ -174,7 +174,7 @@ export default {
     await this.requestSender(`${url}&digest=${digest}`, instance, repository);
     return { digest, size };
   },
-  async uploadFile(file: File, repository: Repository, onUploadProgress: (progressEvent: ProgressEvent) => void): Promise<{ digest: string; size: number }> {
+  async uploadFile(file: File, repository: Repository, onUploadProgress: (progressEvent: ProgressEvent) => void, cancelToken: CancelTokenSource): Promise<{ digest: string; size: number }> {
     const [server, namespace, image] = repository.url.split('/') ?? [];
     const size = file.size;
     const url = await this.getUploadURL(repository);
@@ -184,7 +184,8 @@ export default {
         'Content-Type': 'application/octet-stream',
         'repository': [server, namespace, image].join('/')
       },
-      onUploadProgress
+      onUploadProgress,
+      cancelToken: cancelToken.token
     });
     patchInstance.interceptors.request.use(e => {
       e.data = new Blob([file], { type: 'application/octet-stream' });
@@ -196,7 +197,8 @@ export default {
       headers: {
         'repository': [server, namespace, image].join('/')
       },
-      timeout: 10000
+      timeout: 10000,
+      cancelToken: cancelToken.token
     });
     await this.requestSender(`${headers['location']}&digest=${digest}`, instance, repository);
     return { digest, size };

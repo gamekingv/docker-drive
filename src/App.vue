@@ -89,6 +89,17 @@
               <v-list-item-title>{{ task.name }}</v-list-item-title>
               <v-list-item-subtitle>
                 <v-progress-linear
+                  :color="
+                    task.status === 'cancel'
+                      ? 'warning'
+                      : task.status === 'uploading' ||
+                        task.status === 'hashing' ||
+                        task.status === 'waiting'
+                      ? 'primary'
+                      : task.status === 'complete'
+                      ? 'success'
+                      : 'error'
+                  "
                   :value="task.progress | progressPercentage"
                   height="25"
                 >
@@ -125,7 +136,12 @@
               </v-list-item-subtitle>
             </v-list-item-content>
             <v-list-item-action>
-              <v-btn icon small><v-icon small> mdi-close </v-icon></v-btn>
+              <v-btn
+                icon
+                small
+                @click="task.cancelToken.cancel('manually cancel')"
+                ><v-icon small> mdi-close </v-icon></v-btn
+              >
             </v-list-item-action>
           </v-list-item>
           <v-divider
@@ -193,6 +209,7 @@
 
 <script lang="ts">
 import { Vue, Component, Ref, Watch } from 'vue-property-decorator';
+import axios, { CancelTokenSource } from 'axios';
 import { Repository, VForm, FileItem } from '@/utils/types';
 import network from '@/utils/network';
 import Files from '@/views/Files.vue';
@@ -214,6 +231,7 @@ interface Task {
     size: number;
   };
   timer?: number | NodeJS.Timeout;
+  cancelToken: CancelTokenSource;
 }
 
 @Component({
@@ -256,7 +274,7 @@ export default class APP extends Vue {
   private alertColor = ''
 
   private get runningTask(): number {
-    return this.taskList.filter(e => e.status !== 'complete' && e.status !== 'error').length;
+    return this.taskList.filter(e => e.status === 'uploading' || e.status === 'hashing' || e.status === 'waiting').length;
   }
 
   @Watch('runningTask')
@@ -354,7 +372,8 @@ export default class APP extends Vue {
           task.speed = (task.progress.uploadedSize - task.lastUpdate.size) / (now - task.lastUpdate.time);
           task.lastUpdate.time = now;
           task.lastUpdate.size = task.progress.uploadedSize;
-        }, 1000)
+        }, 1000),
+        cancelToken: axios.CancelToken.source()
       };
       this.taskList.push(task);
     });
@@ -365,7 +384,7 @@ export default class APP extends Vue {
     if (!activeRepository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
     // this.loading = true;
     try {
-      const { digest, size } = await network.uploadFile(task.file as File, activeRepository, this.onUploadProgress.bind(this, task.id));
+      const { digest, size } = await network.uploadFile(task.file as File, activeRepository, this.onUploadProgress.bind(this, task.id), task.cancelToken);
       task.status = 'hashing';
       task.file = undefined;
       const { config, layers } = await network.getManifests(activeRepository);
@@ -377,9 +396,13 @@ export default class APP extends Vue {
       task.status = 'complete';
     }
     catch (error) {
-      if (error.message === 'need login') this.loginAction(error.authenticateHeader, this.upload);
-      else if (typeof error === 'string') task.status = `${this.$t('uploadError')}${this.$t(error)}`;
-      else task.status = `${this.$t('unknownError')}${error.toString()}`;
+      if (error.message === 'manually cancel') task.status = 'cancel';
+      else if (error.message === 'need login') this.loginAction(error.authenticateHeader, this.upload);
+      else {
+        task.cancelToken.cancel();
+        if (typeof error === 'string') task.status = `${this.$t('uploadError')}${this.$t(error)}`;
+        else task.status = `${this.$t('unknownError')}${error.toString()}`;
+      }
     }
     // this.loading = false;
   }
