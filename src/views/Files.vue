@@ -227,10 +227,10 @@ export default class Files extends Vue {
   @Emit()
   private alert(text: string, type: string): void { ({ text, type }); }
   @Emit()
-  private upload(Files: File[]): { file: File; path: string }[] { return Files.map(file => ({ file, path: this.currentPathString })); }
+  private upload(files: File[]): { files: File[]; path: string } { return { files, path: this.currentPathString }; }
 
   @Prop(Array) private readonly repositories!: Repository[]
-  @PropSync('active') private activeRepositoryID: symbol | undefined
+  @PropSync('active') private activeRepositoryID!: number
 
   private video = false
   private videoURL = ''

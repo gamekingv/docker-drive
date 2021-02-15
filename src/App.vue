@@ -36,21 +36,42 @@
       </v-list>
     </v-navigation-drawer>
 
-    <v-app-bar absolute elevate-on-scroll scroll-target="#main-container" app>
+    <v-app-bar app absolute elevate-on-scroll scroll-target="#main-container">
       <v-app-bar-nav-icon @click.stop="drawer = !drawer"></v-app-bar-nav-icon>
       <v-toolbar-title>{{ $t("name") }}</v-toolbar-title>
       <v-spacer></v-spacer>
-      <v-badge
-        :value="taskList.length !== 0"
-        color="green"
-        overlap
-        :content="taskList.length"
-      >
-        <v-btn icon @click.stop="taskListPanel = !taskListPanel">
+      <v-btn icon @click.stop="taskListPanel = !taskListPanel">
+        <v-badge
+          :value="runningTask !== 0"
+          color="green"
+          overlap
+          :content="runningTask"
+        >
           <v-icon>mdi-calendar-check-outline</v-icon>
-        </v-btn>
-      </v-badge>
+        </v-badge>
+      </v-btn>
     </v-app-bar>
+
+    <v-main id="main" class="grey darken-3">
+      <v-container
+        id="main-container"
+        class="py-8 px-6 overflow-y-auto overflow-x-hidden"
+        fluid
+      >
+        <v-fade-transition mode="out-in">
+          <router-view
+            ref="child"
+            :repositories="repositories"
+            :active.sync="active"
+            @loading="loading = true"
+            @loaded="loading = false"
+            @login="loginAction"
+            @alert="showAlert"
+            @upload="addToTaskList"
+          />
+        </v-fade-transition>
+      </v-container>
+    </v-main>
 
     <v-navigation-drawer
       v-model="taskListPanel"
@@ -116,26 +137,6 @@
       </v-list>
     </v-navigation-drawer>
 
-    <v-main id="main" class="grey darken-3">
-      <v-container
-        id="main-container"
-        class="py-8 px-6 overflow-y-auto overflow-x-hidden"
-        fluid
-      >
-        <v-fade-transition duration="80" mode="out-in">
-          <router-view
-            ref="child"
-            :repositories="repositories"
-            :active.sync="active"
-            @loading="loading = true"
-            @loaded="loading = false"
-            @login="loginAction"
-            @alert="showAlert"
-            @upload="upload"
-          />
-        </v-fade-transition>
-      </v-container>
-    </v-main>
     <v-dialog v-model="action" persistent scrollable :max-width="400">
       <v-card>
         <v-card-title>
@@ -168,10 +169,7 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn
-            color="blue darken-1"
-            @click.stop="$refs.form.validate() && login()"
-          >
+          <v-btn color="blue darken-1" @click.stop="form.validate() && login()">
             {{ $t("ok") }}
           </v-btn>
           <v-btn color="error" text @click.stop="closeForm()">
@@ -181,7 +179,11 @@
       </v-card>
     </v-dialog>
     <v-overlay :value="loading">
-      <v-progress-circular indeterminate size="64"></v-progress-circular>
+      <v-progress-circular
+        color="primary"
+        indeterminate
+        size="64"
+      ></v-progress-circular>
     </v-overlay>
     <v-snackbar v-model="alert" :color="alertColor" :timeout="5000" top right>
       {{ alertText }}
@@ -190,7 +192,7 @@
 </template>
 
 <script lang="ts">
-import { Vue, Component, Ref } from 'vue-property-decorator';
+import { Vue, Component, Ref, Watch } from 'vue-property-decorator';
 import { Repository, VForm, FileItem } from '@/utils/types';
 import network from '@/utils/network';
 import Files from '@/views/Files.vue';
@@ -211,6 +213,7 @@ interface Task {
     time: number;
     size: number;
   };
+  timer?: number | NodeJS.Timeout;
 }
 
 @Component({
@@ -222,9 +225,9 @@ interface Task {
       } else if (fileSize < (1024 * 1024)) {
         return `${(fileSize / 1024).toFixed(0)}KB`;
       } else if (fileSize < (1024 * 1024 * 1024)) {
-        return `${(fileSize / (1024 * 1024)).toFixed(0)}MB`;
+        return `${(fileSize / (1024 * 1024)).toFixed(1)}MB`;
       } else {
-        return `${(fileSize / (1024 * 1024 * 1024)).toFixed(0)}GB`;
+        return `${(fileSize / (1024 * 1024 * 1024)).toFixed(2)}GB`;
       }
     },
     progressPercentage({ uploadedSize, totalSize }: { uploadedSize: number; totalSize: number }): string {
@@ -243,7 +246,7 @@ export default class APP extends Vue {
   private taskListPanel = false
   private taskList: Task[] = []
   private repositories: Repository[] = []
-  private active = Symbol()
+  private active = 0
   private action = false
   private beforeLogin!: { authenticateHeader: string | undefined; fn: Function | undefined; arg: string[] }
   private username = ''
@@ -252,22 +255,40 @@ export default class APP extends Vue {
   private alertText = ''
   private alertColor = ''
 
+  private get runningTask(): number {
+    return this.taskList.filter(e => e.status !== 'complete' && e.status !== 'error').length;
+  }
+
+  @Watch('runningTask')
+  private onTaskListChange(val: number): void {
+    if (val === 0) onbeforeunload = null;
+    else onbeforeunload = (): string => '';
+    if (this.taskList.some(e => e.status === 'uploading')) return;
+    else {
+      const waitingTask = this.taskList.find(e => e.status === 'waiting');
+      if (waitingTask) {
+        waitingTask.status = 'uploading';
+        this.upload(waitingTask);
+      }
+    }
+  }
+
   private created(): void {
     this.repositories.push({
       name: 'kdjvideo',
-      value: Symbol(),
+      value: 1613370986951,
       url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/kdjvideo',
       token: '',
       secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
     }, {
       name: 'test',
-      value: Symbol(),
+      value: 1613370986952,
       url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/test',
       token: '',
       secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
     }, {
       name: 'videorepo',
-      value: Symbol(),
+      value: 1613370986953,
       url: 'ccr.ccs.tencentyun.com/videorepo/videorepo',
       token: '',
       secret: 'MTAwMDA2NjU1MDMyOmtkajNAdGVuY2VudA=='
@@ -310,34 +331,46 @@ export default class APP extends Vue {
     }
     return filePointer.files ?? [];
   }
-  private async upload(uploadFiles: { file: File; path: string }[]): Promise<void> {
-    const activeRepository = this.repositories.find(e => e.value === this.active);
-    if (!activeRepository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
-    // this.loading = true;
-    // console.log(await network.hashFile(this.uploadFiles[0]));
-    try {
-      const task = {
+  private addToTaskList({ files, path }: { files: File[]; path: string }): void {
+    files.forEach(file => {
+      const task: Task = {
         id: Symbol(),
-        name: uploadFiles[0].file.name,
-        file: uploadFiles[0].file,
-        status: 'uploading',
+        name: file.name,
+        file,
+        status: 'waiting',
         progress: {
           uploadedSize: 0,
-          totalSize: uploadFiles[0].file.size,
+          totalSize: file.size,
         },
         speed: 0,
         remainingTime: 0,
-        path: uploadFiles[0].path,
+        path,
         lastUpdate: {
           time: 0,
           size: 0
-        }
+        },
+        timer: setInterval(() => {
+          const now = Date.now() / 1000;
+          task.speed = (task.progress.uploadedSize - task.lastUpdate.size) / (now - task.lastUpdate.time);
+          task.lastUpdate.time = now;
+          task.lastUpdate.size = task.progress.uploadedSize;
+        }, 1000)
       };
       this.taskList.push(task);
-      const { digest, size } = await network.uploadFile(uploadFiles[0].file, activeRepository, this.onUploadProgress);
+    });
+
+  }
+  private async upload(task: Task): Promise<void> {
+    const activeRepository = this.repositories.find(e => e.value === this.active);
+    if (!activeRepository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
+    // this.loading = true;
+    try {
+      const { digest, size } = await network.uploadFile(task.file as File, activeRepository, this.onUploadProgress.bind(this, task.id));
+      task.status = 'hashing';
+      task.file = undefined;
       const { config, layers } = await network.getManifests(activeRepository);
       const files = network.parseConfig(config);
-      this.getPath(uploadFiles[0].path, files).push({ name: uploadFiles[0].file.name, digest, size, type: 'file', uploadTime: Date.now(), id: Symbol() });
+      this.getPath(task.path, files).push({ name: task.name, digest, size, type: 'file', uploadTime: Date.now(), id: Symbol() });
       layers.push({ mediaType: 'application/vnd.docker.image.rootfs.diff.tar.gzip', digest, size });
       await network.commit({ files, layers }, activeRepository);
       if (this.child.getConfig) await this.child.getConfig();
@@ -345,22 +378,22 @@ export default class APP extends Vue {
     }
     catch (error) {
       if (error.message === 'need login') this.loginAction(error.authenticateHeader, this.upload);
-      else if (typeof error === 'string') this.showAlert(`${this.$t(error)}`, 'error');
-      else this.showAlert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+      else if (typeof error === 'string') task.status = `${this.$t('uploadError')}${this.$t(error)}`;
+      else task.status = `${this.$t('unknownError')}${error.toString()}`;
     }
     // this.loading = false;
   }
-  private onUploadProgress(e: ProgressEvent): void {
+  private onUploadProgress(id: symbol, e: ProgressEvent): void {
     const { loaded } = e;
-    const task = this.taskList[0];
-    const now = Date.now() / 1000;
+    const task = this.taskList.find(e => e.id === id);
+    if (!task) return;
     task.progress.uploadedSize = loaded;
-    task.speed = (loaded - task.lastUpdate.size) / (now - task.lastUpdate.time);
     task.remainingTime = (task.progress.totalSize - loaded) / task.speed;
-    task.lastUpdate.size = loaded;
-    task.lastUpdate.time = now;
-    if (task.remainingTime === 0) task.status = 'hashing';
-    console.log(e);
+    if (task.remainingTime === 0) {
+      task.status = 'hashing';
+      task.file = undefined;
+      clearInterval(task.timer as number);
+    }
   }
   private closeForm(): void {
     this.form.reset();

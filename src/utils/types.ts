@@ -1,7 +1,7 @@
 interface Repository {
     name: string;
     url: string;
-    value: symbol;
+    value: number;
     token: string;
     secret: string;
 }
