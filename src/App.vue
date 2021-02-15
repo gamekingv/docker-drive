@@ -271,7 +271,7 @@ export default class APP extends Vue {
   private repositories: Repository[] = []
   private active = 0
   private action = false
-  private beforeLogin!: { authenticateHeader: string | undefined; fn: Function | undefined; arg: string[] }
+  private beforeLogin!: { authenticateHeader: string | undefined; fn: Function | undefined }
   private username = ''
   private password = ''
   private alert = false
@@ -318,9 +318,9 @@ export default class APP extends Vue {
     });
     this.active = this.repositories[2].value;
   }
-  private loginAction(authenticateHeader?: string, fn?: Function, arg: string[] = []): void {
+  private loginAction(authenticateHeader?: string, fn?: Function): void {
     this.action = true;
-    this.beforeLogin = { authenticateHeader, fn, arg };
+    this.beforeLogin = { authenticateHeader, fn };
   }
   private async login(): Promise<void> {
     const activeRepository = this.repositories.find(e => e.value === this.active);
@@ -339,7 +339,7 @@ export default class APP extends Vue {
       }
     }
     this.loading = false;
-    if (this.beforeLogin.fn) this.beforeLogin.fn(...this.beforeLogin.arg);
+    if (this.beforeLogin.fn) this.beforeLogin.fn();
   }
   private getPath(pathString: string, files: FileItem[]): FileItem[] {
     const path = pathString === '/' ? [] : pathString.substr(1).split('/');
@@ -405,7 +405,7 @@ export default class APP extends Vue {
       else {
         task.cancelToken.cancel();
         task.hashWorker.terminate();
-        if (error.message === 'need login') this.loginAction(error.authenticateHeader, this.upload);
+        if (error.message === 'need login') this.loginAction(error.authenticateHeader, this.upload.bind(this, task));
         else if (typeof error === 'string') task.status = `${this.$t('uploadError')}${this.$t(error)}`;
         else task.status = `${this.$t('unknownError')}${error.toString()}`;
       }
