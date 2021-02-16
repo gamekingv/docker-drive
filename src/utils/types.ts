@@ -22,6 +22,12 @@ interface Manifest {
     digest: string;
 }
 
+interface PathNode {
+    name: string;
+    disabled: boolean;
+    id: symbol;
+}
+
 interface VForm extends HTMLFormElement {
     validate(): boolean;
     resetValidation(): void;
@@ -31,5 +37,6 @@ export {
     Repository,
     FileItem,
     Manifest,
+    PathNode,
     VForm
 };

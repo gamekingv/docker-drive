@@ -67,7 +67,7 @@
             @loaded="loading = false"
             @login="loginAction"
             @alert="showAlert"
-            @upload="addToTaskList"
+            @upload="selectFiles"
           />
         </v-fade-transition>
       </v-container>
@@ -139,12 +139,13 @@
               <v-btn
                 icon
                 small
-                @click="
-                  task.cancelToken.cancel('manually cancel');
-                  task.hashWorker.terminate();
+                :disabled="
+                  task.status !== 'uploading' && task.status !== 'waiting'
                 "
-                ><v-icon small> mdi-close </v-icon></v-btn
+                @click="cancelTask(task)"
               >
+                <v-icon small> mdi-close </v-icon>
+              </v-btn>
             </v-list-item-action>
           </v-list-item>
           <v-divider
@@ -156,10 +157,25 @@
       </v-list>
     </v-navigation-drawer>
 
-    <v-dialog v-model="action" persistent scrollable :max-width="400">
+    <v-dialog
+      v-model="action"
+      persistent
+      scrollable
+      :max-width="actionType === 'login' ? 400 : 600"
+    >
       <v-card>
         <v-card-title>
-          <span class="headline">{{ $t("needLogin") }}</span>
+          <span v-if="actionType === 'login'" class="headline">{{
+            $t("needLogin")
+          }}</span>
+          <template v-if="actionType === 'selectFiles'">
+            <v-btn color="blue darken-1" @click.stop="getFiles.click()">
+              {{ "上传文件" }}
+            </v-btn>
+            <v-btn color="blue darken-1 ml-4" @click.stop="getFolder.click()">
+              {{ "上传文件夹" }}
+            </v-btn>
+          </template>
         </v-card-title>
         <v-card-text>
           <v-container>
@@ -167,6 +183,7 @@
               <v-row>
                 <v-col cols="12">
                   <v-text-field
+                    v-if="actionType === 'login'"
                     v-model="username"
                     :label="$t('account')"
                     :rules="[(v) => !!v || $t('require')]"
@@ -175,6 +192,7 @@
                 </v-col>
                 <v-col cols="12">
                   <v-text-field
+                    v-if="actionType === 'login'"
                     v-model="password"
                     :label="$t('password')"
                     :rules="[(v) => !!v || $t('require')]"
@@ -184,6 +202,43 @@
                 </v-col>
               </v-row>
             </v-form>
+            <input
+              v-show="false"
+              v-if="actionType === 'selectFiles'"
+              id="getFiles"
+              ref="getFiles"
+              type="file"
+              name="files"
+              multiple
+              @change="onSelectFiles('getFiles')"
+            />
+            <input
+              v-show="false"
+              v-if="actionType === 'selectFiles'"
+              id="getFolder"
+              ref="getFolder"
+              type="file"
+              name="folder"
+              webkitdirectory
+              @change="onSelectFiles('getFolder')"
+            />
+            <v-row v-if="actionType === 'selectFiles'">
+              <v-col cols="12">
+                <v-list>
+                  <v-list-item
+                    v-for="(file, index) in uploadFiles"
+                    :key="index"
+                  >
+                    <v-list-item-avatar>
+                      <v-icon>mdi-database-import</v-icon>
+                    </v-list-item-avatar>
+                    <v-list-item-content>
+                      <v-list-item-title>{{ file.name }}</v-list-item-title>
+                    </v-list-item-content>
+                  </v-list-item>
+                </v-list>
+              </v-col>
+            </v-row>
           </v-container>
         </v-card-text>
         <v-card-actions>
@@ -213,7 +268,7 @@
 <script lang="ts">
 import { Vue, Component, Ref, Watch } from 'vue-property-decorator';
 import axios, { CancelTokenSource } from 'axios';
-import { Repository, VForm, FileItem } from '@/utils/types';
+import { Repository, FileItem, PathNode, VForm } from '@/utils/types';
 import network from '@/utils/network';
 import hashWorker from '@/utils/hash.worker';
 import Files from '@/views/Files.vue';
@@ -229,14 +284,14 @@ interface Task {
   };
   speed: number;
   remainingTime: number;
-  path: string;
+  path: PathNode[];
   lastUpdate: {
     time: number;
     size: number;
   };
   timer?: number | NodeJS.Timeout;
   cancelToken: CancelTokenSource;
-  hashWorker: Worker;
+  hashWorker?: Worker;
 }
 
 @Component({
@@ -263,6 +318,8 @@ interface Task {
 export default class APP extends Vue {
   @Ref() private readonly child!: Files
   @Ref() private readonly form!: VForm
+  @Ref() private readonly getFiles!: HTMLInputElement
+  @Ref() private readonly getFolder!: HTMLInputElement
 
   private loading = false
   private drawer = true
@@ -271,12 +328,14 @@ export default class APP extends Vue {
   private repositories: Repository[] = []
   private active = 0
   private action = false
+  private actionType = ''
   private beforeLogin!: { authenticateHeader: string | undefined; fn: Function | undefined }
   private username = ''
   private password = ''
   private alert = false
   private alertText = ''
   private alertColor = ''
+  private uploadFiles: File[] = []
 
   private get runningTask(): number {
     return this.taskList.filter(e => e.status === 'uploading' || e.status === 'hashing' || e.status === 'waiting').length;
@@ -295,7 +354,6 @@ export default class APP extends Vue {
       }
     }
   }
-
   private created(): void {
     this.repositories.push({
       name: 'kdjvideo',
@@ -319,6 +377,7 @@ export default class APP extends Vue {
     this.active = this.repositories[2].value;
   }
   private loginAction(authenticateHeader?: string, fn?: Function): void {
+    this.actionType = 'login';
     this.action = true;
     this.beforeLogin = { authenticateHeader, fn };
   }
@@ -326,7 +385,7 @@ export default class APP extends Vue {
     const activeRepository = this.repositories.find(e => e.value === this.active);
     if (!activeRepository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
     activeRepository.secret = btoa(`${this.username}:${this.password}`);
-    this.closeForm();
+    this.closeForm(false);
     this.loading = true;
     if (this.beforeLogin.authenticateHeader) {
       try {
@@ -341,20 +400,27 @@ export default class APP extends Vue {
     this.loading = false;
     if (this.beforeLogin.fn) this.beforeLogin.fn();
   }
-  private getPath(pathString: string, files: FileItem[]): FileItem[] {
-    const path = pathString === '/' ? [] : pathString.substr(1).split('/');
+  private getPath(path: PathNode[], files: FileItem[]): FileItem[] {
     const cacheRoot = { name: 'root', type: 'folder', files, id: Symbol() };
     let filePointer: FileItem = cacheRoot;
-    for (let i = 0; i < path.length; i++) {
-      const nextPointer = filePointer.files?.find(e => e.name === path[i]);
+    path.slice(1).forEach(pathNode => {
+      const nextPointer = filePointer.files?.find(e => e.name === pathNode.name);
       if (nextPointer?.type === 'folder') filePointer = nextPointer;
       else {
         return files;
       }
-    }
+    });
     return filePointer.files ?? [];
   }
-  private addToTaskList({ files, path }: { files: File[]; path: string }): void {
+  private selectFiles(): void {
+    this.actionType = 'selectFiles';
+    this.action = true;
+  }
+  private onSelectFiles(type: 'getFiles' | 'getFolder'): void {
+    if (this[type].files) this.uploadFiles = [...(this[type].files as FileList)];
+    else this.uploadFiles = [];
+  }
+  private addToTaskList({ files, path }: { files: File[]; path: PathNode[] }): void {
     files.forEach(file => {
       const task: Task = {
         id: Symbol(),
@@ -372,14 +438,7 @@ export default class APP extends Vue {
           time: 0,
           size: 0
         },
-        timer: setInterval(() => {
-          const now = Date.now() / 1000;
-          task.speed = (task.progress.uploadedSize - task.lastUpdate.size) / (now - task.lastUpdate.time);
-          task.lastUpdate.time = now;
-          task.lastUpdate.size = task.progress.uploadedSize;
-        }, 1000),
-        cancelToken: axios.CancelToken.source(),
-        hashWorker: new hashWorker()
+        cancelToken: axios.CancelToken.source()
       };
       this.taskList.push(task);
     });
@@ -389,7 +448,14 @@ export default class APP extends Vue {
     const activeRepository = this.repositories.find(e => e.value === this.active);
     if (!activeRepository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
     try {
-      const { digest, size } = await network.uploadFile(task.file as File, activeRepository, this.onUploadProgress.bind(this, task.id), task.cancelToken, task.hashWorker);
+      task.hashWorker = new hashWorker();
+      task.timer = setInterval(() => {
+        const now = Date.now() / 1000;
+        task.speed = (task.progress.uploadedSize - task.lastUpdate.size) / (now - task.lastUpdate.time);
+        task.lastUpdate.time = now;
+        task.lastUpdate.size = task.progress.uploadedSize;
+      }, 1000);
+      const { digest, size } = await network.uploadFile(task.file as File, activeRepository, this.onUploadProgress.bind(this, task.id), task.cancelToken, task.hashWorker as Worker);
       task.status = 'hashing';
       task.file = undefined;
       const { config, layers } = await network.getManifests(activeRepository);
@@ -397,18 +463,19 @@ export default class APP extends Vue {
       this.getPath(task.path, files).push({ name: task.name, digest, size, type: 'file', uploadTime: Date.now(), id: Symbol() });
       layers.push({ mediaType: 'application/vnd.docker.image.rootfs.diff.tar.gzip', digest, size });
       await network.commit({ files, layers }, activeRepository);
-      if (this.child.getConfig) await this.child.getConfig();
+      if (this.child.getConfig) await this.child.getConfig(true);
       task.status = 'complete';
     }
     catch (error) {
-      if (error.message === 'manually cancel') task.status = 'cancel';
-      else {
+      if (error.message === 'need login') this.loginAction(error.authenticateHeader, this.upload.bind(this, task));
+      else if (error.message !== 'manually cancel') {
         task.cancelToken.cancel();
-        task.hashWorker.terminate();
-        if (error.message === 'need login') this.loginAction(error.authenticateHeader, this.upload.bind(this, task));
-        else if (typeof error === 'string') task.status = `${this.$t('uploadError')}${this.$t(error)}`;
+        task.file = undefined;
+        if (typeof error === 'string') task.status = `${this.$t('uploadError')}${this.$t(error)}`;
         else task.status = `${this.$t('unknownError')}${error.toString()}`;
       }
+      clearInterval(task.timer as number);
+      task.hashWorker?.terminate();
     }
   }
   private onUploadProgress(id: symbol, e: ProgressEvent): void {
@@ -423,10 +490,23 @@ export default class APP extends Vue {
       clearInterval(task.timer as number);
     }
   }
-  private closeForm(): void {
+  private cancelTask(task: Task): void {
+    if (task.status === 'uploading') {
+      task.cancelToken.cancel('manually cancel');
+    }
+    task.status = 'cancel';
+    task.file = undefined;
+  }
+  private closeForm(cancel = true): void {
     this.form.reset();
     this.form.resetValidation();
     this.action = false;
+    if (this.actionType === 'selectFiles') this.uploadFiles = [];
+    this.actionType = '';
+    if (cancel) this.taskList.forEach(task => {
+      task.status = 'cancel';
+      task.file = undefined;
+    });
   }
   private showAlert(text: string, type = ''): void {
     this.alert = true;

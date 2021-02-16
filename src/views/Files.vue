@@ -15,8 +15,9 @@
         <v-file-input
           v-model="uploadFiles"
           multiple
-          show-size
+          :show-size="1024"
           label="File input"
+          small-chips
         ></v-file-input>
         <v-btn @click="upload(uploadFiles)">测试上传</v-btn>
         <v-btn @click="addFolderAction()">测试新建文件夹</v-btn>
@@ -34,7 +35,7 @@
               :class="{ clickable: !item.disabled }"
               @click.stop="!item.disabled && pathClick(item.id)"
             >
-              {{ item.text }}
+              {{ item.name }}
             </v-breadcrumbs-item>
           </template>
         </v-breadcrumbs>
@@ -135,7 +136,11 @@
                     required
                   ></v-text-field>
                 </v-col>
-                <v-col v-if="actionType === 'move'" cols="12">
+                <v-col
+                  v-if="actionType === 'move'"
+                  class="folder-tree"
+                  cols="12"
+                >
                   <v-treeview
                     dense
                     rounded
@@ -160,6 +165,7 @@
           <v-spacer></v-spacer>
           <v-btn
             color="blue darken-1"
+            :disabled="actionType === 'move' && selectedFolder.length === 0"
             @click.stop="
               form.validate() &&
                 (actionType === 'rename'
@@ -183,13 +189,14 @@
 <script lang="ts">
 import { Vue, Component, Prop, PropSync, Emit, Ref } from 'vue-property-decorator';
 import network from '@/utils/network';
-import { Repository, FileItem, Manifest, VForm } from '@/utils/types';
+import { Repository, FileItem, Manifest, PathNode, VForm } from '@/utils/types';
 
 interface FolderList {
   name: string;
   files: FolderList[];
-  id: string;
+  id: symbol;
 }
+
 
 @Component({
   filters: {
@@ -227,7 +234,8 @@ export default class Files extends Vue {
   @Emit()
   private alert(text: string, type: string): void { ({ text, type }); }
   @Emit()
-  private upload(files: File[]): { files: File[]; path: string } { return { files, path: this.currentPathString }; }
+  // private upload(files: File[]): { files: File[]; path: PathNode[] } { return { files, path: this.currentPath }; }
+  private upload(): void { return; }
 
   @Prop(Array) private readonly repositories!: Repository[]
   @PropSync('active') private activeRepositoryID!: number
@@ -243,46 +251,40 @@ export default class Files extends Vue {
   private newName = ''
   private folderName = ''
   private root: FileItem = { name: 'root', type: 'folder', files: [], id: Symbol() }
-  private currentPath = [{ text: `${this.$t('root')}`, disabled: true, id: Symbol() }]
+  private currentPath: PathNode[] = [{ name: `${this.$t('root')}`, disabled: true, id: Symbol() }]
   private layers: Manifest[] = []
   private uploadFiles: File[] = []
   private selectedFiles: FileItem[] = []
-  private folderList: FolderList = { name: `${this.$t('root')}`, files: [], id: '/' }
-  private selectedFolder: string[] = []
+  private folderList: FolderList = { name: `${this.$t('root')}`, files: [], id: Symbol() }
+  private selectedFolder: symbol[] = []
   private readonly fileListHeader = [
     { text: this.$t('filename'), align: 'start', value: 'name' },
     { text: this.$t('fileSize'), value: 'size', sortable: false },
     { text: this.$t('fileUploadTime'), value: 'uploadTime' }
   ]
 
-  private get currentPathString(): string {
-    if (this.currentPath.length === 1) return '/';
-    return this.currentPath.slice(1).reduce((s, a) => `${s}/${a.text}`, '');
-  }
   private get displayList(): FileItem[] {
-    return this.getPath(this.currentPathString);
+    return this.getPath(this.currentPath);
   }
   private get activeRepository(): Repository | undefined {
     return this.repositories.find(e => e.value === this.activeRepositoryID);
   }
-
   private created(): void {
     // const config = '{"files":{"name":"root","type":"folder","files":[{"name":"怪病醫拉姆尼（僅限港澳台地區） 5.mkv","type":"file","size":792728956,"digest":"sha256:d5abb089fde002ff57cd9f2484bcab1a0498476ec3366791a8c310f95b344217","uploadTime":1612791892642},{"name":"burpsuite_pro_v1.5.18.jar","digest":"sha256:40b917c1a9034ec0c0698968c2bbbcde2e07a842043015843a30fcdd11f31b5d","size":9408739,"type":"file","uploadTime":1612921193702},{"name":"新番","type":"folder","files":[{"name":"[桜都字幕组]2021年01月合集","type":"folder","files":[{"name":"[桜都字幕组][GOLD BEAR]装煌聖姫イースフィア ～淫虐の洗脳改造～ 後編.chs.mp4","digest":"sha256:d2744be7c39d1d7f4be87a6f8596db8060122f6ae5524bad0680d7a37361d195","size":468191180,"type":"file","uploadTime":1613023430271},{"name":"[桜都字幕组][nur]背徳の境界 ～女教師のウラ側～.chs.mp4","digest":"sha256:3195a9ca7f84b63b7ecd8256124a74ade2c1cc35ea8f690048e8d5a5e33b7c7f","size":384584279,"type":"file","uploadTime":1613030194741},{"name":"[桜都字幕组][PoRO]White Blue ～白衣の往生際～.chs.mp4","digest":"sha256:676539ec3b02b812fc2df2c8764ae991450d3d48ae01dca87a36a73129db200c","size":402076633,"type":"file","uploadTime":1613031195140}],"uploadTime":1613023235774}],"uploadTime":1613023230496}]}}';
     // this.root.files = network.parseConfig(JSON.parse(config));
     this.getConfig();
   }
-  public async getConfig(path?: string): Promise<void> {
+  public async getConfig(holdPath = false): Promise<void> {
     if (!this.activeRepository) return this.alert(`${this.$t('unknownError')}`, 'error');
     this.loading();
     try {
       const { config, layers } = await network.getManifests(this.activeRepository);
+      this.selectedFiles = [];
       this.layers = layers;
       this.root.files = network.parseConfig(config);
-      this.currentPath = [{ text: `${this.$t('root')}`, disabled: true, id: Symbol() }];
-      if (path && path !== '/') {
-        path.substr(1).split('/').forEach(e => this.currentPath.push({ text: e, disabled: false, id: Symbol() }));
-        this.currentPath[0].disabled = false;
-        this.currentPath[this.currentPath.length - 1].disabled = true;
+      if (!holdPath) {
+        this.currentPath.splice(1);
+        this.currentPath[0].disabled = true;
       }
     }
     catch (error) {
@@ -303,7 +305,7 @@ export default class Files extends Vue {
     this.loading();
     try {
       const cache = { root: JSON.parse(JSON.stringify(this.root)) };
-      this.getPath(this.currentPathString, cache.root).push({ name: name, type: 'folder', files: [], id: Symbol(), uploadTime: Date.now() });
+      this.getPath(this.currentPath, cache.root).push({ name: name, type: 'folder', files: [], id: Symbol(), uploadTime: Date.now() });
       await network.commit({ files: cache.root.files, layers: this.layers }, this.activeRepository);
       this.displayList.push({ name: name, type: 'folder', files: [], id: Symbol(), uploadTime: Date.now() });
     }
@@ -320,11 +322,11 @@ export default class Files extends Vue {
     try {
       const cache = { root: JSON.parse(JSON.stringify(this.root)), layers: JSON.parse(JSON.stringify(this.layers)) };
       try {
-        await this.remove(this.selectedFiles, this.currentPathString, this.activeRepository, cache.root, cache.layers);
+        await this.remove(this.selectedFiles, this.currentPath, this.activeRepository, cache.root, cache.layers);
       }
       finally {
         await network.commit({ files: cache.root.files, layers: cache.layers }, this.activeRepository);
-        await this.getConfig(this.currentPathString);
+        await this.getConfig(true);
       }
     }
     catch (error) {
@@ -334,9 +336,9 @@ export default class Files extends Vue {
     }
     this.loaded();
   }
-  private async remove(files: FileItem[], path: string, repository: Repository, root: FileItem, layers: Manifest[]): Promise<void> {
+  private async remove(files: FileItem[], path: PathNode[], repository: Repository, root: FileItem, layers: Manifest[]): Promise<void> {
     for (const file of files) {
-      const currentPath = this.getPath(path, root);
+      const currentPathFiles = this.getPath(path, root);
       if (file.type === 'file') {
         const digest = file.digest as string;
         try {
@@ -346,13 +348,13 @@ export default class Files extends Vue {
           if (e.response?.status !== 404) throw e;
         }
         const layerIndex = layers.findIndex(e => e.digest === file.digest);
-        if (layerIndex > 0) layers.splice(layerIndex, 1);
+        if (typeof layerIndex === 'number') layers.splice(layerIndex, 1);
       }
       else {
-        await this.remove(file.files as FileItem[], `${path === '/' ? '' : path}/${file.name}`, repository, root, layers);
+        await this.remove(file.files as FileItem[], [...path, { name: file.name, disabled: false, id: Symbol() }], repository, root, layers);
       }
-      const listIndex = currentPath.findIndex(e => e.name === file.name);
-      if (listIndex > 0) currentPath.splice(listIndex, 1);
+      const index = currentPathFiles.findIndex(e => e.name === file.name);
+      if (typeof index === 'number') currentPathFiles.splice(index, 1);
     }
   }
   private renameAction(renameItem: FileItem): void {
@@ -368,7 +370,7 @@ export default class Files extends Vue {
     this.loading();
     try {
       const cache = { root: JSON.parse(JSON.stringify(this.root)) };
-      const renameItem = this.getPath(this.currentPathString, cache.root).find(e => e.name === this.renameItem.name);
+      const renameItem = this.getPath(this.currentPath, cache.root).find(e => e.name === this.renameItem.name);
       if (renameItem) renameItem.name = name;
       else throw 'unknownError';
       await network.commit({ files: cache.root.files, layers: this.layers }, this.activeRepository);
@@ -384,11 +386,11 @@ export default class Files extends Vue {
   private moveAction(): void {
     this.actionType = 'move';
     this.action = true;
-    this.folderList = { name: `${this.$t('root')}`, files: [], id: '/' };
+    this.folderList.files = [];
     const filterFolder = (filterFiles: FolderList, rootFiles: FileItem): void => {
       for (const file of rootFiles.files as FileItem[]) {
         if (file.type === 'folder') {
-          const filterFile = { name: file.name, files: [], id: `${filterFiles.id === '/' ? '' : filterFiles.id}/${file.name}` };
+          const filterFile = { name: file.name, files: [], id: Symbol() };
           if (filterFiles.files) filterFiles.files.push(filterFile);
           filterFolder(filterFile, file);
         }
@@ -398,22 +400,29 @@ export default class Files extends Vue {
   }
   private async move(): Promise<void> {
     if (!this.activeRepository) return this.alert(`${this.$t('unknownError')}`, 'error');
-    const dPath = this.selectedFolder[0];
+    const getSelectedPath = (target: symbol, folderList: FolderList, path: PathNode[]): boolean => {
+      path.push({ name: folderList.name, disabled: false, id: folderList.id });
+      if (folderList.id === target || folderList.files.some(file => getSelectedPath(target, file, path))) return true;
+      path.pop();
+      return false;
+    };
+    const dPath: PathNode[] = [];
+    getSelectedPath(this.selectedFolder[0], this.folderList, dPath);
     this.closeForm();
-    if (dPath === this.currentPathString) return;
+    if (dPath.length === this.currentPath.length && dPath.every((e, i) => e.name === this.currentPath[i].name)) return;
     this.loading();
     try {
       const cache = { root: JSON.parse(JSON.stringify(this.root)) };
       const dFolder = this.getPath(dPath, cache.root);
-      const sFolder = this.getPath(this.currentPathString, cache.root);
+      const sFolder = this.getPath(this.currentPath, cache.root);
       const failFiles: FileItem[] = [];
       this.selectedFiles.forEach(file => {
         const index = sFolder.findIndex(e => e.name === file.name);
         if (dFolder.some(e => e.name === file.name)) failFiles.push(file);
-        else dFolder.push(...sFolder.splice(index, 1));
+        else if (typeof index === 'number') dFolder.push(...sFolder.splice(index, 1));
       });
       await network.commit({ files: cache.root.files, layers: this.layers }, this.activeRepository);
-      this.getConfig(this.currentPathString);
+      this.getConfig(true);
       if (failFiles.length > 0) throw 'someFilenameConflict';
     }
     catch (error) {
@@ -425,20 +434,18 @@ export default class Files extends Vue {
   }
   private switchRepository(): void {
     this.$nextTick(() => {
-      this.currentPath = this.currentPath.slice(0, 1);
       this.getConfig();
     });
   }
-  private getPath(pathString: string, root?: FileItem): FileItem[] {
-    const path = pathString === '/' ? [] : pathString.substr(1).split('/');
+  private getPath(path: PathNode[], root?: FileItem): FileItem[] {
     let filePointer: FileItem = root ? root : this.root;
-    for (let i = 0; i < path.length; i++) {
-      const nextPointer = filePointer.files?.find(e => e.name === path[i]);
+    path.slice(1).forEach(pathNode => {
+      const nextPointer = filePointer.files?.find(e => e.name === pathNode.name);
       if (nextPointer?.type === 'folder') filePointer = nextPointer;
       else {
         return (root ? root.files : this.root.files) as FileItem[];
       }
-    }
+    });
     return filePointer.files ?? [];
   }
   private async itemClick(item: FileItem): Promise<void> {
@@ -469,20 +476,21 @@ export default class Files extends Vue {
     }
     else {
       this.currentPath[this.currentPath.length - 1].disabled = false;
-      this.currentPath.push({ text: item.name, disabled: true, id: Symbol() });
+      this.currentPath.push({ name: item.name, disabled: true, id: Symbol() });
     }
   }
   private pathClick(id: symbol): void {
     this.selectedFiles = [];
     const currentIndex = this.currentPath.findIndex(e => e.id === id);
     if (typeof currentIndex === 'number') {
-      this.currentPath = this.currentPath.slice(0, currentIndex + 1);
+      this.currentPath.splice(currentIndex + 1);
       this.currentPath[this.currentPath.length - 1].disabled = true;
     }
   }
   private closeForm(): void {
     this.form.reset();
     this.form.resetValidation();
+    this.selectedFolder = [];
     this.action = false;
     this.actionType = '';
   }
@@ -507,6 +515,11 @@ export default class Files extends Vue {
   pointer-events: none;
   align-items: unset;
   justify-content: unset;
+}
+.folder-tree {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
 }
 </style>
 
