@@ -31,5 +31,15 @@
   "hashing": "Hashing",
   "waiting": "Waiting",
   "complete": "Complete",
-  "uploadError": "Error: "
+  "uploadError": "Error: ",
+  "selectFiles": "Select files",
+  "selectFolder": "Select folder",
+  "selectFilesHit": "Please select files to upload",
+  "statistics": " files, ",
+  "upload": "Upload",
+  "newFolder": "New Folder",
+  "more": "More",
+  "move": "Move",
+  "delete": "Delete",
+  "rename": "Rename"
 }

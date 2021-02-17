@@ -144,7 +144,7 @@
                 "
                 @click="cancelTask(task)"
               >
-                <v-icon small> mdi-close </v-icon>
+                <v-icon small>mdi-close</v-icon>
               </v-btn>
             </v-list-item-action>
           </v-list-item>
@@ -170,20 +170,19 @@
           }}</span>
           <template v-if="actionType === 'selectFiles'">
             <v-btn color="blue darken-1" @click.stop="getFiles.click()">
-              {{ "上传文件" }}
+              {{ $t("selectFiles") }}
             </v-btn>
             <v-btn color="blue darken-1 ml-4" @click.stop="getFolder.click()">
-              {{ "上传文件夹" }}
+              {{ $t("selectFolder") }}
             </v-btn>
           </template>
         </v-card-title>
         <v-card-text>
           <v-container>
             <v-form ref="form" lazy-validation>
-              <v-row>
+              <v-row v-if="actionType === 'login'">
                 <v-col cols="12">
                   <v-text-field
-                    v-if="actionType === 'login'"
                     v-model="username"
                     :label="$t('account')"
                     :rules="[(v) => !!v || $t('require')]"
@@ -192,7 +191,6 @@
                 </v-col>
                 <v-col cols="12">
                   <v-text-field
-                    v-if="actionType === 'login'"
                     v-model="password"
                     :label="$t('password')"
                     :rules="[(v) => !!v || $t('require')]"
@@ -202,51 +200,90 @@
                 </v-col>
               </v-row>
             </v-form>
-            <input
-              v-show="false"
-              v-if="actionType === 'selectFiles'"
-              id="getFiles"
-              ref="getFiles"
-              type="file"
-              name="files"
-              multiple
-              @change="onSelectFiles('getFiles')"
-            />
-            <input
-              v-show="false"
-              v-if="actionType === 'selectFiles'"
-              id="getFolder"
-              ref="getFolder"
-              type="file"
-              name="folder"
-              webkitdirectory
-              @change="onSelectFiles('getFolder')"
-            />
             <v-row v-if="actionType === 'selectFiles'">
               <v-col cols="12">
-                <v-list>
-                  <v-list-item
-                    v-for="(file, index) in uploadFiles"
-                    :key="index"
-                  >
-                    <v-list-item-avatar>
-                      <v-icon>mdi-database-import</v-icon>
-                    </v-list-item-avatar>
-                    <v-list-item-content>
-                      <v-list-item-title>{{ file.name }}</v-list-item-title>
-                    </v-list-item-content>
-                  </v-list-item>
+                <v-list v-if="uploadFiles.length > 0">
+                  <template v-for="(file, index) in uploadFiles">
+                    <v-list-item :key="file.name + index">
+                      <v-list-item-avatar>
+                        <v-icon>{{ file.name | iconFormat }}</v-icon>
+                      </v-list-item-avatar>
+                      <v-list-item-content>
+                        <v-list-item-title>{{ file.name }}</v-list-item-title>
+                        <v-list-item-subtitle class="text--primary">{{
+                          file.size | sizeFormat
+                        }}</v-list-item-subtitle>
+                        <v-list-item-subtitle>{{
+                          `${currentPath.map((path) => path.name).join("/")}/${
+                            file.webkitRelativePath
+                              ? file.webkitRelativePath
+                              : file.name
+                          }`
+                        }}</v-list-item-subtitle>
+                      </v-list-item-content>
+                      <v-list-item-action>
+                        <v-btn icon small @click="uploadFiles.splice(index, 1)">
+                          <v-icon small>mdi-close</v-icon>
+                        </v-btn>
+                      </v-list-item-action>
+                    </v-list-item>
+                    <v-divider
+                      v-if="index < uploadFiles.length - 1"
+                      :key="index"
+                      inset
+                    ></v-divider>
+                  </template>
                 </v-list>
+                <v-card
+                  v-else
+                  class="mx-auto"
+                  outlined
+                  style="border-style: dashed"
+                >
+                  <v-card-text class="my-4 d-flex justify-center align-center">
+                    <div>{{ $t("selectFilesHit") }}</div>
+                  </v-card-text>
+                </v-card>
+                <input
+                  v-show="false"
+                  v-if="actionType === 'selectFiles'"
+                  id="getFiles"
+                  ref="getFiles"
+                  type="file"
+                  name="files"
+                  multiple
+                  @change="onSelectFiles('getFiles')"
+                />
+                <input
+                  v-show="false"
+                  v-if="actionType === 'selectFiles'"
+                  id="getFolder"
+                  ref="getFolder"
+                  type="file"
+                  name="folder"
+                  webkitdirectory
+                  @change="onSelectFiles('getFolder')"
+                />
               </v-col>
             </v-row>
           </v-container>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="blue darken-1" @click.stop="form.validate() && login()">
+          <v-btn
+            color="blue darken-1"
+            @click.stop="
+              form.validate() &&
+                (actionType === 'login' ? login() : addToTaskList())
+            "
+          >
             {{ $t("ok") }}
           </v-btn>
-          <v-btn color="error" text @click.stop="closeForm()">
+          <v-btn
+            color="error"
+            text
+            @click.stop="actionType === 'login' ? closeForm(true) : closeForm()"
+          >
             {{ $t("cancel") }}
           </v-btn>
         </v-card-actions>
@@ -269,6 +306,7 @@
 import { Vue, Component, Ref, Watch } from 'vue-property-decorator';
 import axios, { CancelTokenSource } from 'axios';
 import { Repository, FileItem, PathNode, VForm } from '@/utils/types';
+import { sizeFormat, progressPercentage, iconFormat } from '@/utils/filters';
 import network from '@/utils/network';
 import hashWorker from '@/utils/hash.worker';
 import Files from '@/views/Files.vue';
@@ -296,22 +334,9 @@ interface Task {
 
 @Component({
   filters: {
-    sizeFormat(fileSize: number): string {
-      if (fileSize !== 0 && !fileSize) return '';
-      if (fileSize < 1024) {
-        return `${fileSize.toFixed(0)}B`;
-      } else if (fileSize < (1024 * 1024)) {
-        return `${(fileSize / 1024).toFixed(0)}KB`;
-      } else if (fileSize < (1024 * 1024 * 1024)) {
-        return `${(fileSize / (1024 * 1024)).toFixed(1)}MB`;
-      } else {
-        return `${(fileSize / (1024 * 1024 * 1024)).toFixed(2)}GB`;
-      }
-    },
-    progressPercentage({ uploadedSize, totalSize }: { uploadedSize: number; totalSize: number }): string {
-      if (totalSize === 0) return '0%';
-      return `${(uploadedSize / totalSize * 100).toFixed(1)}%`;
-    }
+    sizeFormat,
+    progressPercentage,
+    iconFormat
   }
 })
 
@@ -336,6 +361,7 @@ export default class APP extends Vue {
   private alertText = ''
   private alertColor = ''
   private uploadFiles: File[] = []
+  private currentPath: PathNode[] = []
 
   private get runningTask(): number {
     return this.taskList.filter(e => e.status === 'uploading' || e.status === 'hashing' || e.status === 'waiting').length;
@@ -385,7 +411,7 @@ export default class APP extends Vue {
     const activeRepository = this.repositories.find(e => e.value === this.active);
     if (!activeRepository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
     activeRepository.secret = btoa(`${this.username}:${this.password}`);
-    this.closeForm(false);
+    this.closeForm();
     this.loading = true;
     if (this.beforeLogin.authenticateHeader) {
       try {
@@ -404,15 +430,23 @@ export default class APP extends Vue {
     const cacheRoot = { name: 'root', type: 'folder', files, id: Symbol() };
     let filePointer: FileItem = cacheRoot;
     path.slice(1).forEach(pathNode => {
-      const nextPointer = filePointer.files?.find(e => e.name === pathNode.name);
-      if (nextPointer?.type === 'folder') filePointer = nextPointer;
-      else {
-        return files;
+      let nextPointer = filePointer.files?.find(e => e.name === pathNode.name);
+      if (!nextPointer) {
+        nextPointer = { name: pathNode.name, type: 'folder', id: Symbol(), files: [] };
+        filePointer.files?.push(nextPointer);
       }
+      else if (nextPointer.type !== 'folder') {
+        let i = 1;
+        while (filePointer.files?.some(e => e.name === `${pathNode.name} (${i})`)) i++;
+        nextPointer = { name: `${pathNode.name} (${i})`, type: 'folder', id: Symbol(), files: [] };
+        filePointer.files?.push(nextPointer);
+      }
+      filePointer = nextPointer;
     });
     return filePointer.files ?? [];
   }
-  private selectFiles(): void {
+  private selectFiles(currentPath: PathNode[]): void {
+    this.currentPath = [...currentPath];
     this.actionType = 'selectFiles';
     this.action = true;
   }
@@ -420,8 +454,12 @@ export default class APP extends Vue {
     if (this[type].files) this.uploadFiles = [...(this[type].files as FileList)];
     else this.uploadFiles = [];
   }
-  private addToTaskList({ files, path }: { files: File[]; path: PathNode[] }): void {
-    files.forEach(file => {
+  private addToTaskList(): void {
+    this.uploadFiles.forEach(file => {
+      const path: PathNode[] = [...this.currentPath];
+      /*@ts-ignore*/
+      const stringPath: string = file.webkitRelativePath;
+      if (stringPath !== '') path.push(...stringPath.split('/').slice(0, -1).map(e => ({ name: e, disabled: false, id: Symbol() })));
       const task: Task = {
         id: Symbol(),
         name: file.name,
@@ -442,7 +480,7 @@ export default class APP extends Vue {
       };
       this.taskList.push(task);
     });
-
+    this.closeForm();
   }
   private async upload(task: Task): Promise<void> {
     const activeRepository = this.repositories.find(e => e.value === this.active);
@@ -460,7 +498,20 @@ export default class APP extends Vue {
       task.file = undefined;
       const { config, layers } = await network.getManifests(activeRepository);
       const files = network.parseConfig(config);
-      this.getPath(task.path, files).push({ name: task.name, digest, size, type: 'file', uploadTime: Date.now(), id: Symbol() });
+      const path = this.getPath(task.path, files);
+      if (path.some(e => e.name === task.name)) {
+        let i = 1;
+        let [, name, ext] = task.name.match(/(.*)(\.[^.]*)$/) ?? [];
+        if (!name) {
+          name = task.name;
+          ext = '';
+        }
+        while (path.some(e => e.name === `${name} (${i})${ext}`)) {
+          i++;
+        }
+        task.name = `${name} (${i})${ext}`;
+      }
+      path.push({ name: task.name, digest, size, type: 'file', uploadTime: Date.now(), id: Symbol() });
       layers.push({ mediaType: 'application/vnd.docker.image.rootfs.diff.tar.gzip', digest, size });
       await network.commit({ files, layers }, activeRepository);
       if (this.child.getConfig) await this.child.getConfig(true);
@@ -497,13 +548,16 @@ export default class APP extends Vue {
     task.status = 'cancel';
     task.file = undefined;
   }
-  private closeForm(cancel = true): void {
+  private closeForm(cancelTask = false): void {
     this.form.reset();
     this.form.resetValidation();
     this.action = false;
-    if (this.actionType === 'selectFiles') this.uploadFiles = [];
+    if (this.actionType === 'selectFiles') {
+      this.uploadFiles = [];
+      this.currentPath = [];
+    }
     this.actionType = '';
-    if (cancel) this.taskList.forEach(task => {
+    if (cancelTask) this.taskList.forEach(task => {
       task.status = 'cancel';
       task.file = undefined;
     });
