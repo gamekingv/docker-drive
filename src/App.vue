@@ -124,14 +124,14 @@
                     >{{ task.speed | sizeFormat }}{{ "/s"
                     }}{{ remainingFormat(task.remainingTime) }}</strong
                   >
-                  <strong v-if="task.progress.totalSize !== 0"
-                    >{{
-                      (task.status === "uploading"
-                        ? task.progress.uploadedSize
-                        : undefined) | sizeFormat
+                  <strong v-if="task.status === 'uploading'">
+                    {{ task.progress.uploadedSize | sizeFormat
                     }}{{ task.status === "uploading" ? "/" : ""
                     }}{{ task.progress.totalSize | sizeFormat }}</strong
                   >
+                  <strong v-else>{{
+                    task.progress.totalSize | sizeFormat
+                  }}</strong>
                 </div>
               </v-list-item-subtitle>
             </v-list-item-content>
@@ -497,6 +497,7 @@ export default class APP extends Vue {
       task.status = 'hashing';
       task.file = undefined;
       const { config, layers } = await network.getManifests(activeRepository);
+      if (layers.some(e => e.digest === digest)) throw 'fileExisted';
       const files = network.parseConfig(config);
       const path = this.getPath(task.path, files);
       if (path.some(e => e.name === task.name)) {

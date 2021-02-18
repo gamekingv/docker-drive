@@ -59,6 +59,16 @@
           </template>
           <v-list dense>
             <v-list-item-group active-class="button-active">
+              <v-list-item
+                v-if="
+                  selectedFiles.length === 1 &&
+                  selectedFiles[0].type !== 'folder'
+                "
+                @click="itemClick(selectedFiles[0], true)"
+              >
+                <v-icon left>mdi-download</v-icon>
+                <v-list-item-title>{{ $t("download") }}</v-list-item-title>
+              </v-list-item>
               <v-list-item @click="moveAction()">
                 <v-icon left>mdi-file-move</v-icon>
                 <v-list-item-title>{{ $t("move") }}</v-list-item-title>
@@ -102,7 +112,12 @@
         {{ item.uploadTime | formatTime }}
       </template>
       <template v-slot:[`item.actions`]="{ item }">
-        <v-btn icon small @click.stop="itemClick(item, true)">
+        <v-btn
+          v-if="item.type !== 'folder'"
+          icon
+          small
+          @click.stop="itemClick(item, true)"
+        >
           <v-icon small> mdi-download </v-icon>
         </v-btn>
         <v-menu offset-x>
@@ -144,10 +159,10 @@
             <track
               v-for="(subtitle, index) in subtitles"
               :key="index"
-              :label="`test${index}`"
+              :label="subtitle.label"
               kind="subtitles"
-              :src="subtitle"
-              srclang="zh"
+              :src="subtitle.url"
+              :default="index === 0"
             />
           </video>
           <v-fade-transition>
@@ -296,7 +311,7 @@ export default class Files extends Vue {
   @Emit()
   private login(authenticateHeader?: string, fn?: Function, arg?: string[]): void { ({ authenticateHeader, fn, arg }); }
   @Emit()
-  private alert(text: string, type: string): void { ({ text, type }); }
+  private alert(text: string, type?: string): void { ({ text, type }); }
   @Emit()
   private upload(): PathNode[] { return this.currentPath; }
 
@@ -307,7 +322,7 @@ export default class Files extends Vue {
   private videoURL = ''
   private videoTitle = ''
   private isVideoPlay = false
-  private subtitles: string[] = []
+  private subtitles: { label: string; url: string }[] = []
   private result = ''
   private action = false
   private actionType = ''
@@ -528,8 +543,22 @@ export default class Files extends Vue {
             this.videoTitle = item.name;
             const subtitles = this.displayList.filter(e => e.name.includes(item.name.substr(0, item.name.length - 3)) && /.*\.(vtt|srt|ass|ssa)$/.test(e.name));
             this.subtitles = [];
-            for (const subtitle of subtitles)
-              this.subtitles.push(await network.getDownloadURL(subtitle.digest as string, this.activeRepository));
+            for (const subtitle of subtitles) {
+              const label = subtitle.name.replace(item.name.substr(0, item.name.length - 3), '')
+              let url = '';
+              try {
+                if (/\.vtt$/.test(subtitle.name)) url = await network.getDownloadURL(subtitle.digest as string, this.activeRepository);
+                else if (/\.srt$/.test(subtitle.name)) {
+                  const { data: srt }: { data: string } = await network.downloadFile(subtitle.digest as string, this.activeRepository);
+                  const vtt = 'WEBVTT\r\n\r\n' + srt.replace(/(\d{2}:\d{2}:\d{2}),(\d{3} --> \d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2.$3');
+                  url = URL.createObjectURL(new Blob([vtt], { type: 'application/octet-stream' }));
+                }
+                this.subtitles.push({ label, url });
+              }
+              catch (error) {
+                this.alert(`${this.$t('loadSubtitleFailed')}${subtitle.name}`, 'warning');
+              }
+            }
             this.video = true;
           }
           else {
@@ -580,6 +609,10 @@ export default class Files extends Vue {
   width: 100%;
   max-height: 100%;
   overflow: hidden;
+  display: flex;
+}
+.video > video::cue {
+  background-color: rgba(0, 0, 0, 0.4);
 }
 .video-overlay {
   background-image: linear-gradient(black, transparent 25%);

@@ -124,20 +124,42 @@ export default {
         'repository': [server, namespace, image].join('/')
       },
       cancelToken: request.token,
-      timeout: 10000,
-      onDownloadProgress: (e) => {
-        downloadURL = e.currentTarget.responseURL;
-        request.cancel('cancel');
-      }
+      timeout: 10000
     });
+    const getHeader = (e: chrome.webRequest.WebResponseHeadersDetails): void => {
+      if (e.statusCode === 307) {
+        downloadURL = e.responseHeaders?.find(e => e.name === 'Location')?.value as string;
+        request.cancel('ok');
+      }
+      else throw 'unknownError';
+    };
     try {
+      chrome.webRequest.onHeadersReceived.addListener(getHeader, { urls: [url] }, ['blocking', 'responseHeaders']);
       await this.requestSender(url, instance, repository);
       throw 'unknownError';
     }
     catch (error) {
-      if (error.message === 'cancel') return downloadURL;
-      else throw error;
+      chrome.webRequest.onHeadersReceived.removeListener(getHeader);
+      if (error.message === 'ok') return downloadURL;
+      else {
+        request.cancel();
+        throw error;
+      }
     }
+  },
+  async downloadFile(digest: string, repository: Repository): Promise<AxiosResponse> {
+    const [server, namespace, image] = repository.url.split('/') ?? [];
+    const url = `https://${server}/v2/${namespace}/${image}/blobs/${digest}`;
+    const request = axios.CancelToken.source();
+    const instance = axios.create({
+      method: 'get',
+      headers: {
+        'repository': [server, namespace, image].join('/')
+      },
+      cancelToken: request.token,
+      timeout: 30000
+    });
+    return await this.requestSender(url, instance, repository);
   },
   async getUploadURL(repository: Repository): Promise<string> {
     const [server, namespace, image] = repository.url.split('/') ?? [];

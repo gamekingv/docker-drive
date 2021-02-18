@@ -32,14 +32,17 @@
   "waiting": "Waiting",
   "complete": "Complete",
   "uploadError": "Error: ",
+  "fileExisted": "File existed",
   "selectFiles": "Select files",
   "selectFolder": "Select folder",
   "selectFilesHit": "Please select files to upload",
   "statistics": " files, ",
   "upload": "Upload",
   "newFolder": "New Folder",
+  "download": "Download",
   "more": "More",
   "move": "Move",
   "delete": "Delete",
-  "rename": "Rename"
+  "rename": "Rename",
+  "loadSubtitleFailed": "Load subtitle failed: "
 }

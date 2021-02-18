@@ -21,7 +21,9 @@
   },
   "permissions": [
     "<all_urls>",
-    "downloads"
+    "downloads",
+    "webRequest",
+    "webRequestBlocking"
   ],
   "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self';"
 }

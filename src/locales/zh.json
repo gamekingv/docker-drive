@@ -32,14 +32,17 @@
   "waiting": "等待上传",
   "complete": "上传完成",
   "uploadError": "上传出错：",
+  "fileExisted": "文件已存在",
   "selectFiles": "上传文件",
   "selectFolder": "上传文件夹",
   "selectFilesHit": "请选择要上传的文件",
   "statistics": "个文件，",
   "upload": "上传",
   "newFolder": "新建文件夹",
+  "download": "下载",
   "more": "更多",
   "move": "移动",
   "delete": "删除",
-  "rename": "重命名"
+  "rename": "重命名",
+  "loadSubtitleFailed": "加载字幕失败："
 }
