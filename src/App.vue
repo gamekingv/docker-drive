@@ -25,7 +25,7 @@
             <v-list-item-title>{{ $t("files") }}</v-list-item-title>
           </v-list-item-content>
         </v-list-item>
-        <v-list-item key="repositories" to="/about" link>
+        <v-list-item key="repositories" to="/repositories" link>
           <v-list-item-icon>
             <v-icon>mdi-database-settings</v-icon>
           </v-list-item-icon>
@@ -252,7 +252,7 @@
                   type="file"
                   name="files"
                   multiple
-                  @change="onSelectFiles('getFiles')"
+                  @input="onSelectFiles('getFiles')"
                 />
                 <input
                   v-show="false"
@@ -262,7 +262,7 @@
                   type="file"
                   name="folder"
                   webkitdirectory
-                  @change="onSelectFiles('getFolder')"
+                  @input="onSelectFiles('getFolder')"
                 />
               </v-col>
             </v-row>
@@ -453,6 +453,7 @@ export default class APP extends Vue {
   private onSelectFiles(type: 'getFiles' | 'getFolder'): void {
     if (this[type].files) this.uploadFiles = [...(this[type].files as FileList)];
     else this.uploadFiles = [];
+    this[type].value = '';
   }
   private addToTaskList(): void {
     this.uploadFiles.forEach(file => {

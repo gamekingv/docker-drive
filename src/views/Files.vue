@@ -145,11 +145,12 @@
         </v-menu>
       </template>
     </v-data-table>
-    <v-dialog v-model="video" fullscreen content-class="video-container">
+    <v-dialog v-model="showVideo" fullscreen content-class="video-container">
       <v-hover v-slot="{ hover }">
         <div class="video">
           <video
-            v-if="video"
+            v-if="showVideo"
+            ref="video"
             class="video"
             controls
             @pause="videoEventHandler"
@@ -173,12 +174,14 @@
               color="transparent"
             >
               <v-toolbar min-width="100vw" absolute color="transparent" flat>
-                <v-toolbar-title>{{ video ? videoTitle : "" }}</v-toolbar-title>
+                <v-toolbar-title>{{
+                  showVideo ? videoTitle : ""
+                }}</v-toolbar-title>
                 <v-spacer></v-spacer>
                 <v-btn
                   style="pointer-events: auto"
                   icon
-                  @click.stop="video = false"
+                  @click.stop="showVideo = false"
                 >
                   <v-icon large>mdi-close</v-icon>
                 </v-btn>
@@ -284,6 +287,7 @@ import { Vue, Component, Prop, PropSync, Emit, Ref } from 'vue-property-decorato
 import { Repository, FileItem, Manifest, PathNode, VForm } from '@/utils/types';
 import { sizeFormat, formatTime, iconFormat } from '@/utils/filters';
 import network from '@/utils/network';
+import { parse as ASSparser } from 'ass-compiler';
 
 interface FolderList {
   name: string;
@@ -303,6 +307,7 @@ interface FolderList {
 export default class Files extends Vue {
 
   @Ref() private readonly form!: VForm
+  @Ref() private readonly video!: HTMLMediaElement
 
   @Emit()
   private loading(): void { return; }
@@ -318,7 +323,7 @@ export default class Files extends Vue {
   @Prop(Array) private readonly repositories!: Repository[]
   @PropSync('active') private activeRepositoryID!: number
 
-  private video = false
+  private showVideo = false
   private videoURL = ''
   private videoTitle = ''
   private isVideoPlay = false
@@ -536,30 +541,45 @@ export default class Files extends Vue {
       this.loading();
       try {
         const downloadURL = await network.getDownloadURL(item.digest, this.activeRepository);
-        console.log('未完成');
         if (downloadURL) {
           if (item.name.match(/\.(mp4|mkv|avi)$/) && !forceDownload) {
             this.videoURL = downloadURL;
             this.videoTitle = item.name;
             const subtitles = this.displayList.filter(e => e.name.includes(item.name.substr(0, item.name.length - 3)) && /.*\.(vtt|srt|ass|ssa)$/.test(e.name));
             this.subtitles = [];
+            const assToVttArray: { label: string; cues: VTTCue[] }[] = [];
             for (const subtitle of subtitles) {
-              const label = subtitle.name.replace(item.name.substr(0, item.name.length - 3), '')
+              const label = subtitle.name.replace(item.name.substr(0, item.name.length - 3), '');
               let url = '';
               try {
-                if (/\.vtt$/.test(subtitle.name)) url = await network.getDownloadURL(subtitle.digest as string, this.activeRepository);
+                if (/\.vtt$/.test(subtitle.name)) {
+                  url = await network.getDownloadURL(subtitle.digest as string, this.activeRepository);
+                  this.subtitles.push({ label, url });
+                }
                 else if (/\.srt$/.test(subtitle.name)) {
                   const { data: srt }: { data: string } = await network.downloadFile(subtitle.digest as string, this.activeRepository);
                   const vtt = 'WEBVTT\r\n\r\n' + srt.replace(/(\d{2}:\d{2}:\d{2}),(\d{3} --> \d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2.$3');
-                  url = URL.createObjectURL(new Blob([vtt], { type: 'application/octet-stream' }));
+                  url = URL.createObjectURL(new Blob([vtt], { type: 'text/vtt' }));
+                  this.subtitles.push({ label, url });
                 }
-                this.subtitles.push({ label, url });
+                else if (/\.(ass|ssa)$/.test(subtitle.name)) {
+                  const { data: assString }: { data: string } = await network.downloadFile(subtitle.digest as string, this.activeRepository);
+                  const ass = ASSparser(assString);
+                  const assToVtt = { label, cues: [] as VTTCue[] };
+                  ass.events.dialogue.forEach(dialogue => dialogue.Text.combined !== '' && assToVtt.cues.push(new VTTCue(dialogue.Start, dialogue.End, dialogue.Text.combined)));
+                  assToVttArray.push(assToVtt);
+                }
               }
               catch (error) {
                 this.alert(`${this.$t('loadSubtitleFailed')}${subtitle.name}`, 'warning');
               }
             }
-            this.video = true;
+            this.showVideo = true;
+            this.$nextTick(() => assToVttArray.forEach((e, i) => {
+              const track = this.video.addTextTrack('subtitles', e.label);
+              if (this.subtitles.length === 0 && i === 0) track.mode = 'showing';
+              e.cues.forEach(cue => track.addCue(cue));
+            }));
           }
           else {
             chrome.downloads.download({ url: downloadURL, filename: item.name });
