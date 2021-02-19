@@ -2,18 +2,16 @@
   <div>
     <v-list class="grey darken-3" two-line>
       <template v-for="(repository, index) in repositories">
-        <v-list-item :key="repository.value">
+        <v-list-item :key="repository.id">
           <v-list-item-avatar>
             <v-btn
               icon
               class="transparent"
-              @click="activeRepositoryID = repository.value"
+              @click="activeRepositoryID = repository.id"
             >
               <v-icon
                 class="transparent"
-                :color="
-                  repository.value === activeRepositoryID ? 'green' : 'grey'
-                "
+                :color="repository.id === activeRepositoryID ? 'green' : 'grey'"
                 >mdi-check</v-icon
               >
             </v-btn>
@@ -34,7 +32,7 @@
             </v-btn>
           </v-list-item-action>
           <v-list-item-action>
-            <v-btn icon @click="deleteAction(repository.value)">
+            <v-btn icon @click="deleteAction(repository.id)">
               <v-icon>mdi-trash-can-outline</v-icon>
             </v-btn>
           </v-list-item-action>
@@ -49,18 +47,20 @@
     <v-dialog v-model="action" persistent scrollable :max-width="400">
       <v-card>
         <v-card-title>
-          <span v-if="actionType === 'edit'" class="headline">{{
-            $t("edit")
-          }}</span>
+          <span
+            v-if="actionType === 'edit' || actionType === 'add'"
+            class="headline"
+            >{{ $t(actionType) }}</span
+          >
           <span v-if="actionType === 'delete'">{{
             $t("deleteRepository", [
-              repositories.find((e) => e.value === id)
-                ? repositories.find((e) => e.value === id).name
+              repositories.find((e) => e.id === id)
+                ? repositories.find((e) => e.id === id).name
                 : "",
             ])
           }}</span>
         </v-card-title>
-        <v-card-text v-if="actionType === 'edit'">
+        <v-card-text v-if="actionType === 'edit' || actionType === 'add'">
           <v-container>
             <v-form ref="form" lazy-validation>
               <v-row>
@@ -104,6 +104,8 @@
             @click.stop="
               actionType === 'edit'
                 ? form.validate() && edit()
+                : actionType === 'add'
+                ? form.validate() && add()
                 : deleteRepository()
             "
           >
@@ -128,12 +130,20 @@ export default class Repositories extends Vue {
   @Ref() private readonly form!: VForm
 
   @Emit()
-  private edit(): Repository {
+  private add(): Repository {
     let secret = '';
-    const name = this.name, url = this.url, value = this.id;
+    const name = this.name, url = this.url, id = Date.now();
     if (this.username) secret = btoa(`${this.username}:${this.password}`);
     this.closeForm();
-    return { name, url, token: '', value, secret };
+    return { name, url, token: '', id, secret };
+  }
+  @Emit()
+  private edit(): Repository {
+    let secret = '';
+    const name = this.name, url = this.url, id = this.id;
+    if (this.username) secret = btoa(`${this.username}:${this.password}`);
+    this.closeForm();
+    return { name, url, token: '', id, secret };
   }
   @Emit('delete')
   private deleteRepository(): number {
@@ -141,6 +151,7 @@ export default class Repositories extends Vue {
     return this.id;
   }
 
+  @Prop(String) private readonly initialType!: string
   @Prop(Array) private readonly repositories!: Repository[]
   @PropSync('active') private activeRepositoryID!: number
 
@@ -152,11 +163,18 @@ export default class Repositories extends Vue {
   private username = ''
   private password = ''
 
+  private created(): void {
+    if (this.initialType === 'add') this.addAction();
+  }
   private editAction(repository: Repository): void {
     this.actionType = 'edit';
     this.name = repository.name;
     this.url = repository.url;
-    this.id = repository.value;
+    this.id = repository.id;
+    this.action = true;
+  }
+  private addAction(): void {
+    this.actionType = 'add';
     this.action = true;
   }
   private deleteAction(id: number): void {

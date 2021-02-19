@@ -45,7 +45,8 @@
   "delete": "删除",
   "rename": "重命名",
   "loadSubtitleFailed": "加载字幕失败：",
-  "edit": "编辑",
+  "add": "添加仓库",
+  "edit": "编辑仓库",
   "deleteRepository": "确定删除仓库“{0}”吗？",
   "repository": {
     "name": "名称",

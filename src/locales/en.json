@@ -45,6 +45,7 @@
   "delete": "Delete",
   "rename": "Rename",
   "loadSubtitleFailed": "Load subtitle failed: ",
+  "add": "Add",
   "edit": "Edit",
   "deleteRepository": "Are you sure to delete \"{0}\" ?",
   "repository": {

@@ -68,6 +68,7 @@
             @login="loginAction"
             @alert="showAlert"
             @upload="selectFiles"
+            @add="addRepository"
             @edit="editRepository"
             @delete="deleteRepository"
           />
@@ -381,37 +382,36 @@ export default class APP extends Vue {
       }
     }
   }
-
   @Watch('active')
   private onActiveChange(val: number): void {
     storage.setValue('active', val);
   }
 
   private async created(): Promise<void> {
-    // this.repositories.push({
-    //   name: 'kdjvideo',
-    //   value: 1613370986951,
-    //   url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/kdjvideo',
-    //   token: '',
-    //   secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
-    // }, {
-    //   name: 'test',
-    //   value: 1613370986952,
-    //   url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/test',
-    //   token: '',
-    //   secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
-    // }, {
-    //   name: 'videorepo',
-    //   value: 1613370986953,
-    //   url: 'ccr.ccs.tencentyun.com/videorepo/videorepo',
-    //   token: '',
-    //   secret: 'MTAwMDA2NjU1MDMyOmtkajNAdGVuY2VudA=='
-    // });
-    // this.active = this.repositories[2].value;
-    const { repositories } = await storage.getValue('repositories');
-    const { active } = await storage.getValue('active');
-    this.repositories.push(...repositories);
-    this.active = active;
+    this.repositories.push({
+      name: 'kdjvideo',
+      id: 1613370986951,
+      url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/kdjvideo',
+      token: '',
+      secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
+    }, {
+      name: 'test',
+      id: 1613370986952,
+      url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/test',
+      token: '',
+      secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
+    }, {
+      name: 'videorepo',
+      id: 1613370986953,
+      url: 'ccr.ccs.tencentyun.com/videorepo/videorepo',
+      token: '',
+      secret: 'MTAwMDA2NjU1MDMyOmtkajNAdGVuY2VudA=='
+    });
+    this.active = this.repositories[2].id;
+    // const { repositories } = await storage.getValue('repositories');
+    // const { active } = await storage.getValue('active');
+    // this.repositories.push(...repositories);
+    // this.active = active;
   }
   private loginAction(authenticateHeader?: string, fn?: Function): void {
     this.actionType = 'login';
@@ -419,7 +419,7 @@ export default class APP extends Vue {
     this.beforeLogin = { authenticateHeader, fn };
   }
   private async login(): Promise<void> {
-    const activeRepository = this.repositories.find(e => e.value === this.active);
+    const activeRepository = this.repositories.find(e => e.id === this.active);
     if (!activeRepository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
     activeRepository.secret = btoa(`${this.username}:${this.password}`);
     this.closeForm();
@@ -495,7 +495,7 @@ export default class APP extends Vue {
     this.closeForm();
   }
   private async upload(task: Task): Promise<void> {
-    const activeRepository = this.repositories.find(e => e.value === this.active);
+    const activeRepository = this.repositories.find(e => e.id === this.active);
     if (!activeRepository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
     try {
       task.hashWorker = new hashWorker();
@@ -561,16 +561,23 @@ export default class APP extends Vue {
     task.status = 'cancel';
     task.file = undefined;
   }
+  private async addRepository(newRepository: Repository): Promise<void> {
+    const { name, url, id, secret, token } = newRepository;
+    this.repositories.push({ name, url, id, secret, token });
+    await storage.setValue('repositories', this.repositories);
+    this.active = id;
+  }
   private async editRepository(newRepository: Repository): Promise<void> {
-    const { name, url, value, secret } = newRepository;
-    const repository = this.repositories.find(e => e.value === value) as Repository;
+    const { name, url, id, secret } = newRepository;
+    const repository = this.repositories.find(e => e.id === id) as Repository;
     repository.name = name;
     repository.url = url;
     if (secret) repository.secret = secret;
     await storage.setValue('repositories', this.repositories);
   }
-  private async deleteRepository(value: number): Promise<void> {
-    this.repositories.splice(this.repositories.findIndex(e => e.value === value), 1);
+  private async deleteRepository(id: number): Promise<void> {
+    this.repositories.splice(this.repositories.findIndex(e => e.id === id), 1);
+    if (this.active === id) this.active = this.repositories[0]?.id ?? 0;
     await storage.setValue('repositories', this.repositories);
   }
   private closeForm(cancelTask = false): void {

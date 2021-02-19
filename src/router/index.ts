@@ -13,7 +13,8 @@ const routes: Array<RouteConfig> = [
   {
     path: '/repositories',
     name: 'Repositories',
-    component: () => import('@/views/Repositories.vue')
+    component: () => import('@/views/Repositories.vue'),
+    props: (route): { initialType: string } => ({ initialType: route.query.type as string })
   }
 ];
 
