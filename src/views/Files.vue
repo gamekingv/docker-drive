@@ -194,7 +194,7 @@
     <v-dialog v-model="action" persistent scrollable :max-width="400">
       <v-card>
         <v-card-title>
-          <span class="headline">{{
+          <span>{{
             actionType === "rename"
               ? $t("newName")
               : actionType === "addFolder"
@@ -305,7 +305,6 @@ interface FolderList {
 })
 
 export default class Files extends Vue {
-
   @Ref() private readonly form!: VForm
   @Ref() private readonly video!: HTMLMediaElement
 
@@ -612,7 +611,6 @@ export default class Files extends Vue {
     this.form.resetValidation();
     this.selectedFolder = [];
     this.action = false;
-    this.actionType = '';
   }
   private videoEventHandler(e: Event): void {
     if (e.type === 'play') this.isVideoPlay = true;

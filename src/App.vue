@@ -68,6 +68,8 @@
             @login="loginAction"
             @alert="showAlert"
             @upload="selectFiles"
+            @edit="editRepository"
+            @delete="deleteRepository"
           />
         </v-fade-transition>
       </v-container>
@@ -165,9 +167,7 @@
     >
       <v-card>
         <v-card-title>
-          <span v-if="actionType === 'login'" class="headline">{{
-            $t("needLogin")
-          }}</span>
+          <span v-if="actionType === 'login'">{{ $t("needLogin") }}</span>
           <template v-if="actionType === 'selectFiles'">
             <v-btn color="blue darken-1" @click.stop="getFiles.click()">
               {{ $t("selectFiles") }}
@@ -309,6 +309,7 @@ import { Repository, FileItem, PathNode, VForm } from '@/utils/types';
 import { sizeFormat, progressPercentage, iconFormat } from '@/utils/filters';
 import network from '@/utils/network';
 import hashWorker from '@/utils/hash.worker';
+import storage from '@/utils/storage';
 import Files from '@/views/Files.vue';
 
 interface Task {
@@ -380,27 +381,37 @@ export default class APP extends Vue {
       }
     }
   }
-  private created(): void {
-    this.repositories.push({
-      name: 'kdjvideo',
-      value: 1613370986951,
-      url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/kdjvideo',
-      token: '',
-      secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
-    }, {
-      name: 'test',
-      value: 1613370986952,
-      url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/test',
-      token: '',
-      secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
-    }, {
-      name: 'videorepo',
-      value: 1613370986953,
-      url: 'ccr.ccs.tencentyun.com/videorepo/videorepo',
-      token: '',
-      secret: 'MTAwMDA2NjU1MDMyOmtkajNAdGVuY2VudA=='
-    });
-    this.active = this.repositories[2].value;
+
+  @Watch('active')
+  private onActiveChange(val: number): void {
+    storage.setValue('active', val);
+  }
+
+  private async created(): Promise<void> {
+    // this.repositories.push({
+    //   name: 'kdjvideo',
+    //   value: 1613370986951,
+    //   url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/kdjvideo',
+    //   token: '',
+    //   secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
+    // }, {
+    //   name: 'test',
+    //   value: 1613370986952,
+    //   url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/test',
+    //   token: '',
+    //   secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
+    // }, {
+    //   name: 'videorepo',
+    //   value: 1613370986953,
+    //   url: 'ccr.ccs.tencentyun.com/videorepo/videorepo',
+    //   token: '',
+    //   secret: 'MTAwMDA2NjU1MDMyOmtkajNAdGVuY2VudA=='
+    // });
+    // this.active = this.repositories[2].value;
+    const { repositories } = await storage.getValue('repositories');
+    const { active } = await storage.getValue('active');
+    this.repositories.push(...repositories);
+    this.active = active;
   }
   private loginAction(authenticateHeader?: string, fn?: Function): void {
     this.actionType = 'login';
@@ -550,6 +561,18 @@ export default class APP extends Vue {
     task.status = 'cancel';
     task.file = undefined;
   }
+  private async editRepository(newRepository: Repository): Promise<void> {
+    const { name, url, value, secret } = newRepository;
+    const repository = this.repositories.find(e => e.value === value) as Repository;
+    repository.name = name;
+    repository.url = url;
+    if (secret) repository.secret = secret;
+    await storage.setValue('repositories', this.repositories);
+  }
+  private async deleteRepository(value: number): Promise<void> {
+    this.repositories.splice(this.repositories.findIndex(e => e.value === value), 1);
+    await storage.setValue('repositories', this.repositories);
+  }
   private closeForm(cancelTask = false): void {
     this.form.reset();
     this.form.resetValidation();
@@ -558,7 +581,6 @@ export default class APP extends Vue {
       this.uploadFiles = [];
       this.currentPath = [];
     }
-    this.actionType = '';
     if (cancelTask) this.taskList.forEach(task => {
       task.status = 'cancel';
       task.file = undefined;

@@ -44,5 +44,11 @@
   "move": "Move",
   "delete": "Delete",
   "rename": "Rename",
-  "loadSubtitleFailed": "Load subtitle failed: "
+  "loadSubtitleFailed": "Load subtitle failed: ",
+  "edit": "Edit",
+  "deleteRepository": "Are you sure to delete \"{0}\" ?",
+  "repository": {
+    "name": "Name",
+    "url": "URL"
+  }
 }

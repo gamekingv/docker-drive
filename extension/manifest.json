@@ -21,6 +21,7 @@
   },
   "permissions": [
     "<all_urls>",
+    "storage",
     "downloads",
     "webRequest",
     "webRequestBlocking"
