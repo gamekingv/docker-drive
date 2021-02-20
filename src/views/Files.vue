@@ -612,7 +612,7 @@ export default class Files extends Vue {
                   const { data: assString }: { data: string } = await network.downloadFile(subtitle.digest as string, this.activeRepository);
                   const ass = ASSparser(assString);
                   const assToVtt = { label, cues: [] as VTTCue[] };
-                  ass.events.dialogue.forEach(dialogue => dialogue.Text.combined !== '' && assToVtt.cues.push(new VTTCue(dialogue.Start, dialogue.End, dialogue.Text.combined)));
+                  ass.events.dialogue.forEach(dialogue => dialogue.Text.combined !== '' && assToVtt.cues.push(new VTTCue(dialogue.Start, dialogue.End, dialogue.Text.combined.replace('\\N', '\r\n'))));
                   assToVttArray.push(assToVtt);
                 }
               }
