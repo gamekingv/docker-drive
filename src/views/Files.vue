@@ -408,9 +408,9 @@ export default class Files extends Vue {
     if (!silent) this.loading();
     try {
       const { config, layers } = await network.getManifests(this.activeRepository);
-      this.selectedFiles = [];
       this.layers = layers;
       this.root.files = network.parseConfig(config);
+      if (!silent) this.selectedFiles = [];
       if (!holdPath) {
         this.currentPath.splice(1);
         this.currentPath[0].disabled = true;
