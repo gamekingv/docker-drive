@@ -1,13 +1,13 @@
 <template>
-  <div>
-    <v-list class="grey darken-3" two-line>
+  <div :style="repositories.length === 0 ? 'height: 100%' : ''">
+    <v-list v-if="repositories.length > 0" class="grey darken-3" two-line>
       <template v-for="(repository, index) in repositories">
         <v-list-item :key="repository.id">
           <v-list-item-avatar>
             <v-btn
               icon
               class="transparent"
-              @click="activeRepositoryID = repository.id"
+              @click.stop="activeRepositoryID = repository.id"
             >
               <v-icon
                 class="transparent"
@@ -27,12 +27,12 @@
             <v-list-item-subtitle>{{ repository.url }}</v-list-item-subtitle>
           </v-list-item-content>
           <v-list-item-action>
-            <v-btn icon @click="editAction(repository)">
+            <v-btn icon @click.stop="editAction(repository)">
               <v-icon>mdi-pencil</v-icon>
             </v-btn>
           </v-list-item-action>
           <v-list-item-action>
-            <v-btn icon @click="deleteAction(repository.id)">
+            <v-btn icon @click.stop="deleteAction(repository.id)">
               <v-icon>mdi-trash-can-outline</v-icon>
             </v-btn>
           </v-list-item-action>
@@ -43,7 +43,28 @@
           inset
         ></v-divider>
       </template>
+      <v-list-item class="d-flex justify-center">
+        <v-btn icon large @click.stop="addAction()">
+          <v-icon>mdi-plus</v-icon>
+        </v-btn>
+      </v-list-item>
     </v-list>
+    <div v-else class="d-flex justify-center align-center" style="height: 100%">
+      <v-card
+        color="grey darken-3"
+        class="d-flex justify-center align-center"
+        outlined
+        style="border-style: dashed; border-color: #616161 !important"
+        width="80%"
+        height="80%"
+      >
+        <v-card-text class="text-center">
+          <v-btn color="primary" @click.stop="addAction()"
+            ><v-icon left>mdi-plus</v-icon>添加仓库</v-btn
+          >
+        </v-card-text>
+      </v-card>
+    </div>
     <v-dialog v-model="action" persistent scrollable :max-width="400">
       <v-card>
         <v-card-title>

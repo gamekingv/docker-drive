@@ -63,6 +63,7 @@
             ref="child"
             :repositories="repositories"
             :active.sync="active"
+            :committing.sync="isCommitting"
             @loading="loading = true"
             @loaded="loading = false"
             @login="loginAction"
@@ -145,7 +146,7 @@
                 :disabled="
                   task.status !== 'uploading' && task.status !== 'waiting'
                 "
-                @click="cancelTask(task)"
+                @click.stop="cancelTask(task)"
               >
                 <v-icon small>mdi-close</v-icon>
               </v-btn>
@@ -223,7 +224,11 @@
                         }}</v-list-item-subtitle>
                       </v-list-item-content>
                       <v-list-item-action>
-                        <v-btn icon small @click="uploadFiles.splice(index, 1)">
+                        <v-btn
+                          icon
+                          small
+                          @click.stop="uploadFiles.splice(index, 1)"
+                        >
                           <v-icon small>mdi-close</v-icon>
                         </v-btn>
                       </v-list-item-action>
@@ -290,7 +295,7 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-    <v-overlay :value="loading">
+    <v-overlay :z-index="201" :value="loading">
       <v-progress-circular
         color="primary"
         indeterminate
@@ -349,6 +354,7 @@ export default class APP extends Vue {
   @Ref() private readonly getFolder!: HTMLInputElement
 
   private loading = false
+  private isCommitting = false;
   private drawer = true
   private taskListPanel = false
   private taskList: Task[] = []
@@ -388,30 +394,32 @@ export default class APP extends Vue {
   }
 
   private async created(): Promise<void> {
-    this.repositories.push({
-      name: 'kdjvideo',
-      id: 1613370986951,
-      url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/kdjvideo',
-      token: '',
-      secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
-    }, {
-      name: 'test',
-      id: 1613370986952,
-      url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/test',
-      token: '',
-      secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
-    }, {
-      name: 'videorepo',
-      id: 1613370986953,
-      url: 'ccr.ccs.tencentyun.com/videorepo/videorepo',
-      token: '',
-      secret: 'MTAwMDA2NjU1MDMyOmtkajNAdGVuY2VudA=='
-    });
-    this.active = this.repositories[2].id;
-    // const { repositories } = await storage.getValue('repositories');
-    // const { active } = await storage.getValue('active');
-    // this.repositories.push(...repositories);
-    // this.active = active;
+    // this.repositories.push({
+    //   name: 'kdjvideo',
+    //   id: 1613370986951,
+    //   url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/kdjvideo',
+    //   token: '',
+    //   secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
+    // }, {
+    //   name: 'test',
+    //   id: 1613370986952,
+    //   url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/test',
+    //   token: '',
+    //   secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
+    // }, {
+    //   name: 'videorepo',
+    //   id: 1613370986953,
+    //   url: 'ccr.ccs.tencentyun.com/videorepo/videorepo',
+    //   token: '',
+    //   secret: 'MTAwMDA2NjU1MDMyOmtkajNAdGVuY2VudA=='
+    // });
+    // this.active = this.repositories[2].id;
+    const { repositories } = await storage.getValue('repositories');
+    const { active } = await storage.getValue('active');
+    if (repositories) {
+      this.repositories.push(...repositories);
+      this.active = active;
+    }
   }
   private loginAction(authenticateHeader?: string, fn?: Function): void {
     this.actionType = 'login';
@@ -506,6 +514,8 @@ export default class APP extends Vue {
         task.lastUpdate.size = task.progress.uploadedSize;
       }, 1000);
       const { digest, size } = await network.uploadFile(task.file as File, activeRepository, this.onUploadProgress.bind(this, task.id), task.cancelToken, task.hashWorker as Worker);
+      while (this.isCommitting) await new Promise(res => setTimeout(() => res(''), 1000));
+      this.isCommitting = true;
       task.status = 'hashing';
       task.file = undefined;
       const { config, layers } = await network.getManifests(activeRepository);
@@ -527,7 +537,7 @@ export default class APP extends Vue {
       path.push({ name: task.name, digest, size, type: 'file', uploadTime: Date.now(), id: Symbol() });
       layers.push({ mediaType: 'application/vnd.docker.image.rootfs.diff.tar.gzip', digest, size });
       await network.commit({ files, layers }, activeRepository);
-      if (this.child.getConfig) await this.child.getConfig(true);
+      if (this.child.getConfig) await this.child.getConfig(true, true);
       task.status = 'complete';
     }
     catch (error) {
@@ -541,6 +551,9 @@ export default class APP extends Vue {
       clearInterval(task.timer as number);
       task.hashWorker?.terminate();
     }
+    finally {
+      this.isCommitting = false;
+    }
   }
   private onUploadProgress(id: symbol, e: ProgressEvent): void {
     const { loaded } = e;
@@ -548,7 +561,7 @@ export default class APP extends Vue {
     if (!task) return;
     task.progress.uploadedSize = loaded;
     task.remainingTime = (task.progress.totalSize - loaded) / task.speed;
-    if (task.remainingTime === 0) {
+    if (task.progress.totalSize - loaded === 0) {
       task.status = 'hashing';
       task.file = undefined;
       clearInterval(task.timer as number);
