@@ -118,8 +118,12 @@
       show-select
     >
       <template v-slot:[`item.name`]="{ item }">
-        <v-icon v-if="item.type === 'folder'">mdi-folder</v-icon>
-        <v-icon v-else>{{ item.name | iconFormat }}</v-icon>
+        <v-icon v-if="item.type === 'folder'" color="amber lighten-2"
+          >mdi-folder</v-icon
+        >
+        <v-icon v-else :color="item.name | iconColor">{{
+          item.name | iconFormat
+        }}</v-icon>
         <span class="clickable ml-1" @click.stop="itemClick(item)">
           {{ item.name }}
         </span>
@@ -234,8 +238,9 @@
                     :rules="[
                       (v) => !!v || $t('require'),
                       (v) =>
-                        !displayList.some((e) => e.name === v) ||
-                        $t('duplicate'),
+                        !displayList.some(
+                          (e) => renameItem.id !== e.id && e.name === v
+                        ) || $t('duplicate'),
                     ]"
                     required
                   ></v-text-field>
@@ -267,7 +272,7 @@
                     @update:active="(e) => (selectedFolder = e)"
                   >
                     <template v-slot:prepend="{ open }">
-                      <v-icon>
+                      <v-icon color="amber lighten-2">
                         {{ open ? "mdi-folder-open" : "mdi-folder" }}
                       </v-icon>
                     </template>
@@ -324,7 +329,7 @@
 <script lang="ts">
 import { Vue, Component, Prop, PropSync, Emit, Ref, Watch } from 'vue-property-decorator';
 import { Repository, FileItem, Manifest, PathNode, VForm } from '@/utils/types';
-import { sizeFormat, formatTime, iconFormat } from '@/utils/filters';
+import { sizeFormat, formatTime, iconFormat, iconColor } from '@/utils/filters';
 import network from '@/utils/network';
 import { parse as ASSparser } from 'ass-compiler';
 
@@ -332,6 +337,7 @@ interface FolderList {
   name: string;
   files: FolderList[];
   id: symbol;
+  disabled: boolean;
 }
 
 
@@ -339,7 +345,8 @@ interface FolderList {
   filters: {
     sizeFormat,
     formatTime,
-    iconFormat
+    iconFormat,
+    iconColor
   }
 })
 
@@ -378,7 +385,7 @@ export default class Files extends Vue {
   private layers: Manifest[] = []
   private uploadFiles: File[] = []
   private selectedFiles: FileItem[] = []
-  private folderList: FolderList = { name: `${this.$t('root')}`, files: [], id: Symbol() }
+  private folderList: FolderList = { name: `${this.$t('root')}`, files: [], id: Symbol(), disabled: false }
   private moveItems: FileItem[] = []
   private selectedFolder: symbol[] = []
   private readonly fileListHeader = [
@@ -526,7 +533,7 @@ export default class Files extends Vue {
     const filterFolder = (filterFiles: FolderList, rootFiles: FileItem): void => {
       for (const file of rootFiles.files as FileItem[]) {
         if (file.type === 'folder') {
-          const filterFile = { name: file.name, files: [], id: Symbol() };
+          const filterFile = { name: file.name, files: [], id: Symbol(), disabled: this.selectedFiles.some(e => e.id === file.id) };
           if (filterFiles.files) filterFiles.files.push(filterFile);
           filterFolder(filterFile, file);
         }

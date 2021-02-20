@@ -25,6 +25,18 @@ function progressPercentage({ uploadedSize, totalSize }: { uploadedSize: number;
 
 function iconFormat(name: string): string {
   if (/.*\.(mp4|mkv|avi)$/.test(name)) return 'mdi-youtube';
+  else if (/.*\.(ass|srt|ssa|vtt)$/.test(name)) return 'mdi-closed-caption';
+  else return 'mdi-file';
+}
+
+function iconColor(name: string): string {
+  if (/.*\.(mp4)$/.test(name)) return 'purple lighten-2';
+  else if (/.*\.(mkv)$/.test(name)) return 'teal lighten-2';
+  else if (/.*\.(avi)$/.test(name)) return 'red lighten-2';
+  else if (/.*\.(ass)$/.test(name)) return 'red lighten-2';
+  else if (/.*\.(srt)$/.test(name)) return 'teal lighten-2';
+  else if (/.*\.(ssa)$/.test(name)) return 'pink lighten-2';
+  else if (/.*\.(vtt)$/.test(name)) return 'purple lighten-2';
   else return 'mdi-file';
 }
 
@@ -32,5 +44,6 @@ export {
   sizeFormat,
   formatTime,
   progressPercentage,
-  iconFormat
+  iconFormat,
+  iconColor
 };

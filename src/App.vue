@@ -90,7 +90,12 @@
         <template v-for="(task, index) in taskList">
           <v-list-item :key="task.id" class="my-2">
             <v-list-item-content>
-              <v-list-item-title>{{ task.name }}</v-list-item-title>
+              <v-list-item-title
+                ><v-icon :color="task.name | iconColor">{{
+                  task.name | iconFormat
+                }}</v-icon
+                >{{ task.name }}</v-list-item-title
+              >
               <v-list-item-subtitle>
                 <v-progress-linear
                   :color="
@@ -205,40 +210,51 @@
             <v-row v-if="actionType === 'selectFiles'">
               <v-col cols="12">
                 <v-list v-if="uploadFiles.length > 0">
-                  <template v-for="(file, index) in uploadFiles">
-                    <v-list-item :key="file.name + index">
-                      <v-list-item-avatar>
-                        <v-icon>{{ file.name | iconFormat }}</v-icon>
-                      </v-list-item-avatar>
-                      <v-list-item-content>
-                        <v-list-item-title>{{ file.name }}</v-list-item-title>
-                        <v-list-item-subtitle class="text--primary">{{
-                          file.size | sizeFormat
-                        }}</v-list-item-subtitle>
-                        <v-list-item-subtitle>{{
-                          `${currentPath.map((path) => path.name).join("/")}/${
-                            file.webkitRelativePath
-                              ? file.webkitRelativePath
-                              : file.name
-                          }`
-                        }}</v-list-item-subtitle>
-                      </v-list-item-content>
-                      <v-list-item-action>
-                        <v-btn
-                          icon
-                          small
-                          @click.stop="uploadFiles.splice(index, 1)"
-                        >
-                          <v-icon small>mdi-close</v-icon>
-                        </v-btn>
-                      </v-list-item-action>
-                    </v-list-item>
-                    <v-divider
-                      v-if="index < uploadFiles.length - 1"
-                      :key="index"
-                      inset
-                    ></v-divider>
-                  </template>
+                  <v-slide-y-transition
+                    group
+                    mode="out"
+                    hide-on-leave
+                    leave-absolute
+                  >
+                    <template v-for="(file, index) in uploadFiles">
+                      <v-list-item :key="file.name + index">
+                        <v-list-item-avatar>
+                          <v-icon :color="file.name | iconColor">{{
+                            file.name | iconFormat
+                          }}</v-icon>
+                        </v-list-item-avatar>
+                        <v-list-item-content>
+                          <v-list-item-title>{{ file.name }}</v-list-item-title>
+                          <v-list-item-subtitle class="text--primary">{{
+                            file.size | sizeFormat
+                          }}</v-list-item-subtitle>
+                          <v-list-item-subtitle>{{
+                            `${currentPath
+                              .map((path) => path.name)
+                              .join("/")}/${
+                              file.webkitRelativePath
+                                ? file.webkitRelativePath
+                                : file.name
+                            }`
+                          }}</v-list-item-subtitle>
+                        </v-list-item-content>
+                        <v-list-item-action>
+                          <v-btn
+                            icon
+                            small
+                            @click.stop="uploadFiles.splice(index, 1)"
+                          >
+                            <v-icon small>mdi-close</v-icon>
+                          </v-btn>
+                        </v-list-item-action>
+                      </v-list-item>
+                      <v-divider
+                        v-if="index < uploadFiles.length - 1"
+                        :key="index"
+                        inset
+                      ></v-divider>
+                    </template>
+                  </v-slide-y-transition>
                 </v-list>
                 <v-card
                   v-else
@@ -312,7 +328,7 @@
 import { Vue, Component, Ref, Watch } from 'vue-property-decorator';
 import axios, { CancelTokenSource } from 'axios';
 import { Repository, FileItem, PathNode, VForm } from '@/utils/types';
-import { sizeFormat, progressPercentage, iconFormat } from '@/utils/filters';
+import { sizeFormat, progressPercentage, iconFormat, iconColor } from '@/utils/filters';
 import network from '@/utils/network';
 import hashWorker from '@/utils/hash.worker';
 import storage from '@/utils/storage';
@@ -343,7 +359,8 @@ interface Task {
   filters: {
     sizeFormat,
     progressPercentage,
-    iconFormat
+    iconFormat,
+    iconColor
   }
 })
 
@@ -394,32 +411,32 @@ export default class APP extends Vue {
   }
 
   private async created(): Promise<void> {
-    // this.repositories.push({
-    //   name: 'kdjvideo',
-    //   id: 1613370986951,
-    //   url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/kdjvideo',
-    //   token: '',
-    //   secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
-    // }, {
-    //   name: 'test',
-    //   id: 1613370986952,
-    //   url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/test',
-    //   token: '',
-    //   secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
-    // }, {
-    //   name: 'videorepo',
-    //   id: 1613370986953,
-    //   url: 'ccr.ccs.tencentyun.com/videorepo/videorepo',
-    //   token: '',
-    //   secret: 'MTAwMDA2NjU1MDMyOmtkajNAdGVuY2VudA=='
-    // });
-    // this.active = this.repositories[2].id;
-    const { repositories } = await storage.getValue('repositories');
-    const { active } = await storage.getValue('active');
-    if (repositories) {
-      this.repositories.push(...repositories);
-      this.active = active;
-    }
+    this.repositories.push({
+      name: 'kdjvideo',
+      id: 1613370986951,
+      url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/kdjvideo',
+      token: '',
+      secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
+    }, {
+      name: 'test',
+      id: 1613370986952,
+      url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/test',
+      token: '',
+      secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
+    }, {
+      name: 'videorepo',
+      id: 1613370986953,
+      url: 'ccr.ccs.tencentyun.com/videorepo/videorepo',
+      token: '',
+      secret: 'MTAwMDA2NjU1MDMyOmtkajNAdGVuY2VudA=='
+    });
+    this.active = this.repositories[2].id;
+    // const { repositories } = await storage.getValue('repositories');
+    // const { active } = await storage.getValue('active');
+    // if (repositories) {
+    //   this.repositories.push(...repositories);
+    //   this.active = active;
+    // }
   }
   private loginAction(authenticateHeader?: string, fn?: Function): void {
     this.actionType = 'login';
