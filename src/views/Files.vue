@@ -691,12 +691,6 @@ export default class Files extends Vue {
   -webkit-user-select: none;
   -moz-user-select: none;
 }
-.button-active:before {
-  background-color: transparent !important;
-}
-.button-active-disabled {
-  color: hsla(0, 0%, 100%, 0.5);
-}
 </style>
 
 <style lang="scss">
