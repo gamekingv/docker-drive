@@ -91,7 +91,7 @@
           <v-list-item :key="task.id" class="my-2">
             <v-list-item-content>
               <v-list-item-title
-                ><v-icon :color="task.name | iconColor">{{
+                ><v-icon left :color="task.name | iconColor" size="20">{{
                   task.name | iconFormat
                 }}</v-icon
                 >{{ task.name }}</v-list-item-title
