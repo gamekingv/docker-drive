@@ -584,7 +584,7 @@ export default class Files extends Vue {
               this.showVideo = true;
             }
             else if (/\.(jpg|png|gif|bmp|webp|ico)$/.test(item.name)) {
-              const images = this.currentList.filter(e => /\.(jpg|pnv)$/.test(e.name));
+              const images = this.currentList.filter(e => /\.(jpg|png|gif|bmp|webp|ico)$/.test(e.name));
               this.images.splice(0);
               this.images.push(...images.map(e => ({ name: e.name, digest: e.digest as string })));
               this.imageIndex = images.findIndex(e => e.name === item.name);
