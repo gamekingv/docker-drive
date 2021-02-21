@@ -3,8 +3,7 @@ html {
 }
 
 html,
-body,
-#app,
+body,#app,
 #main,
 #main-container {
   height: 100%;

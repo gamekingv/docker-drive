@@ -116,6 +116,7 @@
       :items-per-page="10"
       item-key="name"
       show-select
+      @current-items="currentList = $event"
     >
       <template v-slot:[`item.name`]="{ item }">
         <v-icon v-if="item.type === 'folder'" color="amber lighten-2"
@@ -169,52 +170,22 @@
         </v-menu>
       </template>
     </v-data-table>
-    <v-dialog v-model="showVideo" fullscreen content-class="video-container">
-      <v-hover v-slot="{ hover }">
-        <div class="video">
-          <video
-            v-if="showVideo"
-            ref="video"
-            class="video"
-            controls
-            @pause="videoEventHandler"
-            @play="videoEventHandler"
-          >
-            <source :src="videoURL" />
-            <track
-              v-for="(subtitle, index) in subtitles"
-              :key="index"
-              :label="subtitle.label"
-              kind="subtitles"
-              :src="subtitle.url"
-              :default="index === 0"
-            />
-          </video>
-          <v-fade-transition>
-            <v-overlay
-              v-if="!isVideoPlay || hover"
-              class="video-overlay"
-              opacity="1"
-              color="transparent"
-            >
-              <v-toolbar min-width="100vw" absolute color="transparent" flat>
-                <v-toolbar-title>{{
-                  showVideo ? videoTitle : ""
-                }}</v-toolbar-title>
-                <v-spacer></v-spacer>
-                <v-btn
-                  style="pointer-events: auto"
-                  icon
-                  @click.stop="showVideo = false"
-                >
-                  <v-icon large>mdi-close</v-icon>
-                </v-btn>
-              </v-toolbar>
-            </v-overlay>
-          </v-fade-transition>
-        </div>
-      </v-hover>
-    </v-dialog>
+    <video-player
+      v-if="showVideo"
+      :source="source"
+      :tracks="tracks"
+      :show.sync="showVideo"
+      @alert="alert"
+    />
+    <image-viewer
+      v-if="showImage"
+      :images="images"
+      :image-index="imageIndex"
+      :show.sync="showImage"
+      :active-repository="activeRepository"
+      @alert="alert"
+      @login="login"
+    />
     <v-dialog v-model="action" persistent scrollable :max-width="400">
       <v-card>
         <v-card-title>
@@ -308,7 +279,7 @@
       </v-card>
     </v-dialog>
   </div>
-  <div v-else class="d-flex justify-center align-center" style="height: 100%">
+  <v-row v-else class="fill-height" align="center" justify="center">
     <v-card
       color="grey darken-3"
       class="d-flex justify-center align-center"
@@ -323,15 +294,16 @@
         >
       </v-card-text>
     </v-card>
-  </div>
+  </v-row>
 </template>
 
 <script lang="ts">
 import { Vue, Component, Prop, PropSync, Emit, Ref, Watch } from 'vue-property-decorator';
+import VideoPlayer from '@/components/VideoPlayer.vue';
+import ImageViewer from '@/components/ImageViewer.vue';
 import { Repository, FileItem, Manifest, PathNode, VForm } from '@/utils/types';
 import { sizeFormat, formatTime, iconFormat, iconColor } from '@/utils/filters';
 import network from '@/utils/network';
-import { parse as ASSparser } from 'ass-compiler';
 
 interface FolderList {
   name: string;
@@ -342,6 +314,10 @@ interface FolderList {
 
 
 @Component({
+  components: {
+    VideoPlayer,
+    ImageViewer
+  },
   filters: {
     sizeFormat,
     formatTime,
@@ -359,7 +335,7 @@ export default class Files extends Vue {
   @Emit()
   private loaded(): void { return; }
   @Emit()
-  private login(authenticateHeader?: string, fn?: Function, arg?: string[]): void { ({ authenticateHeader, fn, arg }); }
+  private login(authenticateHeader?: string, fn?: Function): void { ({ authenticateHeader, fn }); }
   @Emit()
   private alert(text: string, type?: string): void { ({ text, type }); }
   @Emit()
@@ -370,10 +346,11 @@ export default class Files extends Vue {
   @PropSync('committing') private isCommitting!: boolean
 
   private showVideo = false
-  private videoURL = ''
-  private videoTitle = ''
-  private isVideoPlay = false
-  private subtitles: { label: string; url: string }[] = []
+  private showImage = false
+  private source = { name: '', url: '' }
+  private tracks: { name: string; url: string }[] = []
+  private images: { name: string; digest: string }[] = []
+  private imageIndex = 0
   private result = ''
   private action = false
   private actionType = ''
@@ -388,6 +365,7 @@ export default class Files extends Vue {
   private folderList: FolderList = { name: `${this.$t('root')}`, files: [], id: Symbol(), disabled: false }
   private moveItems: FileItem[] = []
   private selectedFolder: symbol[] = []
+  private currentList: FileItem[] = []
   private readonly fileListHeader = [
     { text: this.$t('filename'), align: 'start', value: 'name' },
     { text: '', value: 'actions', sortable: false },
@@ -595,44 +573,23 @@ export default class Files extends Vue {
       try {
         const downloadURL = await network.getDownloadURL(item.digest, this.activeRepository);
         if (downloadURL) {
-          if (item.name.match(/\.(mp4|mkv|avi)$/) && !forceDownload) {
-            this.videoURL = downloadURL;
-            this.videoTitle = item.name;
-            const subtitles = this.displayList.filter(e => e.name.includes(item.name.substr(0, item.name.length - 3)) && /.*\.(vtt|srt|ass|ssa)$/.test(e.name));
-            this.subtitles = [];
-            const assToVttArray: { label: string; cues: VTTCue[] }[] = [];
-            for (const subtitle of subtitles) {
-              const label = subtitle.name.replace(item.name.substr(0, item.name.length - 3), '');
-              let url = '';
-              try {
-                if (/\.vtt$/.test(subtitle.name)) {
-                  url = await network.getDownloadURL(subtitle.digest as string, this.activeRepository);
-                  this.subtitles.push({ label, url });
-                }
-                else if (/\.srt$/.test(subtitle.name)) {
-                  const { data: srt }: { data: string } = await network.downloadFile(subtitle.digest as string, this.activeRepository);
-                  const vtt = 'WEBVTT\r\n\r\n' + srt.replace(/(\d{2}:\d{2}:\d{2}),(\d{3} --> \d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2.$3');
-                  url = URL.createObjectURL(new Blob([vtt], { type: 'text/vtt' }));
-                  this.subtitles.push({ label, url });
-                }
-                else if (/\.(ass|ssa)$/.test(subtitle.name)) {
-                  const { data: assString }: { data: string } = await network.downloadFile(subtitle.digest as string, this.activeRepository);
-                  const ass = ASSparser(assString);
-                  const assToVtt = { label, cues: [] as VTTCue[] };
-                  ass.events.dialogue.forEach(dialogue => dialogue.Text.combined !== '' && assToVtt.cues.push(new VTTCue(dialogue.Start, dialogue.End, dialogue.Text.combined.replace('\\N', '\r\n'))));
-                  assToVttArray.push(assToVtt);
-                }
+          if (!forceDownload) {
+            if (/\.(mp4|mkv|avi)$/.test(item.name)) {
+              Object.assign(this.source, { name: item.name, url: downloadURL });
+              const subtitles = this.displayList.filter(e => e.name.includes(item.name.substr(0, item.name.length - 3)) && /.*\.(vtt|srt|ass|ssa)$/.test(e.name));
+              this.tracks.splice(0);
+              for (const subtitle of subtitles) {
+                this.tracks.push({ name: subtitle.name, url: await network.getDownloadURL(subtitle.digest as string, this.activeRepository) });
               }
-              catch (error) {
-                this.alert(`${this.$t('loadSubtitleFailed')}${subtitle.name}`, 'warning');
-              }
+              this.showVideo = true;
             }
-            this.showVideo = true;
-            this.$nextTick(() => assToVttArray.forEach((e, i) => {
-              const track = this.video.addTextTrack('subtitles', e.label);
-              if (this.subtitles.length === 0 && i === 0) track.mode = 'showing';
-              e.cues.forEach(cue => track.addCue(cue));
-            }));
+            else if (/\.(jpg|png|gif|bmp|webp|ico)$/.test(item.name)) {
+              const images = this.currentList.filter(e => /\.(jpg|pnv)$/.test(e.name));
+              this.images.splice(0);
+              this.images.push(...images.map(e => ({ name: e.name, digest: e.digest as string })));
+              this.imageIndex = images.findIndex(e => e.name === item.name);
+              this.showImage = true;
+            }
           }
           else {
             chrome.downloads.download({ url: downloadURL, filename: item.name });
@@ -667,31 +624,12 @@ export default class Files extends Vue {
     this.selectedFolder = [];
     this.action = false;
   }
-  private videoEventHandler(e: Event): void {
-    if (e.type === 'play') this.isVideoPlay = true;
-    else this.isVideoPlay = false;
-  }
 }
 </script>
 
 <style scope lang="scss">
 .clickable {
   cursor: pointer;
-}
-.video {
-  width: 100%;
-  max-height: 100%;
-  overflow: hidden;
-  display: flex;
-}
-.video > video::cue {
-  background-color: rgba(0, 0, 0, 0.4);
-}
-.video-overlay {
-  background-image: linear-gradient(black, transparent 25%);
-  pointer-events: none;
-  align-items: unset;
-  justify-content: unset;
 }
 .folder-tree {
   user-select: none;

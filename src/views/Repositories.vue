@@ -1,5 +1,5 @@
 <template>
-  <div :style="repositories.length === 0 ? 'height: 100%' : ''">
+  <div class="fill-height">
     <v-list v-if="repositories.length > 0" class="grey darken-3" two-line>
       <template v-for="(repository, index) in repositories">
         <v-list-item :key="repository.id">
@@ -49,7 +49,7 @@
         </v-btn>
       </v-list-item>
     </v-list>
-    <div v-else class="d-flex justify-center align-center" style="height: 100%">
+    <v-row v-else class="fill-height" align="center" justify="center">
       <v-card
         color="grey darken-3"
         class="d-flex justify-center align-center"
@@ -64,7 +64,7 @@
           >
         </v-card-text>
       </v-card>
-    </div>
+    </v-row>
     <v-dialog v-model="action" persistent scrollable :max-width="400">
       <v-card>
         <v-card-title>

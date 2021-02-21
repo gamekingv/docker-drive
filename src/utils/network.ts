@@ -126,11 +126,12 @@ export default {
       cancelToken: request.token,
       timeout: 10000
     });
-    const getHeader = (e: chrome.webRequest.WebResponseHeadersDetails): void => {
+    const getHeader = (e: chrome.webRequest.WebResponseHeadersDetails): void | chrome.webRequest.WebResponseHeadersDetails => {
       if (e.statusCode === 307) {
         downloadURL = e.responseHeaders?.find(e => e.name === 'Location')?.value as string;
         request.cancel('ok');
       }
+      else if (e.statusCode === 401) return e;
       else throw 'unknownError';
     };
     try {
@@ -157,7 +158,7 @@ export default {
         'repository': [server, namespace, image].join('/')
       },
       cancelToken: request.token,
-      timeout: 30000
+      timeout: 0
     });
     return await this.requestSender(url, instance, repository);
   },
