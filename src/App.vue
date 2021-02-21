@@ -468,13 +468,13 @@ export default class APP extends Vue {
     path.slice(1).forEach(pathNode => {
       let nextPointer = filePointer.files?.find(e => e.name === pathNode.name);
       if (!nextPointer) {
-        nextPointer = { name: pathNode.name, type: 'folder', id: Symbol(), files: [] };
+        nextPointer = { name: pathNode.name, type: 'folder', id: Symbol(), files: [], uploadTime: Date.now() };
         filePointer.files?.push(nextPointer);
       }
       else if (nextPointer.type !== 'folder') {
         let i = 1;
         while (filePointer.files?.some(e => e.name === `${pathNode.name} (${i})`)) i++;
-        nextPointer = { name: `${pathNode.name} (${i})`, type: 'folder', id: Symbol(), files: [] };
+        nextPointer = { name: `${pathNode.name} (${i})`, type: 'folder', id: Symbol(), files: [], uploadTime: Date.now() };
         filePointer.files?.push(nextPointer);
       }
       filePointer = nextPointer;
