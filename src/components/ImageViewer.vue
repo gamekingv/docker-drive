@@ -85,7 +85,9 @@ export default class ImageViewer extends Vue {
   }
   private async onImageChange(i: number): Promise<void> {
     try {
-      this.$set(this.imageURLs, i, await network.getDownloadURL(this.images[i].digest, this.activeRepository));
+      if (!this.imageURLs[i]) this.$set(this.imageURLs, i, await network.getDownloadURL(this.images[i].digest, this.activeRepository));
+      if (!this.imageURLs[i + 1] && this.images[i + 1]) this.$set(this.imageURLs, i + 1, await network.getDownloadURL(this.images[i + 1].digest, this.activeRepository));
+      if (!this.imageURLs[i - 1] && this.images[i - 1]) this.$set(this.imageURLs, i - 1, await network.getDownloadURL(this.images[i - 1].digest, this.activeRepository));
     }
     catch (error) {
       if (error.message === 'need login') this.login(error.authenticateHeader, this.onImageChange.bind(i));

@@ -42,6 +42,7 @@
   "download": "Download",
   "more": "More",
   "move": "Move",
+  "deleteFile": "Are you sure to delete the selected files?",
   "delete": "Delete",
   "rename": "Rename",
   "loadSubtitleFailed": "Load subtitle failed: ",

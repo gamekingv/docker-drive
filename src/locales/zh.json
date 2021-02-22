@@ -42,6 +42,7 @@
   "download": "下载",
   "more": "更多",
   "move": "移动",
+  "deleteFile": "确定删除选中文件吗？",
   "delete": "删除",
   "rename": "重命名",
   "loadSubtitleFailed": "加载字幕失败：",

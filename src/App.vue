@@ -318,8 +318,18 @@
         size="64"
       ></v-progress-circular>
     </v-overlay>
-    <v-snackbar v-model="alert" :color="alertColor" :timeout="5000" top right>
-      {{ alertText }}
+    <v-snackbar
+      v-for="(alert, index) in alerts"
+      :key="index"
+      v-model="alert.show"
+      :color="alert.type"
+      :timeout="5000"
+      top
+      right
+      transition="slide-x-reverse-transition"
+      :style="`margin-top: ${index * 64}px`"
+    >
+      {{ alert.text }}
     </v-snackbar>
   </v-app>
 </template>
@@ -383,6 +393,7 @@ export default class APP extends Vue {
   private username = ''
   private password = ''
   private alert = false
+  private alerts: { show: boolean; text: string; type: string }[] = []
   private alertText = ''
   private alertColor = ''
   private uploadFiles: File[] = []
@@ -411,32 +422,32 @@ export default class APP extends Vue {
   }
 
   private async created(): Promise<void> {
-    // this.repositories.push({
-    //   name: 'kdjvideo',
-    //   id: 1613370986951,
-    //   url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/kdjvideo',
-    //   token: '',
-    //   secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
-    // }, {
-    //   name: 'test',
-    //   id: 1613370986952,
-    //   url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/test',
-    //   token: '',
-    //   secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
-    // }, {
-    //   name: 'videorepo',
-    //   id: 1613370986953,
-    //   url: 'ccr.ccs.tencentyun.com/videorepo/videorepo',
-    //   token: '',
-    //   secret: 'MTAwMDA2NjU1MDMyOmtkajNAdGVuY2VudA=='
-    // });
+    this.repositories.push({
+      name: 'kdjvideo',
+      id: 1613370986951,
+      url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/kdjvideo',
+      token: '',
+      secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
+    }, {
+      name: 'test',
+      id: 1613370986952,
+      url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/test',
+      token: '',
+      secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
+    }, {
+      name: 'videorepo',
+      id: 1613370986953,
+      url: 'ccr.ccs.tencentyun.com/videorepo/videorepo',
+      token: '',
+      secret: 'MTAwMDA2NjU1MDMyOmtkajNAdGVuY2VudA=='
+    });
     // this.active = this.repositories[2].id;
-    const { repositories } = await storage.getValue('repositories');
-    const { active } = await storage.getValue('active');
-    if (repositories) {
-      this.repositories.push(...repositories);
-      this.active = active;
-    }
+    // const { repositories } = await storage.getValue('repositories');
+    // const { active } = await storage.getValue('active');
+    // if (repositories) {
+    //   this.repositories.push(...repositories);
+    //   this.active = active;
+    // }
   }
   private loginAction(authenticateHeader?: string, fn?: Function): void {
     this.actionType = 'login';
@@ -624,9 +635,16 @@ export default class APP extends Vue {
     });
   }
   private showAlert(text: string, type = ''): void {
-    this.alert = true;
-    this.alertText = text;
-    this.alertColor = type;
+    const freeAlert = this.alerts.find(alert => alert.show === false);
+    const newAlert = { show: false, text, type };
+    if (freeAlert) {
+      newAlert.show = true;
+      Object.assign(freeAlert, newAlert);
+    }
+    else {
+      this.alerts.push(newAlert);
+      this.$nextTick(() => newAlert.show = true);
+    }
   }
   private remainingFormat(remainingTime: number): string {
     if (!remainingTime) return '';
