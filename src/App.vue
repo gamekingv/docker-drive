@@ -171,8 +171,9 @@
       persistent
       scrollable
       :max-width="actionType === 'login' ? 400 : 600"
+      fullscreen
     >
-      <v-card>
+      <v-card class="overflow-hidden">
         <v-card-title>
           <span v-if="actionType === 'login'">{{ $t("needLogin") }}</span>
           <template v-if="actionType === 'selectFiles'">
@@ -184,7 +185,7 @@
             </v-btn>
           </template>
         </v-card-title>
-        <v-card-text>
+        <v-card-text class="overflow-x-hidden">
           <v-container>
             <v-form ref="form" lazy-validation>
               <v-row v-if="actionType === 'login'">
@@ -210,61 +211,26 @@
             <v-row v-if="actionType === 'selectFiles'">
               <v-col cols="12">
                 <v-list v-if="uploadFiles.length > 0">
-                  <transition-group name="list-complete">
+                  <v-slide-x-transition
+                    leave-absolute
+                    group
+                    class="relative-parent"
+                  >
                     <template v-for="(file, index) in uploadFiles">
-                      <v-list-item
-                        :key="file.name + index"
-                        class="list-complete-item"
-                      >
-                        <v-list-item-avatar>
-                          <v-icon :color="file.name | iconColor">{{
-                            file.name | iconFormat
-                          }}</v-icon>
-                        </v-list-item-avatar>
-                        <v-list-item-content>
-                          <v-list-item-title>{{ file.name }}</v-list-item-title>
-                          <v-list-item-subtitle class="text--primary">{{
-                            file.size | sizeFormat
-                          }}</v-list-item-subtitle>
-                          <v-list-item-subtitle>{{
-                            `${currentPath
-                              .map((path) => path.name)
-                              .join("/")}/${
-                              file.webkitRelativePath
-                                ? file.webkitRelativePath
-                                : file.name
-                            }`
-                          }}</v-list-item-subtitle>
-                        </v-list-item-content>
-                        <v-list-item-action>
-                          <v-btn
-                            icon
-                            small
-                            @click.stop="uploadFiles.splice(index, 1)"
-                          >
-                            <v-icon small>mdi-close</v-icon>
-                          </v-btn>
-                        </v-list-item-action>
-                      </v-list-item>
+                      <upload-file-list-item
+                        :key="file.name"
+                        :file="file"
+                        :path="currentPath.map((path) => path.name).join('/')"
+                        @delete-item="uploadFiles.splice(index, 1)"
+                      ></upload-file-list-item>
                       <v-divider
                         v-if="index < uploadFiles.length - 1"
-                        :key="index"
-                        class="list-complete-item"
+                        :key="`${file.name}-${file.size}`"
                         inset
                       ></v-divider>
                     </template>
-                  </transition-group>
+                  </v-slide-x-transition>
                 </v-list>
-                <v-card
-                  v-else
-                  class="mx-auto"
-                  outlined
-                  style="border-style: dashed"
-                >
-                  <v-card-text class="my-4 d-flex justify-center align-center">
-                    <div>{{ $t("selectFilesHit") }}</div>
-                  </v-card-text>
-                </v-card>
                 <input
                   v-show="false"
                   v-if="actionType === 'selectFiles'"
@@ -288,6 +254,20 @@
               </v-col>
             </v-row>
           </v-container>
+          <v-row
+            v-if="actionType === 'selectFiles' && uploadFiles.length === 0"
+            class="fill-height"
+            justify="center"
+          >
+            <v-card flat width="100%" class="d-flex pa-15">
+              <v-card-text
+                class="d-flex justify-center align-center"
+                style="border: 1px dashed"
+              >
+                <div>{{ $t("selectFilesHit") }}</div>
+              </v-card-text>
+            </v-card>
+          </v-row>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
@@ -342,6 +322,7 @@ import network from '@/utils/network';
 import hashWorker from '@/utils/hash.worker';
 import storage from '@/utils/storage';
 import Files from '@/views/Files.vue';
+import UploadFileListItem from '@/components/UploadFileListItem.vue';
 
 interface Task {
   id: symbol;
@@ -365,6 +346,9 @@ interface Task {
 }
 
 @Component({
+  components: {
+    UploadFileListItem
+  },
   filters: {
     sizeFormat,
     progressPercentage,
@@ -540,7 +524,7 @@ export default class APP extends Vue {
         task.lastUpdate.time = now;
         task.lastUpdate.size = task.progress.uploadedSize;
       }, 1000);
-      const { digest, size } = await network.uploadFile(task.file as File, activeRepository, this.onUploadProgress.bind(this, task.id), task.cancelToken, task.hashWorker as Worker);
+      const { digest, size } = await network.uploadFile(task.file as File, activeRepository, this.onUploadProgress.bind(this, task), task.cancelToken, task.hashWorker as Worker);
       while (this.isCommitting) await new Promise(res => setTimeout(() => res(''), 1000));
       this.isCommitting = true;
       task.status = 'hashing';
@@ -582,9 +566,8 @@ export default class APP extends Vue {
       this.isCommitting = false;
     }
   }
-  private onUploadProgress(id: symbol, e: ProgressEvent): void {
+  private onUploadProgress(task: Task, e: ProgressEvent): void {
     const { loaded } = e;
-    const task = this.taskList.find(e => e.id === id);
     if (!task) return;
     task.progress.uploadedSize = loaded;
     task.remainingTime = (task.progress.totalSize - loaded) / task.speed;
@@ -656,16 +639,11 @@ export default class APP extends Vue {
 }
 </script>
 
-<style lang="scss">
-.list-complete-item {
-  transition: all 1s;
-  display: inline-block;
+<style scope lang="scss">
+.relative-parent {
+  position: relative;
 }
-.list-complete-enter, .list-complete-leave-to
-/* .list-complete-leave-active for below version 2.1.8 */ {
-  opacity: 0;
-}
-.list-complete-leave-active {
-  position: absolute;
+.v-divider.slide-x-transition-move {
+  transition: transform 0.6s;
 }
 </style>

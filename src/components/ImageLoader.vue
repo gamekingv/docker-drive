@@ -1,14 +1,16 @@
 <template>
   <v-row class="fill-height ma-0 mask" align="center" justify="center">
-    <img
-      v-show="loaded"
-      :src="url"
-      class="image"
-      @load="loaded = true"
-      @error="loaded = true"
-    />
+    <v-fade-transition>
+      <img
+        v-show="loaded"
+        :src="url"
+        class="image"
+        @load="loaded = true"
+        @error="loaded = true"
+      />
+    </v-fade-transition>
     <v-progress-circular
-      v-show="!loaded"
+      v-if="!loaded"
       color="primary"
       indeterminate
       size="64"
