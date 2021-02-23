@@ -52,5 +52,6 @@
   "repository": {
     "name": "Name",
     "url": "URL"
-  }
+  },
+  "searchHint": "Search in this folder"
 }

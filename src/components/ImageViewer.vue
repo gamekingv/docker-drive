@@ -10,26 +10,7 @@
         @change="onImageChange"
       >
         <v-carousel-item v-for="(image, i) in images" :key="i">
-          <v-row class="fill-height ma-0 mask" align="center" justify="center">
-            <v-img
-              :src="imageURLs[i]"
-              max-width="100%"
-              max-height="100%"
-              width="100%"
-              height="100%"
-              contain
-            >
-              <template v-slot:placeholder>
-                <v-row class="fill-height ma-0" align="center" justify="center">
-                  <v-progress-circular
-                    color="primary"
-                    indeterminate
-                    size="64"
-                  ></v-progress-circular>
-                </v-row>
-              </template>
-            </v-img>
-          </v-row>
+          <image-loader :url="imageURLs[i]" />
         </v-carousel-item>
         <v-slide-y-transition>
           <v-toolbar
@@ -59,10 +40,15 @@
 
 <script lang="ts">
 import { Vue, Component, Prop, PropSync, Emit } from 'vue-property-decorator';
+import ImageLoader from '@/components/ImageLoader.vue';
 import { Repository } from '@/utils/types';
 import network from '@/utils/network';
 
-@Component
+@Component({
+  components: {
+    ImageLoader
+  }
+})
 
 export default class ImageViewer extends Vue {
 
@@ -97,10 +83,3 @@ export default class ImageViewer extends Vue {
   }
 }
 </script>
-
-<style scope lang="scss">
-.mask {
-  background-color: rgb(33, 33, 33, 0.46);
-  border-color: rgb(33, 33, 33, 0.46);
-}
-</style>

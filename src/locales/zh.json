@@ -52,5 +52,6 @@
   "repository": {
     "name": "名称",
     "url": "链接"
-  }
+  },
+  "searchHint": "在此目录中搜索"
 }

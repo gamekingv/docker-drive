@@ -210,14 +210,12 @@
             <v-row v-if="actionType === 'selectFiles'">
               <v-col cols="12">
                 <v-list v-if="uploadFiles.length > 0">
-                  <v-slide-y-transition
-                    group
-                    mode="out"
-                    hide-on-leave
-                    leave-absolute
-                  >
+                  <transition-group name="list-complete">
                     <template v-for="(file, index) in uploadFiles">
-                      <v-list-item :key="file.name + index">
+                      <v-list-item
+                        :key="file.name + index"
+                        class="list-complete-item"
+                      >
                         <v-list-item-avatar>
                           <v-icon :color="file.name | iconColor">{{
                             file.name | iconFormat
@@ -251,10 +249,11 @@
                       <v-divider
                         v-if="index < uploadFiles.length - 1"
                         :key="index"
+                        class="list-complete-item"
                         inset
                       ></v-divider>
                     </template>
-                  </v-slide-y-transition>
+                  </transition-group>
                 </v-list>
                 <v-card
                   v-else
@@ -441,7 +440,7 @@ export default class APP extends Vue {
       token: '',
       secret: 'MTAwMDA2NjU1MDMyOmtkajNAdGVuY2VudA=='
     });
-    // this.active = this.repositories[2].id;
+    this.active = this.repositories[2].id;
     // const { repositories } = await storage.getValue('repositories');
     // const { active } = await storage.getValue('active');
     // if (repositories) {
@@ -656,3 +655,17 @@ export default class APP extends Vue {
   }
 }
 </script>
+
+<style lang="scss">
+.list-complete-item {
+  transition: all 1s;
+  display: inline-block;
+}
+.list-complete-enter, .list-complete-leave-to
+/* .list-complete-leave-active for below version 2.1.8 */ {
+  opacity: 0;
+}
+.list-complete-leave-active {
+  position: absolute;
+}
+</style>
