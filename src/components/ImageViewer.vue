@@ -1,5 +1,5 @@
 <template>
-  <v-dialog :value="showImage" fullscreen>
+  <v-dialog v-model="showImage" fullscreen>
     <v-hover v-slot="{ hover }">
       <v-carousel
         v-model="index"
@@ -39,7 +39,7 @@
 </template>
 
 <script lang="ts">
-import { Vue, Component, Prop, PropSync, Emit } from 'vue-property-decorator';
+import { Vue, Component, Prop, PropSync, Emit, Watch } from 'vue-property-decorator';
 import ImageLoader from '@/components/ImageLoader.vue';
 import { Repository } from '@/utils/types';
 import network from '@/utils/network';
@@ -53,7 +53,7 @@ import network from '@/utils/network';
 export default class ImageViewer extends Vue {
 
   @Prop(Object) private readonly activeRepository!: Repository
-  @Prop() private readonly images!: { name: string; digest: string }[]
+  @Prop(Array) private readonly images!: { name: string; digest: string }[]
   @Prop(Number) private readonly imageIndex!: number
   @PropSync('show') private readonly showImage!: boolean
 
@@ -62,13 +62,18 @@ export default class ImageViewer extends Vue {
   @Emit()
   private alert(text: string, type?: string): void { ({ text, type }); }
 
+  @Watch('showImage')
+  private onShow(val: boolean): void {
+    if (val) {
+      this.index = this.imageIndex;
+      this.imageURLs = [];
+      this.onImageChange(this.index);
+    }
+  }
+
   private imageURLs: string[] = []
   private index = 0
 
-  private created(): void {
-    this.index = this.imageIndex;
-    this.onImageChange(this.index);
-  }
   private async onImageChange(i: number): Promise<void> {
     try {
       if (!this.imageURLs[i]) this.$set(this.imageURLs, i, await network.getDownloadURL(this.images[i].digest, this.activeRepository));

@@ -3,6 +3,17 @@ module.exports = {
     'vuetify'
   ],
 
+  pages: {
+    index: {
+      entry: 'src/main.ts',
+      title: 'Docker Drive'
+    },
+    background: {
+      entry: 'src/background.ts',
+      title: 'Background Page'
+    }
+  },
+
   productionSourceMap: false,
 
   pluginOptions: {

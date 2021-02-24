@@ -180,14 +180,12 @@
       </template>
     </v-data-table>
     <video-player
-      v-if="showVideo"
       :source="source"
       :tracks="tracks"
       :show.sync="showVideo"
       @alert="alert"
     />
     <image-viewer
-      v-if="showImage"
       :images="images"
       :image-index="imageIndex"
       :show.sync="showImage"
@@ -405,7 +403,7 @@ export default class Files extends Vue {
   }
   @Watch('searchText')
   private onSearchTextChange(val: string): void {
-    if (val) this.selectedFiles.splice(0);
+    if (val) this.selectedFiles = [];
   }
 
   private get displayList(): FileItem[] {
@@ -613,7 +611,7 @@ export default class Files extends Vue {
             if (/\.(mp4|mkv|avi)$/.test(item.name)) {
               Object.assign(this.source, { name: item.name, url: downloadURL });
               const subtitles = this.displayList.filter(e => e.name.includes(item.name.substr(0, item.name.length - 3)) && /.*\.(vtt|srt|ass|ssa)$/.test(e.name));
-              this.tracks.splice(0);
+              this.tracks = [];
               for (const subtitle of subtitles) {
                 this.tracks.push({ name: subtitle.name, url: await network.getDownloadURL(subtitle.digest as string, this.activeRepository) });
               }
@@ -621,7 +619,7 @@ export default class Files extends Vue {
             }
             else if (/\.(jpg|png|gif|bmp|webp|ico)$/.test(item.name)) {
               const images = this.currentList.filter(e => /\.(jpg|png|gif|bmp|webp|ico)$/.test(e.name));
-              this.images.splice(0);
+              this.images = [];
               this.images.push(...images.map(e => ({ name: e.name, digest: e.digest as string })));
               this.imageIndex = images.findIndex(e => e.name === item.name);
               this.showImage = true;
@@ -663,7 +661,7 @@ export default class Files extends Vue {
 }
 </script>
 
-<style scope lang="scss">
+<style scoped lang="scss">
 .clickable {
   cursor: pointer;
 }
@@ -671,13 +669,5 @@ export default class Files extends Vue {
   user-select: none;
   -webkit-user-select: none;
   -moz-user-select: none;
-}
-</style>
-
-<style lang="scss">
-.video-container {
-  overflow: hidden;
-  background-color: black;
-  display: flex;
 }
 </style>

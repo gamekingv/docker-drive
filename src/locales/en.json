@@ -53,5 +53,6 @@
     "name": "Name",
     "url": "URL"
   },
-  "searchHint": "Search in this folder"
+  "searchHint": "Search in this folder",
+  "clearComplete": "Clear complete tasks"
 }

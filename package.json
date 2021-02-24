@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "@intlify/vue-i18n-loader": "^1.0.0",
+    "@mdi/font": "^5.9.55",
     "@types/chrome": "^0.0.129",
     "@types/crypto-js": "^4.0.1",
     "@typescript-eslint/eslint-plugin": "^2.33.0",
@@ -38,6 +39,7 @@
     "promise-worker": "^2.0.1",
     "sass": "^1.32.0",
     "sass-loader": "^10.0.0",
+    "typeface-roboto": "^1.1.13",
     "typescript": "~3.9.3",
     "vue-cli-plugin-i18n": "~1.0.1",
     "vue-cli-plugin-vuetify": "^2.1.0",

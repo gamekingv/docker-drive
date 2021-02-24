@@ -108,7 +108,7 @@ export default class VideoPlayer extends Vue {
 }
 </script>
 
-<style scope lang="scss">
+<style scoped lang="scss">
 .video {
   width: 100%;
   max-height: 100%;
@@ -123,5 +123,13 @@ video::cue {
   pointer-events: none;
   align-items: unset;
   justify-content: unset;
+}
+</style>
+
+<style lang="scss">
+.video-container {
+  overflow: hidden;
+  background-color: black;
+  display: flex;
 }
 </style>

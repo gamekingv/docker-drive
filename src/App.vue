@@ -85,12 +85,31 @@
       :width="500"
       style="max-width: 90vw"
     >
-      <div class="text-h5 text-center my-3">{{ $t("taskList") }}</div>
+      <v-row class="ma-0">
+        <v-col>
+          <div class="text-h5 my-3">{{ $t("taskList") }}</div>
+        </v-col>
+        <v-col class="d-flex justify-end align-center">
+          <v-tooltip bottom :open-delay="600">
+            <template v-slot:activator="{ on, attrs }">
+              <v-btn
+                icon
+                v-bind="attrs"
+                v-on="on"
+                @click.stop="clearCompleteTask()"
+              >
+                <v-icon>mdi-notification-clear-all</v-icon>
+              </v-btn>
+            </template>
+            <span>{{ $t("clearComplete") }}</span>
+          </v-tooltip>
+        </v-col>
+      </v-row>
       <v-list>
         <template v-for="(task, index) in taskList">
           <v-list-item :key="task.id" class="my-2">
             <v-list-item-content>
-              <v-list-item-title
+              <v-list-item-title v-bind="attrs" v-on="on"
                 ><v-icon left :color="task.name | iconColor" size="20">{{
                   task.name | iconFormat
                 }}</v-icon
@@ -405,32 +424,33 @@ export default class APP extends Vue {
   }
 
   private async created(): Promise<void> {
-    this.repositories.push({
-      name: 'kdjvideo',
-      id: 1613370986951,
-      url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/kdjvideo',
-      token: '',
-      secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
-    }, {
-      name: 'test',
-      id: 1613370986952,
-      url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/test',
-      token: '',
-      secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
-    }, {
-      name: 'videorepo',
-      id: 1613370986953,
-      url: 'ccr.ccs.tencentyun.com/videorepo/videorepo',
-      token: '',
-      secret: 'MTAwMDA2NjU1MDMyOmtkajNAdGVuY2VudA=='
-    });
-    this.active = this.repositories[2].id;
-    // const { repositories } = await storage.getValue('repositories');
-    // const { active } = await storage.getValue('active');
-    // if (repositories) {
-    //   this.repositories.push(...repositories);
-    //   this.active = active;
-    // }
+    document.title = `${this.$t('name')}`;
+    // this.repositories.push({
+    //   name: 'kdjvideo',
+    //   id: 1613370986951,
+    //   url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/kdjvideo',
+    //   token: '',
+    //   secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
+    // }, {
+    //   name: 'test',
+    //   id: 1613370986952,
+    //   url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/test',
+    //   token: '',
+    //   secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
+    // }, {
+    //   name: 'videorepo',
+    //   id: 1613370986953,
+    //   url: 'ccr.ccs.tencentyun.com/videorepo/videorepo',
+    //   token: '',
+    //   secret: 'MTAwMDA2NjU1MDMyOmtkajNAdGVuY2VudA=='
+    // });
+    // this.active = this.repositories[2].id;
+    const { repositories } = await storage.getValue('repositories');
+    const { active } = await storage.getValue('active');
+    if (repositories) {
+      this.repositories.push(...repositories);
+      this.active = active;
+    }
   }
   private loginAction(authenticateHeader?: string, fn?: Function): void {
     this.actionType = 'login';
@@ -603,6 +623,9 @@ export default class APP extends Vue {
     if (this.active === id) this.active = this.repositories[0]?.id ?? 0;
     await storage.setValue('repositories', this.repositories);
   }
+  private clearCompleteTask(): void {
+    this.taskList = this.taskList.filter(e => e.status !== 'complete');
+  }
   private closeForm(cancelTask = false): void {
     this.form.reset();
     this.form.resetValidation();
@@ -639,7 +662,7 @@ export default class APP extends Vue {
 }
 </script>
 
-<style scope lang="scss">
+<style scoped lang="scss">
 .relative-parent {
   position: relative;
 }

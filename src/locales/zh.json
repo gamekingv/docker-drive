@@ -53,5 +53,6 @@
     "name": "名称",
     "url": "链接"
   },
-  "searchHint": "在此目录中搜索"
+  "searchHint": "在此目录中搜索",
+  "clearComplete": "清除已完成任务"
 }

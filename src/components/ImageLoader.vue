@@ -25,13 +25,13 @@ import { Vue, Component, Prop } from 'vue-property-decorator';
 
 export default class ImageLoader extends Vue {
 
-  @Prop({ type: String, default: 'error' }) private readonly url!: string
+  @Prop({ type: String, default: '' }) private readonly url!: string
 
   private loaded = false
 }
 </script>
 
-<style scope lang="scss">
+<style scoped lang="scss">
 .image {
   max-width: 100%;
   max-height: 100%;
