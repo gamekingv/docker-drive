@@ -47,7 +47,7 @@
 </template>
 
 <script lang="ts">
-import { Vue, Component, Prop, PropSync, Ref, Emit } from 'vue-property-decorator';
+import { Vue, Component, Prop, PropSync, Ref, Emit, Watch } from 'vue-property-decorator';
 import axios from 'axios';
 import { parse as ASSparser } from 'ass-compiler';
 
@@ -63,6 +63,38 @@ export default class VideoPlayer extends Vue {
   @Prop(Array) private readonly tracks!: { name: string; url: string }[]
   @PropSync('show') showVideo!: boolean
 
+  @Watch('showVideo')
+  private async onshow(val: boolean): Promise<void> {
+    if (val) {
+      for (const track of this.tracks) {
+        try {
+          const label = track.name.replace(this.videoTitle.substr(0, this.videoTitle.length - 3), '');
+          if (/\.vtt$/.test(track.name)) this.subtitles.push({ label, url: track.url });
+          else if (/\.srt$/.test(track.name)) {
+            const { data: srt }: { data: string } = await axios.get(track.url);
+            const vtt = 'WEBVTT\r\n\r\n' + srt.replace(/(\d{2}:\d{2}:\d{2}),(\d{3} --> \d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2.$3');
+            this.subtitles.push({ label, url: URL.createObjectURL(new Blob([vtt], { type: 'text/vtt' })) });
+          }
+          else if (/\.(ass|ssa)$/.test(track.name)) {
+            const { data: assString }: { data: string } = await axios.get(track.url);
+            const ass = ASSparser(assString);
+            const textTrack = this.video.addTextTrack('subtitles', label);
+            ass.events.dialogue.forEach(dialogue => dialogue.Text.combined !== '' && textTrack.addCue(new VTTCue(dialogue.Start, dialogue.End, dialogue.Text.combined.replace('\\N', '\r\n'))));
+          }
+        }
+        catch (error) {
+          this.alert(`${this.$t('loadSubtitleFailed')}${track.name}`, 'warning');
+        }
+      }
+      this.$nextTick(() => {
+        [...this.video.textTracks].forEach(e => e.mode = 'hidden');
+        setTimeout(() => {
+          if (this.video.textTracks[0]) this.video.textTracks[0].mode = 'showing';
+        }, 1000);
+      });
+    }
+  }
+
   private isVideoPlay = false
   private subtitles: { label: string; url: string }[] = []
 
@@ -71,35 +103,6 @@ export default class VideoPlayer extends Vue {
   }
   private get videoTitle(): string {
     return this.source.name;
-  }
-
-  private async mounted(): Promise<void> {
-    for (const track of this.tracks) {
-      try {
-        const label = track.name.replace(this.videoTitle.substr(0, this.videoTitle.length - 3), '');
-        if (/\.vtt$/.test(track.name)) this.subtitles.push({ label, url: track.url });
-        else if (/\.srt$/.test(track.name)) {
-          const { data: srt }: { data: string } = await axios.get(track.url);
-          const vtt = 'WEBVTT\r\n\r\n' + srt.replace(/(\d{2}:\d{2}:\d{2}),(\d{3} --> \d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2.$3');
-          this.subtitles.push({ label, url: URL.createObjectURL(new Blob([vtt], { type: 'text/vtt' })) });
-        }
-        else if (/\.(ass|ssa)$/.test(track.name)) {
-          const { data: assString }: { data: string } = await axios.get(track.url);
-          const ass = ASSparser(assString);
-          const textTrack = this.video.addTextTrack('subtitles', label);
-          ass.events.dialogue.forEach(dialogue => dialogue.Text.combined !== '' && textTrack.addCue(new VTTCue(dialogue.Start, dialogue.End, dialogue.Text.combined.replace('\\N', '\r\n'))));
-        }
-      }
-      catch (error) {
-        this.alert(`${this.$t('loadSubtitleFailed')}${track.name}`, 'warning');
-      }
-    }
-    this.$nextTick(() => {
-      [...this.video.textTracks].forEach(e => e.mode = 'hidden');
-      setTimeout(() => {
-        if (this.video.textTracks[0]) this.video.textTracks[0].mode = 'showing';
-      }, 1000);
-    });
   }
   private videoEventHandler(e: Event): void {
     if (e.type === 'play') this.isVideoPlay = true;

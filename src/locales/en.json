@@ -45,6 +45,7 @@
   "deleteFile": "Are you sure to delete the selected files?",
   "delete": "Delete",
   "rename": "Rename",
+  "sendToAria2": "Send to Aria2",
   "loadSubtitleFailed": "Load subtitle failed: ",
   "add": "Add",
   "edit": "Edit",

@@ -2,6 +2,7 @@
   <v-dialog v-model="showImage" fullscreen>
     <v-hover v-slot="{ hover }">
       <v-carousel
+        v-if="showViewer"
         v-model="index"
         hide-delimiters
         show-arrows-on-hover
@@ -20,7 +21,6 @@
             color="transparent"
             flat
           >
-            <v-toolbar-title>{{ showImage ? videoTitle : "" }}</v-toolbar-title>
             <v-spacer></v-spacer>
             <v-btn
               fab
@@ -68,11 +68,14 @@ export default class ImageViewer extends Vue {
       this.index = this.imageIndex;
       this.imageURLs = [];
       this.onImageChange(this.index);
+      this.$nextTick(() => this.showViewer = true);
     }
+    else this.showViewer = false;
   }
 
   private imageURLs: string[] = []
   private index = 0
+  private showViewer = false
 
   private async onImageChange(i: number): Promise<void> {
     try {

@@ -3,6 +3,16 @@ import CryptoJS from 'crypto-js';
 import { Repository, FileItem, Manifest } from '@/utils/types';
 import PromiseWorker from 'promise-worker';
 
+interface Aria2RequestBody {
+  jsonrpc: string;
+  method: string;
+  id: string;
+  params: [[string], {
+    out: string;
+    header: string[];
+  }];
+}
+
 export default {
   async requestSender(url: string, instance: AxiosInstance, repository: Repository): Promise<AxiosResponse> {
     if (repository.token) instance.defaults.headers.common['Authorization'] = `Bearer ${repository.token}`;
@@ -161,6 +171,27 @@ export default {
       timeout: 0
     });
     return await this.requestSender(url, instance, repository);
+  },
+  async sentToAria2(items: { name: string; digest: string }[], repository: Repository): Promise<void> {
+    const [server, namespace, image] = repository.url.split('/') ?? [];
+    const requestBody: Aria2RequestBody[] = [];
+    const timestamp = Date.now();
+    items.forEach((item, i) => requestBody.push({
+      jsonrpc: '2.0',
+      method: 'aria2.addUri',
+      id: `${timestamp}${i}`,
+      params: [[`https://${server}/v2/${namespace}/${image}/blobs/${item.digest}`], {
+        'out': `${item.name}`,
+        'header': [`repository: ${repository.url}`, `Authorization: Bearer ${repository.token}`]
+      }]
+    }));
+    await this.getUploadURL(repository);
+    axios.post(`http://localhost:6800/jsonrpc?tm=${timestamp}`, JSON.stringify(requestBody), {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+      },
+      timeout: 5000
+    });
   },
   async getUploadURL(repository: Repository): Promise<string> {
     const [server, namespace, image] = repository.url.split('/') ?? [];

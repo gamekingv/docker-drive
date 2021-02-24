@@ -104,6 +104,10 @@
               <v-icon left>mdi-rename-box</v-icon>
               <v-list-item-title>{{ $t("rename") }}</v-list-item-title>
             </v-list-item>
+            <v-list-item @click="sendToAria2()">
+              <v-icon left>mdi-auto-download</v-icon>
+              <v-list-item-title>{{ $t("sendToAria2") }}</v-list-item-title>
+            </v-list-item>
           </v-list>
         </v-menu>
       </v-col>
@@ -174,6 +178,10 @@
             <v-list-item :disabled="isCommitting" @click="renameAction(item)">
               <v-icon left>mdi-rename-box</v-icon>
               <v-list-item-title>{{ $t("rename") }}</v-list-item-title>
+            </v-list-item>
+            <v-list-item @click="sendToAria2([item])">
+              <v-icon left>mdi-auto-download</v-icon>
+              <v-list-item-title>{{ $t("sendToAria2") }}</v-list-item-title>
             </v-list-item>
           </v-list>
         </v-menu>
@@ -657,6 +665,27 @@ export default class Files extends Vue {
     this.form.resetValidation();
     this.selectedFolder = [];
     this.action = false;
+  }
+  private async sendToAria2(items = this.selectedFiles): Promise<void> {
+    if (!this.activeRepository) return this.alert(`${this.$t('unknownError')}`, 'error');
+    try {
+      const info = this.generateDownloadInfo(items, '');
+      await network.sentToAria2(info, this.activeRepository);
+      this.alert(`成功推送 ${info.length} 个下载链接至Aria2`);
+    }
+    catch (error) {
+      if (error.message === 'need login') this.login(error.authenticateHeader, this.sendToAria2.bind(items));
+      else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
+      else this.alert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+    }
+  }
+  private generateDownloadInfo(items: FileItem[], path: string): { name: string; digest: string }[] {
+    const result: { name: string; digest: string }[] = [];
+    items.forEach(item => {
+      if (item.type === 'file') result.push({ name: `${path}${item.name.replace(/[\\/*?:<>|"]/g, '')}`, digest: item.digest as string });
+      else if (item.type === 'folder') result.push(...this.generateDownloadInfo(item.files as FileItem[], `${path}${item.name.replace('/', '')}/`));
+    });
+    return result;
   }
 }
 </script>
