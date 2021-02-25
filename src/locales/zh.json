@@ -63,5 +63,7 @@
     "addressProtocol": "只支持 HTTP/HTTPS 协议",
     "secret": "RPC 密钥"
   },
-  "save": "保存"
+  "save": "保存",
+  "saved": "保存成功",
+  "sendResult": "成功推送 {0} 个文件至Aria2下载， {1} 个失败"
 }

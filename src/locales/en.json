@@ -63,5 +63,7 @@
     "addressProtocol": "Only support HTTP/HTTPS",
     "secret": "RPC Secret Token"
   },
-  "save": "Save"
+  "save": "Save",
+  "saved": "Saved successfully",
+  "sendResult": "Sended {0} files to Aria2 successfully, {1} failed"
 }

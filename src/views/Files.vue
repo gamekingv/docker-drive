@@ -438,7 +438,7 @@ export default class Files extends Vue {
       }
     }
     catch (error) {
-      if (error.message === 'need login') this.login(error.authenticateHeader, this.getConfig);
+      if (error.message === 'need login') this.login(error.authenticateHeader, this.getConfig.bind(this));
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
       else this.alert(`${this.$t('unknownError')}${error.toString()}`, 'error');
     }
@@ -489,7 +489,7 @@ export default class Files extends Vue {
       }
     }
     catch (error) {
-      if (error.message === 'need login') this.login(error.authenticateHeader, this.removeSelected.bind(this.removeItems));
+      if (error.message === 'need login') this.login(error.authenticateHeader, this.removeSelected.bind(this, this.removeItems));
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
       else this.alert(`${this.$t('unknownError')}${error.toString()}`, 'error');
     }
@@ -640,7 +640,7 @@ export default class Files extends Vue {
         else this.alert(`${this.$t('getDownloadURLFailed')}`, 'error');
       }
       catch (error) {
-        if (error.message === 'need login') this.login(error.authenticateHeader);
+        if (error.message === 'need login') this.login(error.authenticateHeader, this.itemClick.bind(this, item, forceDownload));
         else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
         else this.alert(`${this.$t('unknownError')}${error.toString()}`, 'error');
       }
@@ -670,11 +670,11 @@ export default class Files extends Vue {
     if (!this.activeRepository) return this.alert(`${this.$t('unknownError')}`, 'error');
     try {
       const info = this.generateDownloadInfo(items, '');
-      await network.sentToAria2(info, this.activeRepository);
-      this.alert(`成功推送 ${info.length} 个下载链接至Aria2`);
+      const { success, fail } = await network.sentToAria2(info, this.activeRepository);
+      this.alert(`${this.$t('sendResult', [success, fail])}`);
     }
     catch (error) {
-      if (error.message === 'need login') this.login(error.authenticateHeader, this.sendToAria2.bind(items));
+      if (error.message === 'need login') this.login(error.authenticateHeader, this.sendToAria2.bind(this, items));
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
       else this.alert(`${this.$t('unknownError')}${error.toString()}`, 'error');
     }

@@ -198,7 +198,7 @@
       persistent
       scrollable
       :max-width="actionType === 'login' ? 400 : 600"
-      fullscreen
+      :fullscreen="actionType === 'selectFiles'"
     >
       <v-card class="overflow-hidden">
         <v-card-title>
@@ -433,26 +433,6 @@ export default class APP extends Vue {
 
   private async created(): Promise<void> {
     document.title = `${this.$t('name')}`;
-    // this.repositories.push({
-    //   name: 'kdjvideo',
-    //   id: 1613370986951,
-    //   url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/kdjvideo',
-    //   token: '',
-    //   secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
-    // }, {
-    //   name: 'test',
-    //   id: 1613370986952,
-    //   url: 'registry.cn-hangzhou.aliyuncs.com/kdjvideo/test',
-    //   token: '',
-    //   secret: 'MTgwMjkyNjgzMjA6a2RqM0BhbGl5dW4='
-    // }, {
-    //   name: 'videorepo',
-    //   id: 1613370986953,
-    //   url: 'ccr.ccs.tencentyun.com/videorepo/videorepo',
-    //   token: '',
-    //   secret: 'MTAwMDA2NjU1MDMyOmtkajNAdGVuY2VudA=='
-    // });
-    // this.active = this.repositories[2].id;
     const { repositories } = await storage.getValue('repositories');
     const { active } = await storage.getValue('active');
     if (repositories) {
@@ -469,6 +449,7 @@ export default class APP extends Vue {
     const activeRepository = this.repositories.find(e => e.id === this.active);
     if (!activeRepository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
     activeRepository.secret = btoa(`${this.username}:${this.password}`);
+    await storage.setValue('repositories', this.repositories);
     this.closeForm();
     this.loading = true;
     if (this.beforeLogin.authenticateHeader) {

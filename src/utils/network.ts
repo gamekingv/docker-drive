@@ -170,7 +170,7 @@ export default {
     });
     return await this.requestSender(url, instance, repository);
   },
-  async sentToAria2(items: { name: string; digest: string }[], repository: Repository): Promise<void> {
+  async sentToAria2(items: { name: string; digest: string }[], repository: Repository): Promise<{ success: number; fail: number }> {
     const { aria2 } = await storage.getValue('aria2');
     const [server, namespace, image] = repository.url.split('/') ?? [];
     const requestBody: Aria2RequestBody[] = [];
@@ -187,12 +187,14 @@ export default {
       }]
     }));
     await this.getUploadURL(repository);
-    await axios.post(`${address}?tm=${timestamp}`, JSON.stringify(requestBody), {
+    const { data } = await axios.post(`${address}?tm=${timestamp}`, JSON.stringify(requestBody), {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
       },
       timeout: 5000
     });
+    const fail = data.reduce((s: number, i: { error: object }) => i.error ? s + 1 : s, 0);
+    return { success: items.length - fail, fail };
   },
   async getUploadURL(repository: Repository): Promise<string> {
     const [server, namespace, image] = repository.url.split('/') ?? [];

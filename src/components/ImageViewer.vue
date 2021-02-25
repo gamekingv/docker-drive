@@ -1,8 +1,7 @@
 <template>
   <v-dialog v-model="showImage" fullscreen>
-    <v-hover v-slot="{ hover }">
+    <v-hover v-if="showViewer" v-slot="{ hover }">
       <v-carousel
-        v-if="showViewer"
         v-model="index"
         hide-delimiters
         show-arrows-on-hover
@@ -84,7 +83,7 @@ export default class ImageViewer extends Vue {
       if (!this.imageURLs[i - 1] && this.images[i - 1]) this.$set(this.imageURLs, i - 1, await network.getDownloadURL(this.images[i - 1].digest, this.activeRepository));
     }
     catch (error) {
-      if (error.message === 'need login') this.login(error.authenticateHeader, this.onImageChange.bind(i));
+      if (error.message === 'need login') this.login(error.authenticateHeader, this.onImageChange.bind(this, i));
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
       else this.alert(`${this.$t('unknownError')}${error.toString()}`, 'error');
     }

@@ -5,7 +5,7 @@
     </v-row>
     <v-form v-model="validate">
       <v-row>
-        <v-col cols="12" sm="6" class="py-0">
+        <v-col cols="12" sm="6" class="pb-0">
           <v-text-field
             value="POST"
             :label="$t('RPC.requestMethod')"
@@ -30,6 +30,7 @@
           <v-text-field
             v-model="secret"
             :label="$t('RPC.secret')"
+            type="password"
           ></v-text-field>
         </v-col>
       </v-row>
@@ -45,7 +46,7 @@
 </template>
 
 <script lang="ts">
-import { Vue, Component, Prop } from 'vue-property-decorator';
+import { Vue, Component, Prop, Emit } from 'vue-property-decorator';
 import storage from '@/utils/storage';
 
 @Component
@@ -53,6 +54,9 @@ import storage from '@/utils/storage';
 export default class Settings extends Vue {
 
   @Prop({ type: String, default: '' }) private readonly url!: string
+
+  @Emit()
+  private alert(text: string, type?: string): void { ({ text, type }); }
 
   private address = ''
   private secret = ''
@@ -63,11 +67,12 @@ export default class Settings extends Vue {
     this.address = aria2?.address ?? '';
     this.secret = aria2?.secret ?? '';
   }
-  private save(): void {
-    storage.setValue('aria2', {
+  private async save(): Promise<void> {
+    await storage.setValue('aria2', {
       address: this.address,
       secret: this.secret
     });
+    this.alert(`${this.$t('saved')}`, 'success');
   }
 }
 </script>
