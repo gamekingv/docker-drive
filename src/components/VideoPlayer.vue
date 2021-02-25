@@ -119,7 +119,9 @@ export default class VideoPlayer extends Vue {
   display: flex;
 }
 video::cue {
-  background-color: rgba(0, 0, 0, 0.4);
+  background-color: transparent;
+  text-shadow: rgb(0 0 0) 1px 0px 1px, rgb(0 0 0) 0px 1px 1px,
+    rgb(0 0 0) 0px -1px 1px, rgb(0 0 0) -1px 0px 1px;
 }
 .video-overlay {
   background-image: linear-gradient(black, transparent 25%);
