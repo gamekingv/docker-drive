@@ -1,16 +1,14 @@
 import axios, { AxiosInstance, AxiosResponse, CancelTokenSource } from 'axios';
 import CryptoJS from 'crypto-js';
 import { Repository, FileItem, Manifest } from '@/utils/types';
+import storage from '@/utils/storage';
 import PromiseWorker from 'promise-worker';
 
 interface Aria2RequestBody {
   jsonrpc: string;
   method: string;
   id: string;
-  params: [[string], {
-    out: string;
-    header: string[];
-  }];
+  params: (string | [string] | object)[];
 }
 
 export default {
@@ -173,20 +171,23 @@ export default {
     return await this.requestSender(url, instance, repository);
   },
   async sentToAria2(items: { name: string; digest: string }[], repository: Repository): Promise<void> {
+    const { aria2 } = await storage.getValue('aria2');
     const [server, namespace, image] = repository.url.split('/') ?? [];
     const requestBody: Aria2RequestBody[] = [];
     const timestamp = Date.now();
+    const address = aria2?.address ? aria2.address : 'http://localhost:6800/jsonrpc';
+    const secret = aria2?.secret ? [`token:${aria2.secret}`] : [];
     items.forEach((item, i) => requestBody.push({
       jsonrpc: '2.0',
       method: 'aria2.addUri',
       id: `${timestamp}${i}`,
-      params: [[`https://${server}/v2/${namespace}/${image}/blobs/${item.digest}`], {
+      params: [...secret, [`https://${server}/v2/${namespace}/${image}/blobs/${item.digest}`], {
         'out': `${item.name}`,
         'header': [`repository: ${repository.url}`, `Authorization: Bearer ${repository.token}`]
       }]
     }));
     await this.getUploadURL(repository);
-    axios.post(`http://localhost:6800/jsonrpc?tm=${timestamp}`, JSON.stringify(requestBody), {
+    await axios.post(`${address}?tm=${timestamp}`, JSON.stringify(requestBody), {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
       },

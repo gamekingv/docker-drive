@@ -2,7 +2,8 @@
   "name": "Docker 网盘",
   "files": "浏览文件",
   "repositories": "仓库管理",
-  "getTokenFailed": "获取token失败",
+  "settings": "设置",
+  "getTokenFailed": "获取 Token 失败",
   "unknownError": "出现未知错误：",
   "repositoryFormatError": "仓库连接格式错误",
   "loadConfigFailed": "加载配置失败",
@@ -45,7 +46,7 @@
   "deleteFile": "确定删除选中文件吗？",
   "delete": "删除",
   "rename": "重命名",
-  "sendToAria2": "发送至Aria2下载",
+  "sendToAria2": "发送至 Aria2 下载",
   "loadSubtitleFailed": "加载字幕失败：",
   "add": "添加仓库",
   "edit": "编辑仓库",
@@ -55,5 +56,12 @@
     "url": "链接"
   },
   "searchHint": "在此目录中搜索",
-  "clearComplete": "清除已完成任务"
+  "clearComplete": "清除已完成任务",
+  "RPC": {
+    "requestMethod": "RPC HTTP 请求方法",
+    "address": "RPC 地址",
+    "addressProtocol": "只支持 HTTP/HTTPS 协议",
+    "secret": "RPC 密钥"
+  },
+  "save": "保存"
 }

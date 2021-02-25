@@ -33,6 +33,14 @@
             <v-list-item-title>{{ $t("repositories") }}</v-list-item-title>
           </v-list-item-content>
         </v-list-item>
+        <v-list-item key="settings" to="/settings" link>
+          <v-list-item-icon>
+            <v-icon>mdi-cogs</v-icon>
+          </v-list-item-icon>
+          <v-list-item-content>
+            <v-list-item-title>{{ $t("settings") }}</v-list-item-title>
+          </v-list-item-content>
+        </v-list-item>
       </v-list>
     </v-navigation-drawer>
 

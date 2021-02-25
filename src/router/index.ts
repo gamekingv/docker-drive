@@ -15,6 +15,11 @@ const routes: Array<RouteConfig> = [
     name: 'Repositories',
     component: () => import('@/views/Repositories.vue'),
     props: (route): { initialType: string } => ({ initialType: route.query.type as string })
+  },
+  {
+    path: '/settings',
+    name: 'Settings',
+    component: () => import('@/views/Settings.vue')
   }
 ];
 

@@ -2,6 +2,7 @@
   "name": "Docker Drive",
   "files": "All Files",
   "repositories": "Repositories",
+  "settings": "Settings",
   "getTokenFailed": "Get token failed",
   "unknownError": "Unknown error: ",
   "repositoryFormatError": "Repository link format error",
@@ -55,5 +56,12 @@
     "url": "URL"
   },
   "searchHint": "Search in this folder",
-  "clearComplete": "Clear complete tasks"
+  "clearComplete": "Clear complete tasks",
+  "RPC": {
+    "requestMethod": "RPC HTTP Request Method",
+    "address": "RPC Address",
+    "addressProtocol": "Only support HTTP/HTTPS",
+    "secret": "RPC Secret Token"
+  },
+  "save": "Save"
 }

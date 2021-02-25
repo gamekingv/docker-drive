@@ -4,15 +4,18 @@
   "version": "0.1",
   "description": "Docker Drive",
   "icons": {
-    "64": "dist/favicon.ico"
+    "16": "dist/favicon.png",
+    "32": "dist/favicon.png",
+    "48": "dist/favicon.png",
+    "128": "dist/favicon.png"
   },
   "browser_action": {
     "browser_style": true,
-    "default_icon": {
-      "16": "dist/favicon.ico",
-      "32": "dist/favicon.ico",
-      "64": "dist/favicon.ico"
-    }
+    "default_icon": "dist/favicon.png"
+  },
+  "options_ui": {
+    "open_in_tab": true,
+    "page": "dist/index.html"
   },
   "background": {
     "page": "dist/background.html"
