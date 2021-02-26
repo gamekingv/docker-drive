@@ -9,11 +9,11 @@
 > 基于 Docker 仓库协议的chrome浏览器扩展，可以将目前众多的免费容器仓库服务用于网盘存储，下载和分享。
 
 ## :rocket: 安装
-下载 [Release](https://github.com/gamekingv/docker-drive/releases) 内编译好extension.zip压缩包并解压，打开chrome的开发者模式，加载解压缩的扩展包即可。
+下载 [Release](https://github.com/gamekingv/docker-drive/releases) 内编译好的extension.zip压缩包并解压，打开chrome的开发者模式，加载解压缩的扩展包即可。
 
 ## :dart: 使用说明
 
-> 参考[Docker Register Cloud](https://github.com/xausky/DockerRegisterCloud)项目说明新建一个镜像仓库，然后打开扩展，根据刚刚新建的仓库信息添加仓库即可。
+> 参考 [Docker Register Cloud](https://github.com/xausky/DockerRegisterCloud) 项目说明新建一个镜像仓库，然后打开扩展，根据刚刚新建的仓库信息添加仓库即可。
 * [x] 直接上传下载，并支持批量推送至Aria2下载。
 * [x] 在线预览图片，支持翻页预览同文件夹下的所有图片。
 * [x] 在线预览视频（仅浏览器支持的格式）。
