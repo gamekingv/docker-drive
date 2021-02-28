@@ -132,6 +132,10 @@
       :search="searchText"
       item-key="name"
       show-select
+      :footer-props="{
+        showFirstLastPage: true,
+        itemsPerPageOptions: [10, 50, 100, -1],
+      }"
       @current-items="currentList = $event"
     >
       <template v-slot:[`item.name`]="{ item }">
@@ -411,6 +415,7 @@ export default class Files extends Vue {
   }
   @Watch('searchText')
   private onSearchTextChange(val: string): void {
+    this.listPage = 1;
     if (val) this.selectedFiles = [];
   }
 
