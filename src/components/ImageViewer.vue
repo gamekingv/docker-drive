@@ -1,39 +1,41 @@
 <template>
   <v-dialog v-model="showImage" fullscreen>
-    <v-hover v-if="showViewer" v-slot="{ hover }">
-      <v-carousel
-        v-model="index"
-        hide-delimiters
-        show-arrows-on-hover
-        :continuous="false"
-        height="100%"
-        @change="onImageChange"
-      >
-        <v-carousel-item v-for="(image, i) in images" :key="i">
-          <image-loader :url="imageURLs[i]" />
-        </v-carousel-item>
-        <v-slide-y-transition>
-          <v-toolbar
-            v-if="hover"
-            min-width="100vw"
-            absolute
-            color="transparent"
-            flat
-          >
-            <v-spacer></v-spacer>
-            <v-btn
-              fab
-              depressed
-              small
-              color="rgba(0,0,0,0.3)"
-              @click.stop="showImage = false"
+    <v-fade-transition>
+      <v-hover v-if="showViewer" v-slot="{ hover }">
+        <v-carousel
+          v-model="index"
+          hide-delimiters
+          show-arrows-on-hover
+          :continuous="false"
+          height="100%"
+          @change="onImageChange"
+        >
+          <v-carousel-item v-for="(image, i) in images" :key="i">
+            <image-loader :url="imageURLs[i]" />
+          </v-carousel-item>
+          <v-slide-y-transition>
+            <v-toolbar
+              v-if="hover"
+              min-width="100vw"
+              absolute
+              color="transparent"
+              flat
             >
-              <v-icon>mdi-close</v-icon>
-            </v-btn>
-          </v-toolbar>
-        </v-slide-y-transition>
-      </v-carousel>
-    </v-hover>
+              <v-spacer></v-spacer>
+              <v-btn
+                fab
+                depressed
+                small
+                color="rgba(0,0,0,0.3)"
+                @click.stop="showImage = false"
+              >
+                <v-icon>mdi-close</v-icon>
+              </v-btn>
+            </v-toolbar>
+          </v-slide-y-transition>
+        </v-carousel>
+      </v-hover>
+    </v-fade-transition>
   </v-dialog>
 </template>
 
