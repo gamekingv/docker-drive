@@ -3,7 +3,8 @@ html {
 }
 
 html,
-body,#app,
+body,
+#app,
 #main,
 #main-container {
   height: 100%;
@@ -37,3 +38,11 @@ body,#app,
 }
 
 /*===scrollbar:end===*/
+
+/*button:focus:start*/
+
+button:focus {
+  outline: unset;
+}
+
+/*button:focus:end*/

@@ -113,84 +113,99 @@
           </v-tooltip>
         </v-col>
       </v-row>
-      <v-list>
-        <template v-for="(task, index) in taskList">
-          <v-list-item :key="task.id" class="my-2">
-            <v-list-item-content>
-              <v-list-item-title v-bind="attrs" v-on="on"
-                ><v-icon left :color="task.name | iconColor" size="20">{{
-                  task.name | iconFormat
-                }}</v-icon
-                >{{ task.name }}</v-list-item-title
-              >
-              <v-list-item-subtitle>
-                <v-progress-linear
-                  :color="
-                    task.status === 'cancel'
-                      ? 'warning'
-                      : task.status === 'uploading' ||
-                        task.status === 'hashing' ||
-                        task.status === 'waiting'
-                      ? 'primary'
-                      : task.status === 'complete'
-                      ? 'success'
-                      : 'error'
-                  "
-                  :value="task.progress | progressPercentage"
-                  height="25"
-                >
-                  <strong v-if="task.status === 'uploading'">{{
-                    task.progress | progressPercentage
-                  }}</strong>
-                  <strong v-else>{{ $t(task.status) }}</strong>
-                </v-progress-linear>
-              </v-list-item-subtitle>
-
-              <v-list-item-subtitle>
-                <div
-                  :class="[
-                    'd-flex',
-                    task.status === 'uploading'
-                      ? 'justify-space-between'
-                      : 'justify-end',
-                  ]"
-                  style="width: 100%"
-                >
-                  <strong v-if="task.status === 'uploading'"
-                    >{{ task.speed | sizeFormat }}{{ "/s"
-                    }}{{ remainingFormat(task.remainingTime) }}</strong
+      <v-data-iterator
+        :items="taskList"
+        :items-per-page="10"
+        :page.sync="taskPage"
+        hide-default-footer
+        @page-count="taskPageLength = $event"
+      >
+        <template v-slot:default="{ items }">
+          <v-list>
+            <template v-for="(task, index) in items">
+              <v-list-item :key="task.id" class="my-2">
+                <v-list-item-content>
+                  <v-list-item-title>
+                    <v-icon left :color="task.name | iconColor" size="20">{{
+                      task.name | iconFormat
+                    }}</v-icon>
+                    {{ task.name }}
+                  </v-list-item-title>
+                  <v-list-item-subtitle>
+                    <v-progress-linear
+                      :color="
+                        task.status === 'cancel'
+                          ? 'warning'
+                          : task.status === 'uploading' ||
+                            task.status === 'hashing' ||
+                            task.status === 'waiting'
+                          ? 'primary'
+                          : task.status === 'complete'
+                          ? 'success'
+                          : 'error'
+                      "
+                      :value="task.progress | progressPercentage"
+                      height="25"
+                    >
+                      <strong v-if="task.status === 'uploading'">{{
+                        task.progress | progressPercentage
+                      }}</strong>
+                      <strong v-else>{{ $t(task.status) }}</strong>
+                    </v-progress-linear>
+                  </v-list-item-subtitle>
+                  <v-list-item-subtitle>
+                    <div
+                      :class="[
+                        'd-flex',
+                        task.status === 'uploading'
+                          ? 'justify-space-between'
+                          : 'justify-end',
+                      ]"
+                      style="width: 100%"
+                    >
+                      <strong v-if="task.status === 'uploading'"
+                        >{{ task.speed | sizeFormat }}{{ "/s"
+                        }}{{ remainingFormat(task.remainingTime) }}</strong
+                      >
+                      <strong v-if="task.status === 'uploading'">
+                        {{ task.progress.uploadedSize | sizeFormat
+                        }}{{ task.status === "uploading" ? "/" : ""
+                        }}{{ task.progress.totalSize | sizeFormat }}</strong
+                      >
+                      <strong v-else>{{
+                        task.progress.totalSize | sizeFormat
+                      }}</strong>
+                    </div>
+                  </v-list-item-subtitle>
+                </v-list-item-content>
+                <v-list-item-action>
+                  <v-btn
+                    icon
+                    small
+                    :disabled="
+                      task.status !== 'uploading' && task.status !== 'waiting'
+                    "
+                    @click.stop="cancelTask(task)"
                   >
-                  <strong v-if="task.status === 'uploading'">
-                    {{ task.progress.uploadedSize | sizeFormat
-                    }}{{ task.status === "uploading" ? "/" : ""
-                    }}{{ task.progress.totalSize | sizeFormat }}</strong
-                  >
-                  <strong v-else>{{
-                    task.progress.totalSize | sizeFormat
-                  }}</strong>
-                </div>
-              </v-list-item-subtitle>
-            </v-list-item-content>
-            <v-list-item-action>
-              <v-btn
-                icon
-                small
-                :disabled="
-                  task.status !== 'uploading' && task.status !== 'waiting'
-                "
-                @click.stop="cancelTask(task)"
-              >
-                <v-icon small>mdi-close</v-icon>
-              </v-btn>
-            </v-list-item-action>
-          </v-list-item>
-          <v-divider
-            v-if="index < taskList.length - 1"
-            :key="index"
-            inset
-          ></v-divider>
+                    <v-icon small>mdi-close</v-icon>
+                  </v-btn>
+                </v-list-item-action>
+              </v-list-item>
+              <v-divider
+                v-if="index < items.length - 1"
+                :key="index"
+                inset
+              ></v-divider>
+            </template>
+          </v-list>
         </template>
-      </v-list>
+      </v-data-iterator>
+      <v-pagination
+        v-model="taskPage"
+        :length="taskPageLength"
+        :total-visible="7"
+        circle
+      ></v-pagination>
     </v-navigation-drawer>
 
     <v-dialog
@@ -395,6 +410,8 @@ export default class APP extends Vue {
   private drawer = true
   private taskListPanel = false
   private taskList: Task[] = []
+  private taskPage = 1
+  private taskPageLength = 1
   private repositories: Repository[] = []
   private active = 0
   private action = false
@@ -614,6 +631,7 @@ export default class APP extends Vue {
   }
   private clearCompleteTask(): void {
     this.taskList = this.taskList.filter(e => e.status !== 'complete');
+    this.taskPage = 1;
   }
   private closeForm(cancelTask = false): void {
     this.form.reset();
