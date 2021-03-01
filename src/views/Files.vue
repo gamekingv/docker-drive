@@ -490,7 +490,7 @@ export default class Files extends Vue {
       }
       finally {
         await network.commit({ files: cache.root.files, layers: cache.layers }, this.activeRepository);
-        await this.getConfig(true);
+        await this.getConfig(true, true);
       }
     }
     catch (error) {
@@ -591,7 +591,7 @@ export default class Files extends Vue {
         else if (typeof index === 'number') dFolder.push(...sFolder.splice(index, 1));
       });
       await network.commit({ files: cache.root.files, layers: this.layers }, this.activeRepository);
-      this.getConfig(true);
+      this.getConfig(true, true);
       if (failFiles.length > 0) throw 'someFilenameConflict';
     }
     catch (error) {
