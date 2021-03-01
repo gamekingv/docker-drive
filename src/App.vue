@@ -102,6 +102,7 @@
             <template v-slot:activator="{ on, attrs }">
               <v-btn
                 icon
+                :disabled="taskList.length === 0"
                 v-bind="attrs"
                 v-on="on"
                 @click.stop="clearCompleteTask()"
@@ -114,6 +115,7 @@
         </v-col>
       </v-row>
       <v-data-iterator
+        v-if="taskList.length > 0"
         :items="taskList"
         :items-per-page="10"
         :page.sync="taskPage"
@@ -201,6 +203,7 @@
         </template>
       </v-data-iterator>
       <v-pagination
+        v-if="taskList.length > 10"
         v-model="taskPage"
         :length="taskPageLength"
         :total-visible="7"
@@ -434,7 +437,7 @@ export default class APP extends Vue {
   private onTaskListChange(val: number): void {
     if (val === 0) onbeforeunload = null;
     else onbeforeunload = (): string => '';
-    if (this.taskList.some(e => e.status === 'uploading')) return;
+    if (this.taskList.some(e => e.status === 'uploading' || e.status === 'hashing')) return;
     else {
       const waitingTask = this.taskList.find(e => e.status === 'waiting');
       if (waitingTask) {
