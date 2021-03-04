@@ -453,6 +453,7 @@ export default class APP extends Vue {
 
   private async created(): Promise<void> {
     document.title = `${this.$t('name')}`;
+    this.drawer = !this.$vuetify.breakpoint.mobile;
     const { repositories } = await storage.getValue('repositories');
     const { active } = await storage.getValue('active');
     if (repositories) {
