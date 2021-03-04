@@ -639,10 +639,9 @@ export default class Files extends Vue {
               this.imageIndex = images.findIndex(e => e.name === item.name);
               this.showImage = true;
             }
+            else this.sendToBrowser(downloadURL, item.name);
           }
-          else {
-            chrome.downloads.download({ url: downloadURL, filename: item.name });
-          }
+          else this.sendToBrowser(downloadURL, item.name);
         }
         else this.alert(`${this.$t('getDownloadURLFailed')}`, 'error');
       }
@@ -712,6 +711,10 @@ export default class Files extends Vue {
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
       else this.alert(`${this.$t('unknownError')}${error.toString()}`, 'error');
     }
+  }
+  private sendToBrowser(url: string, filename: string): void {
+    chrome.downloads.download({ url, filename });
+    this.alert(`${this.$t('sendToBrowser')}`, 'success');
   }
   private generateDownloadInfo(items: FileItem[], path: string): { name: string; digest: string }[] {
     const result: { name: string; digest: string }[] = [];

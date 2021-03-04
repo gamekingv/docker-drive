@@ -65,5 +65,6 @@
   },
   "save": "保存",
   "saved": "保存成功",
-  "sendResult": "成功推送 {0} 个文件至Aria2下载， {1} 个失败"
+  "sendResult": "成功推送 {0} 个文件至Aria2下载， {1} 个失败",
+  "sendToBrowser": "成功推送下载链接到浏览器"
 }
