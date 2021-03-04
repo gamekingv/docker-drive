@@ -136,7 +136,8 @@
         showFirstLastPage: true,
         itemsPerPageOptions: [10, 50, 100, -1],
       }"
-      @current-items="currentList = $event"
+      :sort-by.sync="listSortBy"
+      :sort-desc.sync="listSortDesc"
     >
       <template v-slot:[`item.name`]="{ item }">
         <v-icon v-if="item.type === 'folder'" color="amber lighten-2"
@@ -395,7 +396,8 @@ export default class Files extends Vue {
   private folderList: FolderList = { name: `${this.$t('root')}`, files: [], id: Symbol(), disabled: false }
   private moveItems: FileItem[] = []
   private selectedFolder: symbol[] = []
-  private currentList: FileItem[] = []
+  private listSortBy: string | string[] | undefined = ''
+  private listSortDesc: boolean | boolean[] | undefined = false
   private searchText = ''
   private readonly fileListHeader = [
     { text: this.$t('filename'), align: 'start', value: 'name' },
@@ -631,7 +633,7 @@ export default class Files extends Vue {
               this.showVideo = true;
             }
             else if (/\.(jpg|png|gif|bmp|webp|ico)$/.test(item.name)) {
-              const images = this.currentList.filter(e => /\.(jpg|png|gif|bmp|webp|ico)$/.test(e.name));
+              const images = this.getSortedList().filter(e => /\.(jpg|png|gif|bmp|webp|ico)$/.test(e.name));
               this.images = [];
               this.images.push(...images.map(e => ({ name: e.name, digest: e.digest as string })));
               this.imageIndex = images.findIndex(e => e.name === item.name);
@@ -656,6 +658,33 @@ export default class Files extends Vue {
       this.currentPath[this.currentPath.length - 1].disabled = false;
       this.currentPath.push({ name: item.name, disabled: true, id: Symbol() });
     }
+  }
+  private getSortedList(): FileItem[] {
+    let sortBy!: string | undefined, sortDesc!: number;
+    let sortedList!: FileItem[];
+    if (Array.isArray(this.listSortBy)) sortBy = this.listSortBy[0];
+    else sortBy = this.listSortBy;
+    if (Array.isArray(this.listSortDesc)) sortDesc = this.listSortDesc[0] ? 1 : -1;
+    else sortDesc = this.listSortDesc ? 1 : -1;
+    switch (sortBy) {
+      case 'name': {
+        sortedList = this.displayList.sort((a, b): number => {
+          if (a.name.toUpperCase() < b.name.toUpperCase()) return sortDesc;
+          else return -sortDesc;
+        });
+        break;
+      }
+      case 'uploadTime': {
+        sortedList = this.displayList.sort((a, b): number =>
+          ((b.uploadTime as number) - (a.uploadTime as number)) * sortDesc
+        );
+        break;
+      }
+      default: {
+        sortedList = this.displayList;
+      }
+    }
+    return this.searchText ? sortedList.filter(e => e.name.includes(this.searchText)) : sortedList;
   }
   private pathClick(id: symbol): void {
     this.selectedFiles = [];
