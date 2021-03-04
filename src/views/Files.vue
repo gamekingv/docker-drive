@@ -717,7 +717,7 @@ export default class Files extends Vue {
     const result: { name: string; digest: string }[] = [];
     items.forEach(item => {
       if (item.type === 'file') result.push({ name: `${path}${item.name.replace(/[\\/*?:<>|"]/g, '')}`, digest: item.digest as string });
-      else if (item.type === 'folder') result.push(...this.generateDownloadInfo(item.files as FileItem[], `${path}${item.name.replace('/', '')}/`));
+      else if (item.type === 'folder') result.push(...this.generateDownloadInfo(item.files as FileItem[], `${path}${item.name.replaceAll('/', '')}/`));
     });
     return result;
   }
