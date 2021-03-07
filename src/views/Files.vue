@@ -15,7 +15,7 @@
             <v-divider class="mt-2"></v-divider>
             <v-list-item ripple to="/repositories?type=add">
               <v-list-item-action>
-                <v-icon left> mdi-plus </v-icon>
+                <v-icon color="green" left> mdi-plus </v-icon>
               </v-list-item-action>
               <v-list-item-content>
                 <v-list-item-title>{{ $t("add") }}</v-list-item-title>
@@ -322,7 +322,7 @@
     >
       <v-card-text class="text-center">
         <v-btn color="primary" to="/repositories?type=add"
-          ><v-icon left>mdi-plus</v-icon>添加仓库</v-btn
+          ><v-icon left>mdi-plus</v-icon>{{ $t("add") }}</v-btn
         >
       </v-card-text>
     </v-card>
