@@ -65,5 +65,9 @@
   "save": "保存",
   "saved": "保存成功",
   "sendResult": "成功推送 {0} 个文件至Aria2下载， {1} 个失败",
-  "sendToBrowser": "成功推送下载链接到浏览器"
+  "sendToBrowser": "成功推送下载链接到浏览器",
+  "theme": "主题",
+  "dark": "暗",
+  "light": "亮",
+  "browserSetting": "浏览器设定"
 }

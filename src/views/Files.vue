@@ -15,7 +15,7 @@
             <v-divider class="mt-2"></v-divider>
             <v-list-item ripple to="/repositories?type=add">
               <v-list-item-action>
-                <v-icon color="green"> mdi-plus </v-icon>
+                <v-icon left> mdi-plus </v-icon>
               </v-list-item-action>
               <v-list-item-content>
                 <v-list-item-title>{{ $t("add") }}</v-list-item-title>
@@ -286,7 +286,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn
-            color="blue darken-1"
+            color="primary"
             :disabled="
               isCommitting ||
               (actionType === 'move' && selectedFolder.length === 0)

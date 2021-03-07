@@ -60,7 +60,7 @@
       </v-btn>
     </v-app-bar>
 
-    <v-main id="main" class="grey darken-3">
+    <v-main id="main" :class="{ 'grey darken-3': $vuetify.theme.dark }">
       <v-container
         id="main-container"
         class="py-8 px-6 overflow-y-auto overflow-x-hidden"
@@ -80,6 +80,7 @@
             @add="addRepository"
             @edit="editRepository"
             @delete="deleteRepository"
+            @set-theme="setTheme"
           />
         </v-fade-transition>
       </v-container>
@@ -222,10 +223,10 @@
         <v-card-title>
           <span v-if="actionType === 'login'">{{ $t("needLogin") }}</span>
           <template v-if="actionType === 'selectFiles'">
-            <v-btn color="blue darken-1" @click.stop="getFiles.click()">
+            <v-btn color="primary" @click.stop="getFiles.click()">
               {{ $t("selectFiles") }}
             </v-btn>
-            <v-btn color="blue darken-1 ml-4" @click.stop="getFolder.click()">
+            <v-btn color="primary" class="ml-4" @click.stop="getFolder.click()">
               {{ $t("selectFolder") }}
             </v-btn>
           </template>
@@ -317,7 +318,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn
-            color="blue darken-1"
+            color="primary"
             @click.stop="
               form.validate() &&
                 (actionType === 'login' ? login() : addToTaskList())
@@ -454,12 +455,23 @@ export default class APP extends Vue {
   private async created(): Promise<void> {
     document.title = `${this.$t('name')}`;
     this.drawer = !this.$vuetify.breakpoint.mobile;
-    const { repositories } = await storage.getValue('repositories');
-    const { active } = await storage.getValue('active');
+    const { theme = 'browser' }: { theme: string } = await storage.getValue('theme');
+    const { repositories }: { repositories: Repository[] } = await storage.getValue('repositories');
+    const { active }: { active: number } = await storage.getValue('active');
+    this.setTheme(theme);
     if (repositories) {
       this.repositories.push(...repositories);
       this.active = active;
     }
+  }
+  private setTheme(theme: string): void {
+    if (theme === 'browser') {
+      const { matches } = window.matchMedia('(prefers-color-scheme: dark)');
+      if (matches) this.$vuetify.theme.dark = true;
+      else this.$vuetify.theme.dark = false;
+    }
+    else if (theme === 'dark') this.$vuetify.theme.dark = true;
+    else this.$vuetify.theme.dark = false;
   }
   private loginAction(authenticateHeader?: string, fn?: Function): void {
     this.actionType = 'login';

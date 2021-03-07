@@ -59,8 +59,8 @@
         height="80%"
       >
         <v-card-text class="text-center">
-          <v-btn color="primary" @click.stop="addAction()"
-            ><v-icon left>mdi-plus</v-icon>添加仓库</v-btn
+          <v-btn color="primary" @click.stop="addAction()">
+            <v-icon left>mdi-plus</v-icon>{{ $t("add") }}</v-btn
           >
         </v-card-text>
       </v-card>
@@ -121,7 +121,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn
-            color="blue darken-1"
+            color="primary"
             @click.stop="
               actionType === 'edit'
                 ? form.validate() && edit()

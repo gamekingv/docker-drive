@@ -34,10 +34,22 @@
           ></v-text-field>
         </v-col>
       </v-row>
+      <v-row>
+        <v-subheader>{{ $t("theme") }}</v-subheader>
+      </v-row>
+      <v-row>
+        <v-col class="pt-0">
+          <v-radio-group v-model="theme" class="mt-0" row>
+            <v-radio :label="$t('dark')" value="dark"></v-radio>
+            <v-radio :label="$t('light')" value="light"></v-radio>
+            <v-radio :label="$t('browserSetting')" value="browser"></v-radio>
+          </v-radio-group>
+        </v-col>
+      </v-row>
     </v-form>
     <v-row>
       <v-col>
-        <v-btn color="blue darken-1" :disabled="!validate" @click.stop="save()">
+        <v-btn color="primary" :disabled="!validate" @click.stop="save()">
           {{ $t("save") }}
         </v-btn>
       </v-col>
@@ -57,21 +69,28 @@ export default class Settings extends Vue {
 
   @Emit()
   private alert(text: string, type?: string): void { ({ text, type }); }
+  @Emit()
+  private setTheme(theme: string): void { theme; }
 
   private address = ''
   private secret = ''
   private validate = true
+  private theme = 'browser'
 
   private async created(): Promise<void> {
     const { aria2 }: { aria2: { address: string; secret: string } } = await storage.getValue('aria2');
+    const { theme = 'browser' }: { theme: string } = await storage.getValue('theme');
     this.address = aria2?.address ?? '';
     this.secret = aria2?.secret ?? '';
+    this.theme = theme ?? 'browser';
   }
   private async save(): Promise<void> {
+    this.setTheme(this.theme);
     await storage.setValue('aria2', {
       address: this.address,
       secret: this.secret
     });
+    await storage.setValue('theme', this.theme);
     this.alert(`${this.$t('saved')}`, 'success');
   }
 }
