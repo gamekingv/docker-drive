@@ -495,6 +495,7 @@ export default class Files extends Vue {
       finally {
         await network.commit({ files: cache.root.files, layers: cache.layers }, this.activeRepository);
         await this.getConfig(true, true);
+        this.selectedFiles = [];
       }
     }
     catch (error) {
@@ -517,13 +518,13 @@ export default class Files extends Vue {
           if (e.response?.status !== 404) throw e;
         }
         const layerIndex = layers.findIndex(e => e.digest === file.digest);
-        if (typeof layerIndex === 'number') layers.splice(layerIndex, 1);
+        if (layerIndex > -1) layers.splice(layerIndex, 1);
       }
       else {
         await this.remove(file.files as FileItem[], [...path, { name: file.name, disabled: false, id: Symbol() }], repository, root, layers);
       }
       const index = currentPathFiles.findIndex(e => e.name === file.name);
-      if (typeof index === 'number') currentPathFiles.splice(index, 1);
+      if (index > -1) currentPathFiles.splice(index, 1);
     }
   }
   private renameAction(renameItem: FileItem): void {
@@ -592,10 +593,11 @@ export default class Files extends Vue {
       this.moveItems.forEach(file => {
         const index = sFolder.findIndex(e => e.name === file.name);
         if (dFolder.some(e => e.name === file.name)) failFiles.push(file);
-        else if (typeof index === 'number') dFolder.push(...sFolder.splice(index, 1));
+        else if (index > -1) dFolder.push(...sFolder.splice(index, 1));
       });
       await network.commit({ files: cache.root.files, layers: this.layers }, this.activeRepository);
-      this.getConfig(true, true);
+      await this.getConfig(true, true);
+      this.selectedFiles = [];
       if (failFiles.length > 0) throw 'someFilenameConflict';
     }
     catch (error) {
@@ -657,7 +659,7 @@ export default class Files extends Vue {
   private pathClick(id: symbol): void {
     this.selectedFiles = [];
     const currentIndex = this.currentPath.findIndex(e => e.id === id);
-    if (typeof currentIndex === 'number') {
+    if (currentIndex > -1) {
       this.currentPath.splice(currentIndex + 1);
       this.currentPath[this.currentPath.length - 1].disabled = true;
     }
