@@ -1,6 +1,6 @@
 <template>
   <div class="fill-height">
-    <v-list v-if="repositories.length > 0" class="grey darken-3" two-line>
+    <v-list v-if="repositories.length > 0" class="transparent" two-line>
       <template v-for="(repository, index) in repositories">
         <v-list-item :key="repository.id">
           <v-list-item-avatar>
@@ -51,7 +51,7 @@
     </v-list>
     <v-row v-else class="fill-height" align="center" justify="center">
       <v-card
-        color="grey darken-3"
+        color="transparent"
         class="d-flex justify-center align-center"
         outlined
         style="border-style: dashed; border-color: #616161 !important"

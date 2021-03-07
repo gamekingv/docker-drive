@@ -1,5 +1,10 @@
 <template>
-  <v-dialog v-model="showVideo" fullscreen content-class="video-container">
+  <v-dialog
+    v-model="showVideo"
+    fullscreen
+    content-class="video-container"
+    transition="fade-transition"
+  >
     <v-hover v-slot="{ hover }">
       <div class="video">
         <video

@@ -124,7 +124,7 @@
     </v-row>
     <v-data-table
       v-model="selectedFiles"
-      class="grey darken-3"
+      class="transparent"
       :page.sync="listPage"
       :headers="fileListHeader"
       :items="displayList"
@@ -199,10 +199,13 @@
       @alert="alert"
     />
     <image-viewer
-      :images="images"
-      :image-index="imageIndex"
-      :show.sync="showImage"
       :active-repository="activeRepository"
+      :name="clickedItemName"
+      :display-list="displayList"
+      :list-sort-by="listSortBy"
+      :list-sort-desc="listSortDesc"
+      :search-text="searchText"
+      :show.sync="showImage"
       @alert="alert"
       @login="login"
     />
@@ -310,7 +313,7 @@
   </div>
   <v-row v-else class="fill-height" align="center" justify="center">
     <v-card
-      color="grey darken-3"
+      color="transparent"
       class="d-flex justify-center align-center"
       outlined
       style="border-style: dashed; border-color: #616161 !important"
@@ -378,8 +381,7 @@ export default class Files extends Vue {
   private showImage = false
   private source = { name: '', url: '' }
   private tracks: { name: string; url: string }[] = []
-  private images: { name: string; digest: string }[] = []
-  private imageIndex = 0
+  private clickedItemName = ''
   private result = ''
   private action = false
   private actionType = ''
@@ -619,31 +621,25 @@ export default class Files extends Vue {
     if (item.type === 'file') {
       if (!item.digest || !this.activeRepository) return this.alert(`${this.$t('unknownError')}`, 'error');
       this.loading();
+      this.clickedItemName = item.name;
       try {
-        const downloadURL = await network.getDownloadURL(item.digest, this.activeRepository);
-        if (downloadURL) {
-          if (!forceDownload) {
-            if (/\.(mp4|mkv|avi)$/.test(item.name)) {
-              Object.assign(this.source, { name: item.name, url: downloadURL });
-              const subtitles = this.displayList.filter(e => e.name.includes(item.name.substr(0, item.name.length - 3)) && /.*\.(vtt|srt|ass|ssa)$/.test(e.name));
-              this.tracks = [];
-              for (const subtitle of subtitles) {
-                this.tracks.push({ name: subtitle.name, url: await network.getDownloadURL(subtitle.digest as string, this.activeRepository) });
-              }
-              this.showVideo = true;
-            }
-            else if (/\.(jpg|png|gif|bmp|webp|ico)$/.test(item.name)) {
-              const images = this.getSortedList().filter(e => /\.(jpg|png|gif|bmp|webp|ico)$/.test(e.name));
-              this.images = [];
-              this.images.push(...images.map(e => ({ name: e.name, digest: e.digest as string })));
-              this.imageIndex = images.findIndex(e => e.name === item.name);
-              this.showImage = true;
-            }
-            else this.sendToBrowser(downloadURL, item.name);
-          }
-          else this.sendToBrowser(downloadURL, item.name);
+        if (forceDownload) {
+          this.sendToBrowser(await network.getDownloadURL(item.digest, this.activeRepository), item.name);
         }
-        else this.alert(`${this.$t('getDownloadURLFailed')}`, 'error');
+        else if (/\.(jpg|png|gif|bmp|webp|ico)$/.test(item.name)) {
+          this.loaded();
+          this.showImage = true;
+        }
+        else if (/\.(mp4|mkv|avi)$/.test(item.name)) {
+          Object.assign(this.source, { name: item.name, url: await network.getDownloadURL(item.digest, this.activeRepository) });
+          const subtitles = this.displayList.filter(e => e.name.includes(item.name.substr(0, item.name.length - 3)) && /.*\.(vtt|srt|ass|ssa)$/.test(e.name));
+          this.tracks = [];
+          for (const subtitle of subtitles) {
+            this.tracks.push({ name: subtitle.name, url: await network.getDownloadURL(subtitle.digest as string, this.activeRepository) });
+          }
+          this.showVideo = true;
+        }
+        else this.sendToBrowser(await network.getDownloadURL(item.digest, this.activeRepository), item.name);
       }
       catch (error) {
         if (error.message === 'need login') this.login(error.authenticateHeader, this.itemClick.bind(this, item, forceDownload));
@@ -657,33 +653,6 @@ export default class Files extends Vue {
       this.currentPath[this.currentPath.length - 1].disabled = false;
       this.currentPath.push({ name: item.name, disabled: true, id: Symbol() });
     }
-  }
-  private getSortedList(): FileItem[] {
-    let sortBy!: string | undefined, sortDesc!: number;
-    let sortedList!: FileItem[];
-    if (Array.isArray(this.listSortBy)) sortBy = this.listSortBy[0];
-    else sortBy = this.listSortBy;
-    if (Array.isArray(this.listSortDesc)) sortDesc = this.listSortDesc[0] ? 1 : -1;
-    else sortDesc = this.listSortDesc ? 1 : -1;
-    switch (sortBy) {
-      case 'name': {
-        sortedList = this.displayList.sort((a, b): number => {
-          if (a.name.toUpperCase() < b.name.toUpperCase()) return sortDesc;
-          else return -sortDesc;
-        });
-        break;
-      }
-      case 'uploadTime': {
-        sortedList = this.displayList.sort((a, b): number =>
-          ((b.uploadTime as number) - (a.uploadTime as number)) * sortDesc
-        );
-        break;
-      }
-      default: {
-        sortedList = this.displayList;
-      }
-    }
-    return this.searchText ? sortedList.filter(e => e.name.includes(this.searchText)) : sortedList;
   }
   private pathClick(id: symbol): void {
     this.selectedFiles = [];

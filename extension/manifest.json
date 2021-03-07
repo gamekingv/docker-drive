@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Docker Drive",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "description": "Docker Drive",
   "icons": {
     "16": "dist/favicon.png",
