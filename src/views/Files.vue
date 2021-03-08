@@ -104,6 +104,15 @@
               <v-icon left>mdi-rename-box</v-icon>
               <v-list-item-title>{{ $t("rename") }}</v-list-item-title>
             </v-list-item>
+            <v-list-item
+              v-if="selectedFiles.some((item) => item.type === 'file')"
+              @click="copyDownloadLinks()"
+            >
+              <v-icon left>mdi-link</v-icon>
+              <v-list-item-title>{{
+                $t("copyDownloadLinks")
+              }}</v-list-item-title>
+            </v-list-item>
             <v-list-item @click="sendToAria2()">
               <v-icon left>mdi-auto-download</v-icon>
               <v-list-item-title>{{ $t("sendToAria2") }}</v-list-item-title>
@@ -183,6 +192,15 @@
             <v-list-item :disabled="isCommitting" @click="renameAction(item)">
               <v-icon left>mdi-rename-box</v-icon>
               <v-list-item-title>{{ $t("rename") }}</v-list-item-title>
+            </v-list-item>
+            <v-list-item
+              v-if="item.type === 'file'"
+              @click="copyDownloadLinks([item])"
+            >
+              <v-icon left>mdi-link</v-icon>
+              <v-list-item-title>{{
+                $t("copyDownloadLinks")
+              }}</v-list-item-title>
             </v-list-item>
             <v-list-item @click="sendToAria2([item])">
               <v-icon left>mdi-auto-download</v-icon>
@@ -607,6 +625,24 @@ export default class Files extends Vue {
     }
     this.loaded();
     this.isCommitting = false;
+  }
+  private async copyDownloadLinks(items = this.selectedFiles): Promise<void> {
+    if (!this.activeRepository) return this.alert(`${this.$t('unknownError')}`, 'error');
+    this.loading();
+    try {
+      const downloadLinks: string[] = [];
+      for (const item of items) {
+        if (item.digest && item.type === 'file') downloadLinks.push(await network.getDownloadURL(item.digest, this.activeRepository));
+      }
+      await navigator.clipboard.writeText(downloadLinks.join('\r\n'));
+      this.alert(`${this.$t('copyDownloadLinksResult', [downloadLinks.length])}`, 'success');
+    }
+    catch (error) {
+      if (error.message === 'need login') this.login(error.authenticateHeader, this.copyDownloadLinks.bind(this, items));
+      else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
+      else this.alert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+    }
+    this.loaded();
   }
   private getPath(path: PathNode[], root?: FileItem): FileItem[] {
     let filePointer: FileItem = root ? root : this.root;

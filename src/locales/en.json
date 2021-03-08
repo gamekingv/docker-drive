@@ -46,6 +46,8 @@
   "delete": "Delete",
   "rename": "Rename",
   "sendToAria2": "Send to Aria2",
+  "copyDownloadLinks": "Copy download links",
+  "copyDownloadLinksResult": "Copy {0} download links to clipboard",
   "loadSubtitleFailed": "Load subtitle failed: ",
   "add": "Add",
   "edit": "Edit",

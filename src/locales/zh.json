@@ -46,6 +46,8 @@
   "delete": "删除",
   "rename": "重命名",
   "sendToAria2": "发送至 Aria2 下载",
+  "copyDownloadLinks": "复制下载链接",
+  "copyDownloadLinksResult": "复制 {0} 个下载链接到剪贴板",
   "loadSubtitleFailed": "加载字幕失败：",
   "add": "添加仓库",
   "edit": "编辑仓库",
