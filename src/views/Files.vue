@@ -485,7 +485,8 @@ export default class Files extends Vue {
       const cache = { root: JSON.parse(JSON.stringify(this.root)) };
       this.getPath(this.currentPath, cache.root).push({ name: name, type: 'folder', files: [], id: Symbol(), uploadTime: Date.now() });
       await network.commit({ files: cache.root.files, layers: this.layers }, this.activeRepository);
-      this.displayList.push({ name: name, type: 'folder', files: [], id: Symbol(), uploadTime: Date.now() });
+      await this.getConfig(true, true);
+      this.selectedFiles = [];
     }
     catch (error) {
       if (error.message === 'need login') this.login(error.authenticateHeader);
@@ -563,7 +564,8 @@ export default class Files extends Vue {
       if (renameItem) renameItem.name = name;
       else throw 'unknownError';
       await network.commit({ files: cache.root.files, layers: this.layers }, this.activeRepository);
-      this.renameItem.name = name;
+      await this.getConfig(true, true);
+      this.selectedFiles = [];
     }
     catch (error) {
       if (error.message === 'need login') this.login(error.authenticateHeader);
