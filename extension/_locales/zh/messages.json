@@ -1,0 +1,10 @@
+{
+  "extensionName": {
+    "message": "Docker 网盘",
+    "description": "Name of the extension."
+  },
+  "extensionDescription": {
+    "message": "Docker 网盘",
+    "description": "Description of the extension."
+  }
+}
