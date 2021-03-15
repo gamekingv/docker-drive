@@ -1,0 +1,10 @@
+{
+  "extensionName": {
+    "message": "Docker Drive",
+    "description": "Name of the extension."
+  },
+  "extensionDescription": {
+    "message": "Docker Drive",
+    "description": "Description of the extension."
+  }
+}

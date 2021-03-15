@@ -17,7 +17,7 @@ function loadLocaleMessages(): LocaleMessages {
 }
 
 export default new VueI18n({
-  locale: navigator.language.toLowerCase().includes('zh') ? 'zh' : 'en',
+  locale: chrome.i18n.getUILanguage().toLowerCase().includes('zh') ? 'zh' : 'en',
   fallbackLocale: 'en',
   messages: loadLocaleMessages()
 });
