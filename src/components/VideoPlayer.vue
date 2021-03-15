@@ -53,7 +53,8 @@
 
 <script lang="ts">
 import { Vue, Component, Prop, PropSync, Ref, Emit, Watch } from 'vue-property-decorator';
-import axios from 'axios';
+import { Repository } from '@/utils/types';
+import network from '@/utils/network';
 import { parse as ASSparser } from 'ass-compiler';
 
 @Component
@@ -64,7 +65,8 @@ export default class VideoPlayer extends Vue {
   @Emit()
   private alert(text: string, type?: string): void { ({ text, type }); }
 
-  @Prop(Object) private readonly source!: { name: string; url: string }
+  @Prop() private readonly activeRepository!: Repository
+  @Prop() private readonly source!: { name: string; url: string }
   @Prop(Array) private readonly tracks!: { name: string; url: string }[]
   @PropSync('show') showVideo!: boolean
 
@@ -76,12 +78,12 @@ export default class VideoPlayer extends Vue {
           const label = track.name.replace(this.videoTitle.substr(0, this.videoTitle.length - 3), '');
           if (/\.vtt$/.test(track.name)) this.subtitles.push({ label, url: track.url });
           else if (/\.srt$/.test(track.name)) {
-            const { data: srt }: { data: string } = await axios.get(track.url);
+            const { data: srt }: { data: string } = await network.downloadFile(track.url, this.activeRepository);
             const vtt = 'WEBVTT\r\n\r\n' + srt.replace(/(\d{2}:\d{2}:\d{2}),(\d{3} --> \d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2.$3');
             this.subtitles.push({ label, url: URL.createObjectURL(new Blob([vtt], { type: 'text/vtt' })) });
           }
           else if (/\.(ass|ssa)$/.test(track.name)) {
-            const { data: assString }: { data: string } = await axios.get(track.url);
+            const { data: assString }: { data: string } = await network.downloadFile(track.url, this.activeRepository);
             const ass = ASSparser(assString);
             const textTrack = this.video.addTextTrack('subtitles', label);
             ass.events.dialogue.forEach(dialogue => dialogue.Text.combined !== '' && textTrack.addCue(new VTTCue(dialogue.Start, dialogue.End, dialogue.Text.combined.replaceAll('\\N', '\r\n'))));

@@ -214,6 +214,7 @@
       :source="source"
       :tracks="tracks"
       :show.sync="showVideo"
+      :active-repository="activeRepository"
       @alert="alert"
     />
     <image-viewer
@@ -675,7 +676,7 @@ export default class Files extends Vue {
           const subtitles = this.displayList.filter(e => e.name.includes(item.name.substr(0, item.name.length - 3)) && /.*\.(vtt|srt|ass|ssa)$/.test(e.name));
           this.tracks = [];
           for (const subtitle of subtitles) {
-            this.tracks.push({ name: subtitle.name, url: await network.getDownloadURL(subtitle.digest as string, this.activeRepository) });
+            this.tracks.push({ name: subtitle.name, url: subtitle.digest as string });
           }
           this.showVideo = true;
         }

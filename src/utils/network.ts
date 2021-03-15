@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosResponse, CancelTokenSource } from 'axios';
+import axios, { AxiosError, AxiosInstance, AxiosResponse, CancelTokenSource, AxiosPromise, AxiosRequestConfig } from 'axios';
 import CryptoJS from 'crypto-js';
 import { Repository, FileItem, Manifest } from '@/utils/types';
 import storage from '@/utils/storage';
@@ -11,30 +11,50 @@ interface Aria2RequestBody {
   params: (string | [string] | object)[];
 }
 
+interface AxiosRequestConfigExtend extends AxiosRequestConfig {
+  __retryCount?: number;
+}
+
+const preset = {
+  retry: 3,
+  timeout: 10000
+};
+
+function errorHandler(error: AxiosError): AxiosPromise {
+  const config = error.config as AxiosRequestConfigExtend;
+  if (!config || [401, 404].some(status => error.response?.status === status)) return Promise.reject(error);
+  config.__retryCount = config.__retryCount ?? 0;
+  if (config.__retryCount >= preset.retry) return Promise.reject(error);
+  config.__retryCount += 1;
+  return axios(config);
+}
+
+axios.defaults.timeout = preset.timeout;
+axios.interceptors.response.use(undefined, errorHandler);
+
 export default {
   async requestSender(url: string, instance: AxiosInstance, repository: Repository): Promise<AxiosResponse> {
     if (repository.token) instance.defaults.headers.common['Authorization'] = `Bearer ${repository.token}`;
+    instance.interceptors.response.use(undefined, errorHandler);
     try {
       return await instance.request({ url });
     }
     catch (error) {
-      if (error.response) {
-        const { status, headers } = error.response;
-        if (status === 401) {
+      const { status, headers } = error.response ?? {};
+      if (status === 401) {
+        try {
           const token = await this.getToken(headers['www-authenticate'], repository);
           if (token) {
             repository.token = token;
             instance.defaults.headers.common['Authorization'] = `Bearer ${repository.token}`;
-            try {
-              return await instance.request({ url });
-            }
-            catch (error) {
-              const { status, headers } = error.response;
-              if (status === 401) throw { message: 'need login', authenticateHeader: headers['www-authenticate'] };
-              else throw error;
-            }
           }
           else throw 'getTokenFailed';
+          return await instance.request({ url });
+        }
+        catch (error) {
+          const { status, headers } = error.response ?? {};
+          if (status === 401) throw { message: 'need login', authenticateHeader: headers['www-authenticate'] };
+          else throw error;
         }
       }
       throw error;
@@ -61,26 +81,31 @@ export default {
       headers: {
         'Accept': 'application/vnd.docker.distribution.manifest.v2+json',
         'repository': [server, namespace, image].join('/')
-      },
-      timeout: 30000
+      }
     });
-    const { data } = await this.requestSender(manifestsURL, manifestsInstance, repository);
-    const layers = data?.layers;
-    const digest: string = data?.config?.digest;
-    if (digest && layers) {
-      const configURL = `https://${server}/v2/${namespace}/${image}/blobs/${digest}`;
-      const configInstance = axios.create({
-        method: 'get',
-        headers: {
-          'repository': [server, namespace, image].join('/')
-        },
-        timeout: 30000
-      });
-      const { data } = await this.requestSender(configURL, configInstance, repository);
-      if (data) return { config: data, layers };
+    try {
+      const { data } = await this.requestSender(manifestsURL, manifestsInstance, repository);
+      const layers = data?.layers;
+      const digest: string = data?.config?.digest;
+      if (digest && layers) {
+        const configURL = `https://${server}/v2/${namespace}/${image}/blobs/${digest}`;
+        const configInstance = axios.create({
+          method: 'get',
+          headers: {
+            'repository': [server, namespace, image].join('/')
+          }
+        });
+        const { data } = await this.requestSender(configURL, configInstance, repository);
+        if (data) return { config: data, layers };
+        else throw 'loadConfigFailed';
+      }
       else throw 'loadConfigFailed';
     }
-    else throw 'loadConfigFailed';
+    catch (error) {
+      const { status } = error.response ?? {};
+      if (status === 404) return { config: { files: [] }, layers: [] };
+      else throw error;
+    }
   },
   parseConfig(config: { fileItems?: FileItem[]; files?: FileItem[] }): FileItem[] {
     let list!: FileItem[];
@@ -131,8 +156,7 @@ export default {
       headers: {
         'repository': [server, namespace, image].join('/')
       },
-      cancelToken: request.token,
-      timeout: 10000
+      cancelToken: request.token
     });
     const getHeader = (e: chrome.webRequest.WebResponseHeadersDetails): void | chrome.webRequest.WebResponseHeadersDetails => {
       if (e.statusCode === 307) {
@@ -159,13 +183,11 @@ export default {
   async downloadFile(digest: string, repository: Repository): Promise<AxiosResponse> {
     const [server, namespace, image] = repository.url.split('/') ?? [];
     const url = `https://${server}/v2/${namespace}/${image}/blobs/${digest}`;
-    const request = axios.CancelToken.source();
     const instance = axios.create({
       method: 'get',
       headers: {
         'repository': [server, namespace, image].join('/')
       },
-      cancelToken: request.token,
       timeout: 0
     });
     return await this.requestSender(url, instance, repository);
@@ -190,8 +212,7 @@ export default {
     const { data } = await axios.post(`${address}?tm=${timestamp}`, JSON.stringify(requestBody), {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
-      },
-      timeout: 5000
+      }
     });
     const fail = data.reduce((s: number, i: { error: object }) => i.error ? s + 1 : s, 0);
     return { success: items.length - fail, fail };
@@ -202,8 +223,7 @@ export default {
       method: 'post',
       headers: {
         'repository': [server, namespace, image].join('/')
-      },
-      timeout: 10000
+      }
     });
     const url = `https://${server}/v2/${namespace}/${image}/blobs/uploads/`;
     const { headers } = await this.requestSender(url, instance, repository);
@@ -221,12 +241,11 @@ export default {
         'Content-Type': 'application/octet-stream',
         'repository': [server, namespace, image].join('/')
       },
-      timeout: 30000
+      timeout: 0
     });
-    instance.interceptors.request.use(e => {
-      e.data = new Blob([config], { type: 'application/octet-stream' });
-      return e;
-    });
+    instance.interceptors.request.use(e => Object.assign(e, {
+      data: new Blob([config], { type: 'application/octet-stream' })
+    }));
     await this.requestSender(`${url}&digest=${digest}`, instance, repository);
     return { digest, size };
   },
@@ -241,20 +260,22 @@ export default {
         'repository': [server, namespace, image].join('/')
       },
       onUploadProgress,
-      cancelToken: cancelToken.token
+      cancelToken: cancelToken.token,
+      timeout: 0
     });
-    patchInstance.interceptors.request.use(e => {
-      e.data = new Blob([file], { type: 'application/octet-stream' });
-      return e;
-    });
+    patchInstance.interceptors.request.use(e => Object.assign(e, {
+      data: new Blob([file], { type: 'application/octet-stream' })
+    }));
     const [{ headers }, digest] = await Promise.all([this.requestSender(`${url}`, patchInstance, repository), this.hashFile(file, hashWorker)]);
+    // const { headers } = await this.requestSender(`${url}`, patchInstance, repository);
+    // const digest = await this.hashFile(file, hashWorker);
     const instance = axios.create({
       method: 'put',
       headers: {
         'repository': [server, namespace, image].join('/')
       },
-      timeout: 10000,
-      cancelToken: cancelToken.token
+      cancelToken: cancelToken.token,
+      timeout: 0
     });
     await this.requestSender(`${headers['location']}&digest=${digest}`, instance, repository);
     return { digest, size };
@@ -267,7 +288,6 @@ export default {
       headers: {
         'repository': [server, namespace, image].join('/')
       },
-      timeout: 10000
     });
     await this.requestSender(url, instance, repository);
   },
@@ -291,12 +311,10 @@ export default {
         'Content-Type': 'application/vnd.docker.distribution.manifest.v2+json',
         'repository': [server, namespace, image].join('/')
       },
-      timeout: 10000
     });
-    instance.interceptors.request.use(e => {
-      e.data = JSON.stringify(manifest);
-      return e;
-    });
+    instance.interceptors.request.use(e => Object.assign(e, {
+      data: JSON.stringify(manifest)
+    }));
     await this.requestSender(url, instance, repository);
   },
   async hashFile(file: File, worker: Worker): Promise<string> {

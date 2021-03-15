@@ -134,7 +134,7 @@ import network from '@/utils/network';
 export default class ImageViewer extends Vue {
   @Ref() private readonly prevSpacer!: Vue
 
-  @Prop(Object) private readonly activeRepository!: Repository
+  @Prop() private readonly activeRepository!: Repository
   @Prop() private readonly displayList!: FileItem[]
   @Prop() private readonly listSortBy!: string | string[] | undefined
   @Prop() private readonly listSortDesc!: boolean | boolean[] | undefined
