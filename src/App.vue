@@ -128,7 +128,7 @@
             <template v-for="(task, index) in items">
               <v-list-item :key="task.id" class="my-2">
                 <v-list-item-content>
-                  <v-list-item-title>
+                  <v-list-item-title :title="task.name">
                     <v-icon left :color="task.name | iconColor" size="20">{{
                       task.name | iconFormat
                     }}</v-icon>

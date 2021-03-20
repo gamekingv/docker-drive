@@ -42,7 +42,7 @@
   "download": "Download",
   "more": "More",
   "move": "Move",
-  "deleteFile": "Are you sure to delete the selected files?",
+  "deleteFile": "Are you sure to delete {0} files?",
   "delete": "Delete",
   "rename": "Rename",
   "sendToAria2": "Send to Aria2",

@@ -244,7 +244,7 @@
               : actionType === "move"
               ? $t("moveTo")
               : actionType === "remove"
-              ? $t("deleteFile")
+              ? $t("deleteFile", [removeCounts])
               : ""
           }}</span>
         </v-card-title>
@@ -295,6 +295,11 @@
                       <v-icon color="amber lighten-2">
                         {{ open ? "mdi-folder-open" : "mdi-folder" }}
                       </v-icon>
+                    </template>
+                    <template v-slot:label="{ item }">
+                      <div class="folder-tree-item" :title="item.name">
+                        {{ item.name }}
+                      </div>
                     </template>
                   </v-treeview>
                 </v-col>
@@ -406,6 +411,7 @@ export default class Files extends Vue {
   private actionType = ''
   private renameItem!: FileItem
   private removeItems: FileItem[] = []
+  private removeCounts = 0
   private newName = ''
   private folderName = ''
   private listPage = 1
@@ -500,7 +506,16 @@ export default class Files extends Vue {
   private async removeAction(removeItems = this.selectedFiles): Promise<void> {
     this.actionType = 'remove';
     this.removeItems = removeItems;
+    this.removeCounts = this.getRemoveCount(removeItems).length;
     this.action = true;
+  }
+  private getRemoveCount(items: FileItem[]): { digest: string }[] {
+    const result: { digest: string }[] = [];
+    items.forEach(item => {
+      if (item.type === 'file') result.push({ digest: item.digest as string });
+      else if (item.type === 'folder') result.push(...this.getRemoveCount(item.files as FileItem[]));
+    });
+    return result;
   }
   private async removeSelected(): Promise<void> {
     if (!this.activeRepository) return this.alert(`${this.$t('unknownError')}`, 'error');
@@ -745,5 +760,9 @@ export default class Files extends Vue {
   user-select: none;
   -webkit-user-select: none;
   -moz-user-select: none;
+}
+.folder-tree-item {
+  text-overflow: ellipsis;
+  overflow: hidden;
 }
 </style>

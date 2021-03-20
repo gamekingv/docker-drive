@@ -10,15 +10,20 @@
       }}</v-icon>
     </v-list-item-avatar>
     <v-list-item-content>
-      <v-list-item-title>{{ file.name }}</v-list-item-title>
+      <v-list-item-title :title="file.name">{{ file.name }}</v-list-item-title>
       <v-list-item-subtitle class="text--primary">{{
         file.size | sizeFormat
       }}</v-list-item-subtitle>
-      <v-list-item-subtitle>{{
-        `${path}/${
+      <v-list-item-subtitle
+        :title="`${path}/${
           file.webkitRelativePath ? file.webkitRelativePath : file.name
-        }`
-      }}</v-list-item-subtitle>
+        }`"
+        >{{
+          `${path}/${
+            file.webkitRelativePath ? file.webkitRelativePath : file.name
+          }`
+        }}</v-list-item-subtitle
+      >
     </v-list-item-content>
     <v-list-item-action>
       <v-btn icon small @click.stop="beforeDelete()">

@@ -42,7 +42,7 @@
   "download": "下载",
   "more": "更多",
   "move": "移动",
-  "deleteFile": "确定删除选中文件吗？",
+  "deleteFile": "确定删除 {0} 个文件吗？",
   "delete": "删除",
   "rename": "重命名",
   "sendToAria2": "发送至 Aria2 下载",
