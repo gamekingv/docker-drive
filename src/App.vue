@@ -617,7 +617,7 @@ export default class APP extends Vue {
       task.status = 'hashing';
       task.file = undefined;
       clearInterval(task.timer as number);
-    }
+    } else if (task.status !== 'uploading') task.status = 'uploading';
   }
   private cancelTask(task: Task): void {
     if (task.status === 'uploading') {
