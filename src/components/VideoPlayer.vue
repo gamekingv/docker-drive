@@ -73,6 +73,7 @@ export default class VideoPlayer extends Vue {
   @Watch('showVideo')
   private async onshow(val: boolean): Promise<void> {
     if (val) {
+      this.subtitles = [];
       for (const track of this.tracks) {
         try {
           const label = track.name.replace(this.videoTitle.substr(0, this.videoTitle.length - 3), '');
