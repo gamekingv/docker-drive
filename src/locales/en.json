@@ -71,5 +71,18 @@
   "theme": "Theme",
   "dark": "Dark",
   "light": "Light",
-  "browserSetting": "Browser Setting"
+  "browserSetting": "Browser Setting",
+  "recovery": {
+    "title": "Recover lost files",
+    "button": "Recover",
+    "hint": "Recover files that uploaded successfully but can't find in the file list. These Files will be recovered to \"/LOST_FILE\".",
+    "success": "{0} files recovered to \"/LOST_FILE\" successfully",
+    "nothing": "Nothing recovered",
+    "manual": {
+      "button": "Manual",
+      "title": "Manual Recovery",
+      "hint": "Digest is a SHA-256 hash like:\nsha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error": "Digest or the file size not correct"
+    }
+  }
 }

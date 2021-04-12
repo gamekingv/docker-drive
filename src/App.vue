@@ -572,7 +572,6 @@ export default class APP extends Vue {
       task.status = 'hashing';
       task.file = undefined;
       const { config, layers } = await network.getManifests(activeRepository);
-      if (layers.some(e => e.digest === digest)) throw 'fileExisted';
       const files = network.parseConfig(config);
       const path = this.getPath(task.path, files);
       if (path.some(e => e.name === task.name)) {
@@ -588,7 +587,8 @@ export default class APP extends Vue {
         task.name = `${name} (${i})${ext}`;
       }
       path.push({ name: task.name, digest, size, type: 'file', uploadTime: Date.now(), id: Symbol() });
-      layers.push({ mediaType: 'application/vnd.docker.image.rootfs.diff.tar.gzip', digest, size });
+      if (layers.every(e => e.digest !== digest))
+        layers.push({ mediaType: 'application/vnd.docker.image.rootfs.diff.tar.gzip', digest, size });
       await network.commit({ files, layers }, activeRepository);
       if (this.child.getConfig) await this.child.getConfig(true, true);
       task.status = 'complete';

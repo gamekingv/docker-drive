@@ -71,5 +71,18 @@
   "theme": "主题",
   "dark": "暗",
   "light": "亮",
-  "browserSetting": "浏览器设定"
+  "browserSetting": "浏览器设定",
+  "recovery": {
+    "title": "恢复丢失文件",
+    "button": "恢复",
+    "hint": "恢复上传成功但无法在文件列表中找到的文件，如发现类似文件会恢复到 /LOST_FILE 目录下",
+    "success": "成功恢复 {0} 个文件到 /LOST_FILE 目录",
+    "nothing": "未恢复任何文件",
+    "manual": {
+      "button": "手动恢复",
+      "title": "手动恢复",
+      "hint": "Digest为SHA-256的hash码，如：\nsha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "error": "Digest或文件大小有误"
+    }
+  }
 }

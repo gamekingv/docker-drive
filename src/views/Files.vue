@@ -542,18 +542,23 @@ export default class Files extends Vue {
     this.isCommitting = false;
   }
   private async remove(files: FileItem[], path: PathNode[], repository: Repository, root: FileItem, layers: Manifest[]): Promise<void> {
+    const rootString = JSON.stringify(root);
     for (const file of files) {
       const currentPathFiles = this.getPath(path, root);
       if (file.type === 'file') {
         const digest = file.digest as string;
+        const isSingleRelative = rootString.split(digest).length === 2;
         try {
-          await network.removeFile(digest, repository);
+          if (isSingleRelative)
+            await network.removeFile(digest, repository);
         }
         catch (e) {
           if (e.response?.status !== 404) throw e;
         }
-        const layerIndex = layers.findIndex(e => e.digest === file.digest);
-        if (layerIndex > -1) layers.splice(layerIndex, 1);
+        if (isSingleRelative) {
+          const layerIndex = layers.findIndex(e => e.digest === file.digest);
+          if (layerIndex > -1) layers.splice(layerIndex, 1);
+        }
       }
       else {
         await this.remove(file.files as FileItem[], [...path, { name: file.name, disabled: false, id: Symbol() }], repository, root, layers);
@@ -738,7 +743,7 @@ export default class Files extends Vue {
     }
   }
   private sendToBrowser(url: string, filename: string): void {
-    chrome.downloads.download({ url, filename });
+    chrome.downloads.download({ url, filename: filename.replace(/[\\/:*?"<>|]/g, '') });
     this.alert(`${this.$t('sendToBrowser')}`, 'success');
   }
   private generateDownloadInfo(items: FileItem[], path: string): { name: string; digest: string }[] {
