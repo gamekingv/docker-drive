@@ -13,7 +13,7 @@
 
 ## :dart: 使用说明
 
-> 参考 [Docker Register Cloud](https://github.com/xausky/DockerRegisterCloud) 项目说明新建一个镜像仓库，然后打开扩展，根据刚刚新建的仓库信息添加仓库即可。
+> 参考 [Docker Register Cloud](https://github.com/xausky/DockerRegisterCloud) 项目说明新建一个镜像仓库，然后打开扩展，根据刚刚新建的仓库信息添加仓库即可。注意请勿和Docker Register Cloud一起使用，本扩展与Docker Register Cloud的配置不兼容，使用本扩展后将无法使用Docker Register Cloud管理。
 * [x] 直接上传下载，并支持批量推送至Aria2下载。
 * [x] 在线预览图片，支持翻页预览同文件夹下的所有图片。
 * [x] 在线预览视频（仅浏览器支持的格式）。
