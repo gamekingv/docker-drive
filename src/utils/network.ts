@@ -88,14 +88,8 @@ export default {
       const layers = data?.layers;
       const digest: string = data?.config?.digest;
       if (digest && layers) {
-        const configURL = `https://${server}/v2/${namespace}/${image}/blobs/${digest}`;
-        const configInstance = axios.create({
-          method: 'get',
-          headers: {
-            'repository': [server, namespace, image].join('/')
-          }
-        });
-        const { data } = await this.requestSender(configURL, configInstance, repository);
+        const configDownloadURL = await this.getDownloadURL(digest, repository);
+        const { data } = await axios.get(configDownloadURL);
         if (data) return { config: data, layers };
         else throw 'loadConfigFailed';
       }
@@ -159,7 +153,7 @@ export default {
       cancelToken: request.token
     });
     const getHeader = (e: chrome.webRequest.WebResponseHeadersDetails): void | chrome.webRequest.WebResponseHeadersDetails => {
-      if (e.statusCode === 307) {
+      if (e.statusCode >= 300 && e.statusCode < 400) {
         downloadURL = e.responseHeaders?.find(e => e.name === 'Location')?.value as string;
         request.cancel('ok');
       }
