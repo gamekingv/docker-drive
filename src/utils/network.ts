@@ -154,7 +154,7 @@ export default {
     });
     const getHeader = (e: chrome.webRequest.WebResponseHeadersDetails): void | chrome.webRequest.WebResponseHeadersDetails => {
       if (e.statusCode >= 300 && e.statusCode < 400) {
-        downloadURL = e.responseHeaders?.find(e => e.name === 'Location')?.value as string;
+        downloadURL = e.responseHeaders?.find(e => e.name.toLowerCase() === 'location')?.value as string;
         request.cancel('ok');
       }
       else if (e.statusCode === 401) return e;
