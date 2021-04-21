@@ -547,7 +547,7 @@ export default class Files extends Vue {
       const currentPathFiles = this.getPath(path, root);
       if (file.type === 'file') {
         const digest = file.digest as string;
-        const isSingleRelative = rootString.split(digest).length === 2;
+        const isSingleRelative = rootString.split(`"digest":"${this.removeItems[0].digest}"`).length === 2;
         try {
           if (isSingleRelative)
             await network.removeFile(digest, repository);
