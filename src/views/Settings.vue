@@ -157,6 +157,7 @@ import { Vue, Component, Prop, Emit, Ref } from 'vue-property-decorator';
 import { Manifest, Repository, VForm } from '@/utils/types';
 import storage from '@/utils/storage';
 import network from '@/utils/network';
+import database from '@/utils/database';
 
 @Component
 
@@ -210,7 +211,7 @@ export default class Settings extends Vue {
       const { config, layers = manualLayers ?? [] } = await network.getManifests(this.activeRepository as Repository);
       const files = network.parseConfig(config);
       const filesString = JSON.stringify(files);
-      const lostFiles = layers.filter(layer => !filesString.includes(layer.digest));
+      const lostFiles = layers.filter(layer => !filesString.includes(`"digest":"${layer.digest}"`));
       if (lostFiles.length > 0) {
         let lostFilesFolder = files.find(file => file.name === 'LOST_FILE');
         if (!lostFilesFolder) {
@@ -221,7 +222,7 @@ export default class Settings extends Vue {
           name: file.digest,
           type: 'file',
           digest: file.digest,
-          size: file.size,
+          size: Number(file.size),
           uploadTime: Date.now(),
           id: Symbol()
         })));
@@ -231,9 +232,9 @@ export default class Settings extends Vue {
       else this.alert(`${this.$t('recovery.nothing')}`, 'warning');
     }
     catch (error) {
-      if (error.message === 'need login') this.login(error.authenticateHeader);
+      if (error?.message === 'need login') this.login(error.authenticateHeader);
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
-      else this.alert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+      else this.alert(`${this.$t('unknownError')}${error?.toString()}`, 'error');
     }
     this.loaded();
   }
@@ -252,13 +253,30 @@ export default class Settings extends Vue {
       })));
       try {
         await network.commit({ files, layers }, this.activeRepository as Repository);
-        await this.recover();
+        if (this.activeRepository?.useDatabase) {
+          const files = validFiles.map(file => ({
+            paths: ['LOST_FILE'],
+            item: {
+              name: file.digest,
+              type: 'file',
+              digest: `sha256:${file.digest.toLowerCase()}`,
+              size: Number(file.size),
+              uploadTime: Date.now(),
+              id: Symbol()
+            }
+          }));
+          const config = await database.add(files, this.activeRepository);
+          await network.commit(config, this.activeRepository);
+          this.loaded();
+          this.alert(`${this.$t('recovery.success', [validFiles.length])}`, 'success');
+        }
+        else await this.recover();
       }
       catch (error) {
         if (error.response?.status === 400) this.alert(`${this.$t('recovery.manual.error')}`, 'error');
-        else if (error.message === 'need login') this.login(error.authenticateHeader);
+        else if (error?.message === 'need login') this.login(error.authenticateHeader);
         else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
-        else this.alert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+        else this.alert(`${this.$t('unknownError')}${error?.toString()}`, 'error');
         this.loaded();
       }
     }

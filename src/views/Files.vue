@@ -1,7 +1,7 @@
 <template>
   <div v-if="repositories.length > 0">
     <v-row>
-      <v-col cols="12" sm="4" xs="3" class="py-0">
+      <v-col cols="12" md="5" sm="7" xs="3" class="py-0">
         <v-select
           v-model="activeRepositoryID"
           :items="repositories"
@@ -21,6 +21,11 @@
                 <v-list-item-title>{{ $t("add") }}</v-list-item-title>
               </v-list-item-content>
             </v-list-item>
+          </template>
+          <template v-if="activeRepository.useDatabase" v-slot:append-outer>
+            <v-btn icon style="margin-top: -6px" @click.stop="refresh()">
+              <v-icon>mdi-refresh</v-icon>
+            </v-btn>
           </template>
         </v-select>
       </v-col>
@@ -278,7 +283,7 @@
                   ></v-text-field>
                 </v-col>
                 <v-col
-                  v-if="actionType === 'move'"
+                  v-if="actionType === 'move' && action"
                   class="folder-tree"
                   cols="12"
                 >
@@ -360,6 +365,7 @@ import ImageViewer from '@/components/ImageViewer.vue';
 import { Repository, FileItem, Manifest, PathNode, VForm } from '@/utils/types';
 import { sizeFormat, formatTime, iconFormat, iconColor } from '@/utils/filters';
 import network from '@/utils/network';
+import database from '@/utils/database';
 
 interface FolderList {
   name: string;
@@ -472,9 +478,9 @@ export default class Files extends Vue {
       }
     }
     catch (error) {
-      if (error.message === 'need login') this.login(error.authenticateHeader, this.getConfig.bind(this));
+      if (error?.message === 'need login') this.login(error.authenticateHeader, this.getConfig.bind(this));
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
-      else this.alert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+      else this.alert(`${this.$t('unknownError')}${error?.toString()}`, 'error');
     }
     if (!silent) this.loaded();
   }
@@ -489,16 +495,29 @@ export default class Files extends Vue {
     this.isCommitting = true;
     this.loading();
     try {
-      const cache = { root: JSON.parse(JSON.stringify(this.root)) };
-      this.getPath(this.currentPath, cache.root).push({ name: name, type: 'folder', files: [], id: Symbol(), uploadTime: Date.now() });
-      await network.commit({ files: cache.root.files, layers: this.layers }, this.activeRepository);
-      await this.getConfig(true, true);
+      if (this.activeRepository.useDatabase) {
+        if (this.root.files && this.root.files.length > 0 && !this.root.files[0]._id) throw `${this.$t('database.notSynchronize')}`;
+        // const config = await database.add([{
+        await database.add([{
+          paths: this.currentPath.slice(1).map(node => node.name),
+          item: { name, type: 'folder', id: Symbol(), uploadTime: Date.now() }
+        }], this.activeRepository);
+        // await network.commit(config, this.activeRepository);
+        // this.root.files = config.files;
+        await this.getConfig(true, true);
+      }
+      else {
+        const cache = { root: JSON.parse(JSON.stringify(this.root)) };
+        this.getPath(this.currentPath, cache.root).push({ name, type: 'folder', files: [], id: Symbol(), uploadTime: Date.now() });
+        await network.commit({ files: cache.root.files, layers: this.layers }, this.activeRepository);
+        await this.getConfig(true, true);
+      }
       this.selectedFiles = [];
     }
     catch (error) {
-      if (error.message === 'need login') this.login(error.authenticateHeader);
+      if (error?.message === 'need login') this.login(error.authenticateHeader);
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
-      else this.alert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+      else this.alert(`${this.$t('unknownError')}${error?.toString()}`, 'error');
     }
     this.loaded();
     this.isCommitting = false;
@@ -524,19 +543,29 @@ export default class Files extends Vue {
     this.loading();
     try {
       const cache = { root: JSON.parse(JSON.stringify(this.root)), layers: JSON.parse(JSON.stringify(this.layers)) };
+      if (this.activeRepository.useDatabase && this.root.files && this.root.files.length > 0 && !this.root.files[0]._id) throw `${this.$t('database.notSynchronize')}`;
       try {
         await this.remove(this.removeItems, this.currentPath, this.activeRepository, cache.root, cache.layers);
       }
       finally {
-        await network.commit({ files: cache.root.files, layers: cache.layers }, this.activeRepository);
-        await this.getConfig(true, true);
+        if (this.activeRepository.useDatabase) {
+          await database.remove(this.removeItems, this.activeRepository);
+          // const config = await database.remove(this.removeItems, this.activeRepository);
+          // await network.commit(config, this.activeRepository);
+          // this.root.files = config.files;
+          await this.getConfig(true, true);
+        }
+        else {
+          await network.commit({ files: cache.root.files, layers: cache.layers }, this.activeRepository);
+          await this.getConfig(true, true);
+        }
         this.selectedFiles = [];
       }
     }
     catch (error) {
-      if (error.message === 'need login') this.login(error.authenticateHeader, this.removeSelected.bind(this, this.removeItems));
+      if (error?.message === 'need login') this.login(error.authenticateHeader, this.removeSelected.bind(this, this.removeItems));
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
-      else this.alert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+      else this.alert(`${this.$t('unknownError')}${error?.toString()}`, 'error');
     }
     this.loaded();
     this.isCommitting = false;
@@ -580,18 +609,28 @@ export default class Files extends Vue {
     this.isCommitting = true;
     this.loading();
     try {
-      const cache = { root: JSON.parse(JSON.stringify(this.root)) };
-      const renameItem = this.getPath(this.currentPath, cache.root).find(e => e.name === this.renameItem.name);
-      if (renameItem) renameItem.name = name;
-      else throw 'unknownError';
-      await network.commit({ files: cache.root.files, layers: this.layers }, this.activeRepository);
-      await this.getConfig(true, true);
+      if (this.activeRepository.useDatabase) {
+        if (!this.renameItem._id) throw `${this.$t('database.notSynchronize')}`;
+        await database.rename(this.renameItem._id, name, this.activeRepository);
+        // const config = await database.rename(this.renameItem._id, name, this.activeRepository);
+        // await network.commit(config, this.activeRepository);
+        // this.root.files = config.files;
+        await this.getConfig(true, true);
+      }
+      else {
+        const cache = { root: JSON.parse(JSON.stringify(this.root)) };
+        const renameItem = this.getPath(this.currentPath, cache.root).find(e => e.name === this.renameItem.name);
+        if (renameItem) renameItem.name = name;
+        else throw `${this.$t('unknownError')}`;
+        await network.commit({ files: cache.root.files, layers: this.layers }, this.activeRepository);
+        await this.getConfig(true, true);
+      }
       this.selectedFiles = [];
     }
     catch (error) {
-      if (error.message === 'need login') this.login(error.authenticateHeader);
+      if (error?.message === 'need login') this.login(error.authenticateHeader);
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
-      else this.alert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+      else this.alert(`${this.$t('unknownError')}${error?.toString()}`, 'error');
     }
     this.loaded();
     this.isCommitting = false;
@@ -627,25 +666,47 @@ export default class Files extends Vue {
     this.isCommitting = true;
     this.loading();
     try {
-      const cache = { root: JSON.parse(JSON.stringify(this.root)) };
-      const dFolder = this.getPath(dPath, cache.root);
-      const sFolder = this.getPath(this.currentPath, cache.root);
-      const failFiles: FileItem[] = [];
-      this.moveItems.forEach(file => {
-        const index = sFolder.findIndex(e => e.name === file.name);
-        if (dFolder.some(e => e.name === file.name)) failFiles.push(file);
-        else if (index > -1) dFolder.push(...sFolder.splice(index, 1));
-      });
-      await network.commit({ files: cache.root.files, layers: this.layers }, this.activeRepository);
-      await this.getConfig(true, true);
-      this.selectedFiles = [];
-      if (failFiles.length > 0) throw 'someFilenameConflict';
+      if (this.activeRepository.useDatabase) {
+        if (this.root.files && this.root.files.length > 0 && !this.root.files[0]._id) throw `${this.$t('database.notSynchronize')}`;
+        let dFolderId = null;
+        const dFolder = dPath.pop() as PathNode;
+        if (dFolder) dFolderId = this.getPath(dPath).find(file => file.name === dFolder.name)?._id ?? null;
+        try {
+          await database.move(this.moveItems.map(file => file._id as string), dFolderId, this.activeRepository);
+          // const config = await database.move(this.moveItems.map(file => file._id as string), dFolderId, this.activeRepository);
+          // await network.commit(config, this.activeRepository);
+          // this.root.files = config.files;
+          await this.getConfig(true, true);
+        }
+        catch (e) {
+          // const config = await database.list(this.activeRepository);
+          // await network.commit(config, this.activeRepository);
+          // this.root.files = config.files;
+          await this.getConfig(true, true);
+          throw 'someFilenameConflict';
+        }
+      }
+      else {
+        const cache = { root: JSON.parse(JSON.stringify(this.root)) };
+        const dFolder = this.getPath(dPath, cache.root);
+        const sFolder = this.getPath(this.currentPath, cache.root);
+        const failFiles: FileItem[] = [];
+        this.moveItems.forEach(file => {
+          const index = sFolder.findIndex(e => e.name === file.name);
+          if (dFolder.some(e => e.name === file.name)) failFiles.push(file);
+          else if (index > -1) dFolder.push(...sFolder.splice(index, 1));
+        });
+        await network.commit({ files: cache.root.files, layers: this.layers }, this.activeRepository);
+        await this.getConfig(true, true);
+        if (failFiles.length > 0) throw 'someFilenameConflict';
+      }
     }
     catch (error) {
-      if (error.message === 'need login') this.login(error.authenticateHeader);
+      if (error?.message === 'need login') this.login(error.authenticateHeader);
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
-      else this.alert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+      else this.alert(`${this.$t('unknownError')}${error?.toString()}`, 'error');
     }
+    this.selectedFiles = [];
     this.loaded();
     this.isCommitting = false;
   }
@@ -661,9 +722,9 @@ export default class Files extends Vue {
       this.alert(`${this.$t('copyDownloadLinksResult', [downloadLinks.length])}`, 'success');
     }
     catch (error) {
-      if (error.message === 'need login') this.login(error.authenticateHeader, this.copyDownloadLinks.bind(this, items));
+      if (error?.message === 'need login') this.login(error.authenticateHeader, this.copyDownloadLinks.bind(this, items));
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
-      else this.alert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+      else this.alert(`${this.$t('unknownError')}${error?.toString()}`, 'error');
     }
     this.loaded();
   }
@@ -703,9 +764,9 @@ export default class Files extends Vue {
         else this.sendToBrowser(await network.getDownloadURL(item.digest, this.activeRepository), item.name);
       }
       catch (error) {
-        if (error.message === 'need login') this.login(error.authenticateHeader, this.itemClick.bind(this, item, forceDownload));
+        if (error?.message === 'need login') this.login(error.authenticateHeader, this.itemClick.bind(this, item, forceDownload));
         else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
-        else this.alert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+        else this.alert(`${this.$t('unknownError')}${error?.toString()}`, 'error');
       }
       this.loaded();
     }
@@ -737,9 +798,9 @@ export default class Files extends Vue {
       this.alert(`${this.$t('sendResult', [success, fail])}`);
     }
     catch (error) {
-      if (error.message === 'need login') this.login(error.authenticateHeader, this.sendToAria2.bind(this, items));
+      if (error?.message === 'need login') this.login(error.authenticateHeader, this.sendToAria2.bind(this, items));
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
-      else this.alert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+      else this.alert(`${this.$t('unknownError')}${error?.toString()}`, 'error');
     }
   }
   private sendToBrowser(url: string, filename: string): void {
@@ -753,6 +814,26 @@ export default class Files extends Vue {
       else if (item.type === 'folder') result.push(...this.generateDownloadInfo(item.files as FileItem[], `${path}${item.name.replaceAll('/', '')}/`));
     });
     return result;
+  }
+  private async refresh(): Promise<void> {
+    this.loading();
+    try {
+
+      if (this.activeRepository?.useDatabase) {
+        await database.synchronize(this.activeRepository);
+        // const config = await database.list(this.activeRepository);
+        // await network.commit(config, this.activeRepository);
+        // this.root.files = config.files;
+        await this.getConfig(true, true);
+      }
+      else await this.getConfig();
+    }
+    catch (error) {
+      if (error?.message === 'need login') this.login(error.authenticateHeader);
+      else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
+      else this.alert(`${this.$t('unknownError')}${error?.toString()}`, 'error');
+    }
+    this.loaded();
   }
 }
 </script>

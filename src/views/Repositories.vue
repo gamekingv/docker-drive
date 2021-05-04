@@ -26,12 +26,21 @@
             <v-list-item-title>{{ repository.name }}</v-list-item-title>
             <v-list-item-subtitle>{{ repository.url }}</v-list-item-subtitle>
           </v-list-item-content>
-          <v-list-item-action>
+          <v-list-item-action v-if="repository.useDatabase" class="ml-4">
+            <v-btn
+              icon
+              :disabled="true"
+              @click.stop="initialDatabase(repository)"
+            >
+              <v-icon>mdi-database-sync</v-icon>
+            </v-btn>
+          </v-list-item-action>
+          <v-list-item-action class="ml-2">
             <v-btn icon @click.stop="editAction(repository)">
               <v-icon>mdi-pencil</v-icon>
             </v-btn>
           </v-list-item-action>
-          <v-list-item-action>
+          <v-list-item-action class="ml-2">
             <v-btn icon @click.stop="deleteAction(repository.id)">
               <v-icon>mdi-trash-can-outline</v-icon>
             </v-btn>
@@ -114,6 +123,22 @@
                     type="password"
                   ></v-text-field>
                 </v-col>
+                <v-col cols="12">
+                  <v-checkbox
+                    v-model="useDatabase"
+                    :label="$t('database.use')"
+                    hint="* 测试功能，请勿开启"
+                    persistent-hint
+                  ></v-checkbox>
+                </v-col>
+                <v-col v-if="useDatabase" cols="12">
+                  <v-text-field
+                    v-model="databaseURL"
+                    :label="$t('database.url')"
+                    :rules="[(v) => !useDatabase || !!v || $t('require')]"
+                    required
+                  ></v-text-field>
+                </v-col>
               </v-row>
             </v-form>
           </v-container>
@@ -144,6 +169,8 @@
 <script lang="ts">
 import { Vue, Component, Prop, PropSync, Ref, Emit } from 'vue-property-decorator';
 import { Repository, VForm } from '@/utils/types';
+import network from '@/utils/network';
+import database from '@/utils/database';
 
 @Component
 
@@ -151,20 +178,29 @@ export default class Repositories extends Vue {
   @Ref() private readonly form!: VForm
 
   @Emit()
+  private loading(): void { return; }
+  @Emit()
+  private loaded(): void { return; }
+  @Emit()
+  private login(authenticateHeader?: string, fn?: Function): void { ({ authenticateHeader, fn }); }
+  @Emit()
+  private alert(text: string, type?: string): void { ({ text, type }); }
+  @Emit()
   private add(): Repository {
     let secret = '';
-    const name = this.name, url = this.url, id = Date.now();
+    const name = this.name, url = this.url, id = Date.now(), useDatabase = this.useDatabase, databaseURL = this.databaseURL;
     if (this.username) secret = btoa(`${this.username}:${this.password}`);
     this.closeForm();
-    return { name, url, token: '', id, secret };
+    return { name, url, token: '', id, secret, useDatabase, databaseURL };
   }
   @Emit()
   private edit(): Repository {
     let secret = '';
     const name = this.name, url = this.url, id = this.id;
+    const useDatabase = this.useDatabase, databaseURL = useDatabase ? this.databaseURL : '';
     if (this.username) secret = btoa(`${this.username}:${this.password}`);
     this.closeForm();
-    return { name, url, token: '', id, secret };
+    return { name, url, token: '', id, secret, useDatabase, databaseURL };
   }
   @Emit('delete')
   private deleteRepository(): number {
@@ -183,6 +219,8 @@ export default class Repositories extends Vue {
   private id = 0
   private username = ''
   private password = ''
+  private useDatabase = false
+  private databaseURL = ''
 
   private created(): void {
     if (this.initialType === 'add') this.addAction();
@@ -192,6 +230,8 @@ export default class Repositories extends Vue {
     this.name = repository.name;
     this.url = repository.url;
     this.id = repository.id;
+    this.useDatabase = repository.useDatabase ?? false;
+    this.databaseURL = repository.databaseURL ?? '';
     this.action = true;
   }
   private addAction(): void {
@@ -209,6 +249,22 @@ export default class Repositories extends Vue {
       this.form.resetValidation();
     }
     this.action = false;
+  }
+  private async initialDatabase(repository: Repository): Promise<void> {
+    try {
+      this.loading();
+      const { config } = await network.getManifests(repository);
+      const files = network.parseConfig(config);
+      const newConfig = await database.initialize(files, repository);
+      await network.commit(newConfig, repository);
+      this.loaded();
+    }
+    catch (error) {
+      this.loaded();
+      if (error?.message === 'need login') this.login(error.authenticateHeader);
+      else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
+      else this.alert(`${this.$t('unknownError')}${error?.toString()}`, 'error');
+    }
   }
 }
 </script>

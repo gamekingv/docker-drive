@@ -167,7 +167,7 @@ export default {
     }
     catch (error) {
       chrome.webRequest.onHeadersReceived.removeListener(getHeader);
-      if (error.message === 'ok') return downloadURL;
+      if (error?.message === 'ok') return downloadURL;
       else {
         request.cancel();
         throw error;

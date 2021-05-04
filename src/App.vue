@@ -319,6 +319,7 @@
           <v-spacer></v-spacer>
           <v-btn
             color="primary"
+            :loading="checking"
             @click.stop="
               form.validate() &&
                 (actionType === 'login' ? login() : addToTaskList())
@@ -329,6 +330,7 @@
           <v-btn
             color="error"
             text
+            :disabled="checking"
             @click.stop="actionType === 'login' ? closeForm(true) : closeForm()"
           >
             {{ $t("cancel") }}
@@ -369,6 +371,7 @@ import hashWorker from '@/utils/hash.worker';
 import storage from '@/utils/storage';
 import Files from '@/views/Files.vue';
 import UploadFileListItem from '@/components/UploadFileListItem.vue';
+import database from './utils/database';
 
 interface Task {
   id: symbol;
@@ -389,6 +392,7 @@ interface Task {
   timer?: number | NodeJS.Timeout;
   cancelToken: CancelTokenSource;
   hashWorker?: Worker;
+  repository: number;
 }
 
 @Component({
@@ -429,6 +433,8 @@ export default class APP extends Vue {
   private alertColor = ''
   private uploadFiles: File[] = []
   private currentPath: PathNode[] = []
+  private uploadedFiles: { paths: string[]; item: FileItem }[] = []
+  private checking = false
 
   private get runningTask(): number {
     return this.taskList.filter(e => e.status === 'uploading' || e.status === 'hashing' || e.status === 'waiting').length;
@@ -492,7 +498,7 @@ export default class APP extends Vue {
       }
       catch (error) {
         if (typeof error === 'string') this.showAlert(`${this.$t(error)}`, 'error');
-        else this.showAlert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+        else this.showAlert(`${this.$t('unknownError')}${error?.toString()}`, 'error');
       }
     }
     this.loading = false;
@@ -527,37 +533,51 @@ export default class APP extends Vue {
     else this.uploadFiles = [];
     this[type].value = '';
   }
-  private addToTaskList(): void {
-    this.uploadFiles.forEach(file => {
-      const path: PathNode[] = [...this.currentPath];
-      /*@ts-ignore*/
-      const stringPath: string = file.webkitRelativePath;
-      if (stringPath !== '') path.push(...stringPath.split('/').slice(0, -1).map(e => ({ name: e, disabled: false, id: Symbol() })));
-      const task: Task = {
-        id: Symbol(),
-        name: file.name,
-        file,
-        status: 'waiting',
-        progress: {
-          uploadedSize: 0,
-          totalSize: file.size,
-        },
-        speed: 0,
-        remainingTime: 0,
-        path,
-        lastUpdate: {
-          time: 0,
-          size: 0
-        },
-        cancelToken: axios.CancelToken.source()
-      };
-      this.taskList.push(task);
-    });
+  private async addToTaskList(): Promise<void> {
+    const repository = this.repositories.find(e => e.id === this.active);
+    if (!repository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
+    try {
+      this.checking = true;
+      if (repository.useDatabase) await database.check(repository);
+      // if (repository.useDatabase && !await database.check(repository)) throw `${this.$t('database.notSynchronize')}`;
+      this.uploadFiles.forEach(file => {
+        const path: PathNode[] = [...this.currentPath];
+        /*@ts-ignore*/
+        const stringPath: string = file.webkitRelativePath;
+        if (stringPath !== '') path.push(...stringPath.split('/').slice(0, -1).map(e => ({ name: e, disabled: false, id: Symbol() })));
+        const task: Task = {
+          id: Symbol(),
+          name: file.name,
+          file,
+          status: 'waiting',
+          progress: {
+            uploadedSize: 0,
+            totalSize: file.size,
+          },
+          speed: 0,
+          remainingTime: 0,
+          path,
+          lastUpdate: {
+            time: 0,
+            size: 0
+          },
+          cancelToken: axios.CancelToken.source(),
+          repository: repository.id
+        };
+        this.taskList.push(task);
+      });
+    }
+    catch (error) {
+      if (error?.response?.status === 404) throw `${this.$t('database.notSynchronize')}`;
+      else if (typeof error === 'string') this.showAlert(error, 'error');
+      else this.showAlert(`${this.$t('unknownError')}：${error}`, 'error');
+    }
+    this.checking = false;
     this.closeForm();
   }
   private async upload(task: Task): Promise<void> {
-    const activeRepository = this.repositories.find(e => e.id === this.active);
-    if (!activeRepository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
+    const repository = this.repositories.find(e => e.id === task.repository);
+    if (!repository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
     try {
       task.hashWorker = new hashWorker();
       task.timer = setInterval(() => {
@@ -566,41 +586,61 @@ export default class APP extends Vue {
         task.lastUpdate.time = now;
         task.lastUpdate.size = task.progress.uploadedSize;
       }, 1000);
-      const { digest, size } = await network.uploadFile(task.file as File, activeRepository, this.onUploadProgress.bind(this, task), task.cancelToken, task.hashWorker as Worker);
+      const { digest, size } = await network.uploadFile(task.file as File, repository, this.onUploadProgress.bind(this, task), task.cancelToken, task.hashWorker as Worker);
       while (this.isCommitting) await new Promise(res => setTimeout(() => res(''), 1000));
       this.isCommitting = true;
       task.status = 'hashing';
       task.file = undefined;
-      const { config, layers } = await network.getManifests(activeRepository);
-      const files = network.parseConfig(config);
-      const path = this.getPath(task.path, files);
-      if (path.some(e => e.name === task.name)) {
-        let i = 1;
-        let [, name, ext] = task.name.match(/(.*)(\.[^.]*)$/) ?? [];
-        if (!name) {
-          name = task.name;
-          ext = '';
+      if (repository.useDatabase) {
+        this.uploadedFiles.push({
+          paths: task.path.slice(1).map(node => node.name),
+          item: { name: task.name, digest, size, type: 'file', uploadTime: Date.now(), id: Symbol() }
+        });
+        if (this.taskList.every(e => e.status !== 'waiting')) {
+          await database.add(this.uploadedFiles, repository);
+          // const config = await database.add(this.uploadedFiles, repository);
+          // this.uploadedFiles = [];
+          // await network.commit(config, repository);
+          if (this.child.getConfig) await this.child.getConfig(true, true);
         }
-        while (path.some(e => e.name === `${name} (${i})${ext}`)) {
-          i++;
+        else if (this.uploadedFiles.length >= 15) {
+          await database.add(this.uploadedFiles, repository, 0);
+          this.uploadedFiles = [];
         }
-        task.name = `${name} (${i})${ext}`;
       }
-      path.push({ name: task.name, digest, size, type: 'file', uploadTime: Date.now(), id: Symbol() });
-      if (layers.every(e => e.digest !== digest))
-        layers.push({ mediaType: 'application/vnd.docker.image.rootfs.diff.tar.gzip', digest, size });
-      await network.commit({ files, layers }, activeRepository);
-      if (this.child.getConfig) await this.child.getConfig(true, true);
+      else {
+        const { config, layers } = await network.getManifests(repository);
+        const files = network.parseConfig(config);
+        const path = this.getPath(task.path, files);
+        if (path.some(e => e.name === task.name)) {
+          let i = 1;
+          let [, name, ext] = task.name.match(/(.*)(\.[^.]*)$/) ?? [];
+          if (!name) {
+            name = task.name;
+            ext = '';
+          }
+          while (path.some(e => e.name === `${name} (${i})${ext}`)) {
+            i++;
+          }
+          task.name = `${name} (${i})${ext}`;
+        }
+        path.push({ name: task.name, digest, size, type: 'file', uploadTime: Date.now(), id: Symbol() });
+        if (layers.every(e => e.digest !== digest))
+          layers.push({ mediaType: 'application/vnd.docker.image.rootfs.diff.tar.gzip', digest, size });
+        await network.commit({ files, layers }, repository);
+        if (this.child.getConfig) await this.child.getConfig(true, true);
+      }
       task.status = 'complete';
     }
     catch (error) {
-      if (error.message === 'need login') this.loginAction(error.authenticateHeader, this.upload.bind(this, task));
-      else if (error.message !== 'manually cancel') {
+      if (error?.message === 'need login') this.loginAction(error.authenticateHeader, this.upload.bind(this, task));
+      else if (error?.message !== 'manually cancel') {
         task.cancelToken.cancel();
         task.file = undefined;
         if (typeof error === 'string') task.status = `${this.$t('uploadError')}${this.$t(error)}`;
-        else task.status = `${this.$t('unknownError')}${error.toString()}`;
+        else task.status = `${this.$t('unknownError')}${error?.toString()}`;
       }
+      this.uploadedFiles = [];
       clearInterval(task.timer as number);
       task.hashWorker?.terminate();
     }
@@ -627,16 +667,15 @@ export default class APP extends Vue {
     task.file = undefined;
   }
   private async addRepository(newRepository: Repository): Promise<void> {
-    const { name, url, id, secret, token } = newRepository;
-    this.repositories.push({ name, url, id, secret, token });
+    const { name, url, id, secret, token, useDatabase, databaseURL } = newRepository;
+    this.repositories.push({ name, url, id, secret, token, useDatabase, databaseURL });
     await storage.setValue('repositories', this.repositories);
     this.active = id;
   }
   private async editRepository(newRepository: Repository): Promise<void> {
-    const { name, url, id, secret } = newRepository;
+    const { name, url, id, secret, useDatabase, databaseURL } = newRepository;
     const repository = this.repositories.find(e => e.id === id) as Repository;
-    repository.name = name;
-    repository.url = url;
+    Object.assign(repository, { name, url, useDatabase, databaseURL });
     if (secret) repository.secret = secret;
     await storage.setValue('repositories', this.repositories);
   }

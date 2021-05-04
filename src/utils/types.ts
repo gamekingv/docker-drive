@@ -4,6 +4,8 @@ interface Repository {
     id: number;
     token: string;
     secret: string;
+    useDatabase?: boolean;
+    databaseURL?: string;
 }
 
 interface FileItem {
@@ -14,6 +16,7 @@ interface FileItem {
     size?: number;
     uploadTime?: number;
     id: symbol;
+    _id?: string;
 }
 
 interface Manifest {

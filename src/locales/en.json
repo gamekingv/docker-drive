@@ -84,5 +84,10 @@
       "hint": "Digest is a SHA-256 hash like:\nsha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "error": "Digest or the file size not correct"
     }
+  },
+  "database": {
+    "use": "Use Database",
+    "url": "Database URL",
+    "notSynchronize": "Database is not synchronized"
   }
 }

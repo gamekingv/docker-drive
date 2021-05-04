@@ -201,9 +201,9 @@ export default class ImageViewer extends Vue {
       }
     }
     catch (error) {
-      if (error.message === 'need login') this.login(error.authenticateHeader, this.onImageChange.bind(this, i));
+      if (error?.message === 'need login') this.login(error.authenticateHeader, this.onImageChange.bind(this, i));
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
-      else this.alert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+      else this.alert(`${this.$t('unknownError')}${error?.toString()}`, 'error');
       if (!this.imageURLs[i] || this.imageURLs[i] === 'loading') this.$set(this.imageURLs, i, 'error');
       if ((!this.imageURLs[i + 1] || this.imageURLs[i + 1] === 'loading') && !this.multiple) this.$set(this.imageURLs, i + 1, 'error');
       if ((!this.imageURLs[i - 1] || this.imageURLs[i - 1] === 'loading') && !this.multiple) this.$set(this.imageURLs, i - 1, 'error');
@@ -218,9 +218,9 @@ export default class ImageViewer extends Vue {
       }
     }
     catch (error) {
-      if (error.message === 'need login') this.login(error.authenticateHeader, this.onIntersect.bind(this, i, [entry]));
+      if (error?.message === 'need login') this.login(error.authenticateHeader, this.onIntersect.bind(this, i, [entry]));
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
-      else this.alert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+      else this.alert(`${this.$t('unknownError')}${error?.toString()}`, 'error');
       this.$set(this.imageURLs, i + 1, 'error');
     }
     this.index = i;
@@ -240,9 +240,9 @@ export default class ImageViewer extends Vue {
         }
       }
       catch (error) {
-        if (error.message === 'need login') this.login(error.authenticateHeader, this.onScrollToTop.bind(this, [entry]));
+        if (error?.message === 'need login') this.login(error.authenticateHeader, this.onScrollToTop.bind(this, [entry]));
         else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
-        else this.alert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+        else this.alert(`${this.$t('unknownError')}${error?.toString()}`, 'error');
         this.$set(this.imageURLs, i - 1, 'error');
       }
     }
@@ -252,9 +252,9 @@ export default class ImageViewer extends Vue {
       this.$set(this.imageURLs, i, await network.getDownloadURL(this.images[i].digest, this.activeRepository));
     }
     catch (error) {
-      if (error.message === 'need login') this.login(error.authenticateHeader, this.reload.bind(this, i));
+      if (error?.message === 'need login') this.login(error.authenticateHeader, this.reload.bind(this, i));
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
-      else this.alert(`${this.$t('unknownError')}${error.toString()}`, 'error');
+      else this.alert(`${this.$t('unknownError')}${error?.toString()}`, 'error');
       this.$set(this.imageURLs, i, 'error');
     }
   }

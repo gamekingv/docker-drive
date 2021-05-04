@@ -84,5 +84,10 @@
       "hint": "Digest为SHA-256的hash码，如：\nsha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "error": "Digest或文件大小有误"
     }
+  },
+  "database": {
+    "use": "使用数据库",
+    "url": "数据库链接",
+    "notSynchronize": "未同步数据库配置"
   }
 }
