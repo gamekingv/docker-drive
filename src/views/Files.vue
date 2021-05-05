@@ -748,11 +748,11 @@ export default class Files extends Vue {
         if (forceDownload) {
           this.sendToBrowser(await network.getDownloadURL(item.digest, this.activeRepository), item.name);
         }
-        else if (/\.(jpg|png|gif|bmp|webp|ico)$/.test(item.name)) {
+        else if (/\.(jpg|png|gif|bmp|webp|ico)$/.test(item.name.toLowerCase())) {
           this.loaded();
           this.showImage = true;
         }
-        else if (/\.(mp4|mkv|avi)$/.test(item.name)) {
+        else if (/\.(mp4|mkv|avi)$/.test(item.name.toLowerCase())) {
           Object.assign(this.source, { name: item.name, url: await network.getDownloadURL(item.digest, this.activeRepository) });
           const subtitles = this.displayList.filter(e => e.name.includes(item.name.substr(0, item.name.length - 3)) && /.*\.(vtt|srt|ass|ssa)$/.test(e.name));
           this.tracks = [];

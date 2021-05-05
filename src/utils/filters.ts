@@ -23,14 +23,16 @@ function progressPercentage({ uploadedSize, totalSize }: { uploadedSize: number;
   return `${(uploadedSize / totalSize * 100).toFixed(1)}%`;
 }
 
-function iconFormat(name: string): string {
+function iconFormat(originalName: string): string {
+  const name = originalName.toLowerCase();
   if (/.*\.(mp4|mkv|avi)$/.test(name)) return 'mdi-youtube';
   else if (/.*\.(ass|srt|ssa|vtt)$/.test(name)) return 'mdi-closed-caption';
   else if (/\.(jpg|png|gif|bmp|webp|ico)$/.test(name)) return 'mdi-file-image';
   else return 'mdi-file';
 }
 
-function iconColor(name: string): string {
+function iconColor(originalName: string): string {
+  const name = originalName.toLowerCase();
   if (/.*\.(mp4)$/.test(name)) return 'purple lighten-2';
   else if (/.*\.(mkv)$/.test(name)) return 'teal lighten-2';
   else if (/.*\.(avi)$/.test(name)) return 'red lighten-2';
