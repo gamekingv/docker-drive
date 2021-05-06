@@ -68,7 +68,7 @@
           class="ma-1"
           color="primary"
           outlined
-          :disabled="isCommitting"
+          :disabled="disableOperate"
           @click.stop="addFolderAction()"
           ><v-icon left>mdi-folder</v-icon>{{ $t("newFolder") }}</v-btn
         >
@@ -93,17 +93,17 @@
               <v-icon left>mdi-download</v-icon>
               <v-list-item-title>{{ $t("download") }}</v-list-item-title>
             </v-list-item>
-            <v-list-item :disabled="isCommitting" @click="moveAction()">
+            <v-list-item :disabled="disableOperate" @click="moveAction()">
               <v-icon left>mdi-file-move</v-icon>
               <v-list-item-title>{{ $t("move") }}</v-list-item-title>
             </v-list-item>
-            <v-list-item :disabled="isCommitting" @click="removeAction()">
+            <v-list-item :disabled="disableOperate" @click="removeAction()">
               <v-icon left>mdi-trash-can-outline</v-icon>
               <v-list-item-title>{{ $t("delete") }}</v-list-item-title>
             </v-list-item>
             <v-list-item
               v-if="selectedFiles.length === 1"
-              :disabled="isCommitting"
+              :disabled="disableOperate"
               @click="renameAction(selectedFiles[0])"
             >
               <v-icon left>mdi-rename-box</v-icon>
@@ -186,15 +186,18 @@
             </v-btn>
           </template>
           <v-list dense>
-            <v-list-item :disabled="isCommitting" @click="moveAction([item])">
+            <v-list-item :disabled="disableOperate" @click="moveAction([item])">
               <v-icon left>mdi-file-move</v-icon>
               <v-list-item-title>{{ $t("move") }}</v-list-item-title>
             </v-list-item>
-            <v-list-item :disabled="isCommitting" @click="removeAction([item])">
+            <v-list-item
+              :disabled="disableOperate"
+              @click="removeAction([item])"
+            >
               <v-icon left>mdi-trash-can-outline</v-icon>
               <v-list-item-title>{{ $t("delete") }}</v-list-item-title>
             </v-list-item>
-            <v-list-item :disabled="isCommitting" @click="renameAction(item)">
+            <v-list-item :disabled="disableOperate" @click="renameAction(item)">
               <v-icon left>mdi-rename-box</v-icon>
               <v-list-item-title>{{ $t("rename") }}</v-list-item-title>
             </v-list-item>
@@ -459,6 +462,9 @@ export default class Files extends Vue {
   }
   private get activeRepository(): Repository | undefined {
     return this.repositories.find(e => e.id === this.activeRepositoryID);
+  }
+  private get disableOperate(): boolean {
+    return !this.activeRepository?.useDatabase && this.isCommitting;
   }
 
   private created(): void {
