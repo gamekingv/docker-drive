@@ -537,7 +537,7 @@ export default class APP extends Vue {
     if (!repository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
     try {
       this.checking = true;
-      if (!await database.check(repository)) throw `${this.$t('database.notSynchronize')}`;
+      if (repository.useDatabase && !await database.check(repository)) throw `${this.$t('database.notSynchronize')}`;
       this.uploadFiles.forEach(file => {
         const path: PathNode[] = [...this.currentPath];
         /*@ts-ignore*/
