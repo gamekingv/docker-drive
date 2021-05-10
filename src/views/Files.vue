@@ -502,15 +502,15 @@ export default class Files extends Vue {
     this.loading();
     try {
       if (this.activeRepository.useDatabase) {
-        if (this.root.files && this.root.files.length > 0 && !this.root.files[0]._id) throw `${this.$t('database.notSynchronize')}`;
-        // const config = await database.add([{
-        await database.add([{
-          paths: this.currentPath.slice(1).map(node => node.name),
-          item: { name, type: 'folder', id: Symbol(), uploadTime: Date.now() }
-        }], this.activeRepository);
-        // await network.commit(config, this.activeRepository);
-        // this.root.files = config.files;
-        await this.getConfig(true, true);
+        if (!await database.check(this.activeRepository)) throw `${this.$t('database.notSynchronize')}`;
+        await database.add(
+          this.currentPath.slice(1).map(node => node.name),
+          { name, type: 'folder', id: Symbol(), uploadTime: Date.now() },
+          this.activeRepository
+        );
+        const config = await database.list(this.activeRepository);
+        await network.commit(config, this.activeRepository);
+        this.root.files = config.files;
       }
       else {
         const cache = { root: JSON.parse(JSON.stringify(this.root)) };
@@ -549,17 +549,15 @@ export default class Files extends Vue {
     this.loading();
     try {
       const cache = { root: JSON.parse(JSON.stringify(this.root)), layers: JSON.parse(JSON.stringify(this.layers)) };
-      if (this.activeRepository.useDatabase && this.root.files && this.root.files.length > 0 && !this.root.files[0]._id) throw `${this.$t('database.notSynchronize')}`;
+      if (this.activeRepository.useDatabase && !await database.check(this.activeRepository)) throw `${this.$t('database.notSynchronize')}`;
       try {
         await this.remove(this.removeItems, this.currentPath, this.activeRepository, cache.root, cache.layers);
       }
       finally {
         if (this.activeRepository.useDatabase) {
-          await database.remove(this.removeItems, this.activeRepository);
-          // const config = await database.remove(this.removeItems, this.activeRepository);
-          // await network.commit(config, this.activeRepository);
-          // this.root.files = config.files;
-          await this.getConfig(true, true);
+          const config = await database.list(this.activeRepository);
+          await network.commit(config, this.activeRepository);
+          this.root.files = config.files;
         }
         else {
           await network.commit({ files: cache.root.files, layers: cache.layers }, this.activeRepository);
@@ -579,6 +577,14 @@ export default class Files extends Vue {
   private async remove(files: FileItem[], path: PathNode[], repository: Repository, root: FileItem, layers: Manifest[]): Promise<void> {
     const rootString = JSON.stringify(root);
     for (const file of files) {
+      if (repository.useDatabase) {
+        try {
+          await database.remove(file._id as string, repository);
+        }
+        catch (e) {
+          if (e.response?.status !== 404) throw e;
+        }
+      }
       const currentPathFiles = this.getPath(path, root);
       if (file.type === 'file') {
         const digest = file.digest as string;
@@ -616,12 +622,16 @@ export default class Files extends Vue {
     this.loading();
     try {
       if (this.activeRepository.useDatabase) {
-        if (!this.renameItem._id) throw `${this.$t('database.notSynchronize')}`;
-        await database.rename(this.renameItem._id, name, this.activeRepository);
-        // const config = await database.rename(this.renameItem._id, name, this.activeRepository);
-        // await network.commit(config, this.activeRepository);
-        // this.root.files = config.files;
-        await this.getConfig(true, true);
+        if (!await database.check(this.activeRepository)) throw `${this.$t('database.notSynchronize')}`;
+        let parent;
+        if (this.currentPath.length === 1) parent = null;
+        else parent = this.getPath(this.currentPath.slice(0, -1), this.root).find(e => e.name === this.currentPath[this.currentPath.length - 1].name)?._id;
+        if (parent === undefined) throw `${this.$t('unknownError')}`;
+        this.renameItem.name = name;
+        await database.rename(this.renameItem, parent, this.activeRepository);
+        const config = await database.list(this.activeRepository);
+        await network.commit(config, this.activeRepository);
+        this.root.files = config.files;
       }
       else {
         const cache = { root: JSON.parse(JSON.stringify(this.root)) };
@@ -673,24 +683,15 @@ export default class Files extends Vue {
     this.loading();
     try {
       if (this.activeRepository.useDatabase) {
-        if (this.root.files && this.root.files.length > 0 && !this.root.files[0]._id) throw `${this.$t('database.notSynchronize')}`;
+        if (!await database.check(this.activeRepository)) throw `${this.$t('database.notSynchronize')}`;
         let dFolderId = null;
         const dFolder = dPath.pop() as PathNode;
         if (dFolder) dFolderId = this.getPath(dPath).find(file => file.name === dFolder.name)?._id ?? null;
-        try {
-          await database.move(this.moveItems.map(file => file._id as string), dFolderId, this.activeRepository);
-          // const config = await database.move(this.moveItems.map(file => file._id as string), dFolderId, this.activeRepository);
-          // await network.commit(config, this.activeRepository);
-          // this.root.files = config.files;
-          await this.getConfig(true, true);
-        }
-        catch (e) {
-          // const config = await database.list(this.activeRepository);
-          // await network.commit(config, this.activeRepository);
-          // this.root.files = config.files;
-          await this.getConfig(true, true);
-          throw 'someFilenameConflict';
-        }
+        const duplicate = await database.move(this.moveItems, dFolderId, this.activeRepository);
+        const config = await database.list(this.activeRepository);
+        await network.commit(config, this.activeRepository);
+        this.root.files = config.files;
+        if (duplicate > 0) throw 'someFilenameConflict';
       }
       else {
         const cache = { root: JSON.parse(JSON.stringify(this.root)) };
@@ -826,11 +827,9 @@ export default class Files extends Vue {
     try {
 
       if (this.activeRepository?.useDatabase) {
-        await database.synchronize(this.activeRepository);
-        // const config = await database.list(this.activeRepository);
-        // await network.commit(config, this.activeRepository);
-        // this.root.files = config.files;
-        await this.getConfig(true, true);
+        const config = await database.list(this.activeRepository);
+        await network.commit(config, this.activeRepository);
+        this.root.files = config.files;
       }
       else await this.getConfig();
     }

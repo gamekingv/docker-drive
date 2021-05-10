@@ -254,18 +254,17 @@ export default class Settings extends Vue {
       try {
         await network.commit({ files, layers }, this.activeRepository as Repository);
         if (this.activeRepository?.useDatabase) {
-          const files = validFiles.map(file => ({
-            paths: ['LOST_FILE'],
-            item: {
+          for (const file of validFiles) {
+            await database.add(['LOST_FILE'], {
               name: file.digest,
               type: 'file',
               digest: `sha256:${file.digest.toLowerCase()}`,
               size: Number(file.size),
               uploadTime: Date.now(),
               id: Symbol()
-            }
-          }));
-          const config = await database.add(files, this.activeRepository);
+            }, this.activeRepository);
+          }
+          const config = await database.list(this.activeRepository);
           await network.commit(config, this.activeRepository);
           this.loaded();
           this.alert(`${this.$t('recovery.success', [validFiles.length])}`, 'success');

@@ -433,7 +433,6 @@ export default class APP extends Vue {
   private alertColor = ''
   private uploadFiles: File[] = []
   private currentPath: PathNode[] = []
-  private uploadedFiles: { paths: string[]; item: FileItem }[] = []
   private checking = false
 
   private get runningTask(): number {
@@ -538,8 +537,7 @@ export default class APP extends Vue {
     if (!repository) return this.showAlert(`${this.$t('unknownError')}`, 'error');
     try {
       this.checking = true;
-      if (repository.useDatabase) await database.check(repository);
-      // if (repository.useDatabase && !await database.check(repository)) throw `${this.$t('database.notSynchronize')}`;
+      if (!await database.check(repository)) throw `${this.$t('database.notSynchronize')}`;
       this.uploadFiles.forEach(file => {
         const path: PathNode[] = [...this.currentPath];
         /*@ts-ignore*/
@@ -568,8 +566,7 @@ export default class APP extends Vue {
       });
     }
     catch (error) {
-      if (error?.response?.status === 404) throw `${this.$t('database.notSynchronize')}`;
-      else if (typeof error === 'string') this.showAlert(error, 'error');
+      if (typeof error === 'string') this.showAlert(error, 'error');
       else this.showAlert(`${this.$t('unknownError')}：${error}`, 'error');
     }
     this.checking = false;
@@ -592,20 +589,15 @@ export default class APP extends Vue {
       task.status = 'hashing';
       task.file = undefined;
       if (repository.useDatabase) {
-        this.uploadedFiles.push({
-          paths: task.path.slice(1).map(node => node.name),
-          item: { name: task.name, digest, size, type: 'file', uploadTime: Date.now(), id: Symbol() }
-        });
+        await database.add(
+          task.path.slice(1).map(node => node.name),
+          { name: task.name, digest, size, type: 'file', uploadTime: Date.now(), id: Symbol() },
+          repository
+        );
         if (this.taskList.every(e => e.status !== 'waiting')) {
-          await database.add(this.uploadedFiles, repository);
-          // const config = await database.add(this.uploadedFiles, repository);
-          // this.uploadedFiles = [];
-          // await network.commit(config, repository);
+          const config = await database.list(repository);
+          await network.commit(config, repository);
           if (this.child.getConfig) await this.child.getConfig(true, true);
-        }
-        else if (this.uploadedFiles.length >= 15) {
-          await database.add(this.uploadedFiles, repository, 0);
-          this.uploadedFiles = [];
         }
       }
       else {
@@ -640,11 +632,10 @@ export default class APP extends Vue {
         if (typeof error === 'string') task.status = `${this.$t('uploadError')}${this.$t(error)}`;
         else task.status = `${this.$t('unknownError')}${error?.toString()}`;
       }
-      this.uploadedFiles = [];
-      clearInterval(task.timer as number);
-      task.hashWorker?.terminate();
     }
     finally {
+      clearInterval(task.timer as number);
+      task.hashWorker?.terminate();
       this.isCommitting = false;
     }
   }
@@ -653,11 +644,7 @@ export default class APP extends Vue {
     if (!task) return;
     task.progress.uploadedSize = loaded;
     task.remainingTime = (task.progress.totalSize - loaded) / task.speed;
-    if (task.progress.totalSize - loaded === 0) {
-      task.status = 'hashing';
-      task.file = undefined;
-      clearInterval(task.timer as number);
-    } else if (task.status !== 'uploading') task.status = 'uploading';
+    if (task.progress.totalSize - loaded !== 0 && task.status !== 'uploading') task.status = 'uploading';
   }
   private cancelTask(task: Task): void {
     if (task.status === 'uploading') {
@@ -667,15 +654,15 @@ export default class APP extends Vue {
     task.file = undefined;
   }
   private async addRepository(newRepository: Repository): Promise<void> {
-    const { name, url, id, secret, token, useDatabase, databaseURL } = newRepository;
-    this.repositories.push({ name, url, id, secret, token, useDatabase, databaseURL });
+    const { name, url, id, secret, token, useDatabase, databaseURL, databaseToken } = newRepository;
+    this.repositories.push({ name, url, id, secret, token, useDatabase, databaseURL, databaseToken });
     await storage.setValue('repositories', this.repositories);
     this.active = id;
   }
   private async editRepository(newRepository: Repository): Promise<void> {
-    const { name, url, id, secret, useDatabase, databaseURL } = newRepository;
+    const { name, url, id, secret, useDatabase, databaseURL, databaseToken } = newRepository;
     const repository = this.repositories.find(e => e.id === id) as Repository;
-    Object.assign(repository, { name, url, useDatabase, databaseURL });
+    Object.assign(repository, { name, url, useDatabase, databaseURL, databaseToken });
     if (secret) repository.secret = secret;
     await storage.setValue('repositories', this.repositories);
   }

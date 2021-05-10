@@ -27,11 +27,7 @@
             <v-list-item-subtitle>{{ repository.url }}</v-list-item-subtitle>
           </v-list-item-content>
           <v-list-item-action v-if="repository.useDatabase" class="ml-4">
-            <v-btn
-              icon
-              :disabled="true"
-              @click.stop="initialDatabase(repository)"
-            >
+            <v-btn icon @click.stop="initialDatabase(repository)">
               <v-icon>mdi-database-sync</v-icon>
             </v-btn>
           </v-list-item-action>
@@ -139,6 +135,14 @@
                     required
                   ></v-text-field>
                 </v-col>
+                <v-col v-if="useDatabase" cols="12">
+                  <v-text-field
+                    v-model="databaseApiKey"
+                    label="API KEY"
+                    :rules="[(v) => !useDatabase || !!v || $t('require')]"
+                    required
+                  ></v-text-field>
+                </v-col>
               </v-row>
             </v-form>
           </v-container>
@@ -188,19 +192,22 @@ export default class Repositories extends Vue {
   @Emit()
   private add(): Repository {
     let secret = '';
-    const name = this.name, url = this.url, id = Date.now(), useDatabase = this.useDatabase, databaseURL = this.databaseURL;
+    const name = this.name, url = this.url, id = Date.now();
+    const useDatabase = this.useDatabase, databaseURL = this.useDatabase ? this.databaseURL : '';
+    const databaseToken = { apikey: useDatabase ? this.databaseApiKey : '', token: '', expiration: 0 };
     if (this.username) secret = btoa(`${this.username}:${this.password}`);
     this.closeForm();
-    return { name, url, token: '', id, secret, useDatabase, databaseURL };
+    return { name, url, token: '', id, secret, useDatabase, databaseURL, databaseToken };
   }
   @Emit()
   private edit(): Repository {
     let secret = '';
     const name = this.name, url = this.url, id = this.id;
     const useDatabase = this.useDatabase, databaseURL = useDatabase ? this.databaseURL : '';
+    const databaseToken = { apikey: useDatabase ? this.databaseApiKey : '', token: '', expiration: 0 };
     if (this.username) secret = btoa(`${this.username}:${this.password}`);
     this.closeForm();
-    return { name, url, token: '', id, secret, useDatabase, databaseURL };
+    return { name, url, token: '', id, secret, useDatabase, databaseURL, databaseToken };
   }
   @Emit('delete')
   private deleteRepository(): number {
@@ -221,6 +228,7 @@ export default class Repositories extends Vue {
   private password = ''
   private useDatabase = false
   private databaseURL = ''
+  private databaseApiKey = ''
 
   private created(): void {
     if (this.initialType === 'add') this.addAction();
@@ -232,6 +240,7 @@ export default class Repositories extends Vue {
     this.id = repository.id;
     this.useDatabase = repository.useDatabase ?? false;
     this.databaseURL = repository.databaseURL ?? '';
+    this.databaseApiKey = repository.databaseToken?.apikey ?? '';
     this.action = true;
   }
   private addAction(): void {
@@ -255,7 +264,8 @@ export default class Repositories extends Vue {
       this.loading();
       const { config } = await network.getManifests(repository);
       const files = network.parseConfig(config);
-      const newConfig = await database.initialize(files, repository);
+      await database.initialize(files, repository);
+      const newConfig = await database.list(repository);
       await network.commit(newConfig, repository);
       this.loaded();
     }
