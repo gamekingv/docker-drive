@@ -182,9 +182,15 @@ export default {
     delete item.files;
     if (item._id) {
       try {
-        const { headers } = await client.head(`${repository.databaseURL}/${databaseName}/${item._id}`);
-        if (headers['etag']) item._rev = headers['etag'].replaceAll('"', '');
-        else throw '';
+        if (item._id.split(':')[0] !== parent) {
+          await this.remove(item._id, repository);
+          item._id = `${parent}:${item.uuid}`;
+        }
+        else {
+          const { headers } = await client.head(`${repository.databaseURL}/${databaseName}/${item._id}`);
+          if (headers['etag']) item._rev = headers['etag'].replaceAll('"', '');
+          else throw '';
+        }
       }
       catch (error) {
         throw `"${item.name}" doesn't exist`;
