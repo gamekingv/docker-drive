@@ -13,7 +13,6 @@ interface Config {
 
 interface DatabaseItem extends FileItem {
   _rev?: string;
-  parent?: string | null;
 }
 
 const preset = {
@@ -60,17 +59,8 @@ export default {
       const { token, expiration } = await this.getToken(repository.databaseToken.apikey);
       repository.databaseToken.token = token;
       repository.databaseToken.expiration = expiration;
-      client.defaults.headers.common['Authorization'] = `Bearer ${repository.databaseToken.token}`;
     }
-  },
-  async treeToArray(items: DatabaseItem[], parent: string | null, repository: Repository): Promise<void> {
-    for (const item of items) {
-      const files = item.files;
-      delete item.files;
-      delete item._id;
-      const id = await this.update(item, parent, repository);
-      if (files) await this.treeToArray(files, id, repository);
-    }
+    client.defaults.headers.common['Authorization'] = `Bearer ${repository.databaseToken.token}`;
   },
   async initialize(files: FileItem[], repository: Repository): Promise<void> {
     await this.setToken(repository);
@@ -82,38 +72,69 @@ export default {
     catch (error) {
       if (error.response.status !== 404) throw error;
     }
-    await client.put(`${repository.databaseURL}/${databaseName}`);
+    await client.put(`${repository.databaseURL}/${databaseName}?partitioned=true`);
+    const docs: DatabaseItem[] = [], uuids: string[] = [];
+    const count = (function getCount(files: FileItem[]): number {
+      return files.reduce((count, file) => {
+        count++;
+        if (file.type === 'folder') count += getCount(file.files as FileItem[]);
+        return count;
+      }, 0);
+    })(files);
+    while (uuids.length < count) {
+      const { data } = await client.get(`${repository.databaseURL}/_uuids`, {
+        params: {
+          count: count - uuids.length <= 1000 ? count - uuids.length : 1000
+        }
+      });
+      uuids.push(...data.uuids);
+    }
     await client.post(`${repository.databaseURL}/${databaseName}/_index`, {
-      'ddoc': 'uploadTime',
-      'index': {
-        'fields': [{ 'uploadTime': 'asc' }]
+      ddoc: 'name',
+      index: {
+        fields: [{ name: 'asc' }]
       },
-      'name': 'getItemByUploadTime',
-      'type': 'json'
+      name: 'getItemByName',
+      type: 'json'
     }, {
       headers: { 'Content-Type': 'application/json' }
     });
     await client.post(`${repository.databaseURL}/${databaseName}/_index`, {
-      'ddoc': 'parent',
-      'index': {
-        'fields': [{ 'parent': 'asc' }]
+      ddoc: 'uploadTime',
+      index: {
+        fields: [{ uploadTime: 'desc' }]
       },
-      'name': 'getItemByParent',
-      'type': 'json'
+      name: 'getItemByUploadTime',
+      type: 'json'
     }, {
       headers: { 'Content-Type': 'application/json' }
     });
     await client.post(`${repository.databaseURL}/${databaseName}/_index`, {
-      'ddoc': 'parent_and_name',
-      'index': {
-        'fields': [{ 'parent': 'asc' }, { 'name': 'asc' }]
+      ddoc: 'global',
+      index: {
+        fields: [{ uploadTime: 'desc' }]
       },
-      'name': 'getItemByParentAndName',
-      'type': 'json'
+      name: 'getItemGlobal',
+      type: 'json',
+      partitioned: false
     }, {
       headers: { 'Content-Type': 'application/json' }
     });
-    if (files) await this.treeToArray(files, null, repository);
+    (function toArray(files: DatabaseItem[], parent: string): void {
+      files.forEach(file => {
+        const uuid = uuids.pop() as string;
+        file._id = `${parent}:${uuid}`;
+        file.uuid = uuid;
+        if (file.files) {
+          toArray(file.files, uuid);
+          delete file.files;
+        }
+        docs.push(file);
+      });
+    })(files, 'root');
+    await client.post(`${repository.databaseURL}/${databaseName}/_bulk_docs`, {
+      docs
+    }, { timeout: 0 });
   },
   async check(repository: Repository): Promise<boolean> {
     await this.setToken(repository);
@@ -130,9 +151,9 @@ export default {
     await this.setToken(repository);
     const databaseName = repository.url.replaceAll('/', '-').replaceAll('.', '_');
     const { data } = await client.post(`${repository.databaseURL}/${databaseName}/_find`, {
-      'selector': { '_id': { '$gt': '0' } },
-      'fields': ['_id', 'name', 'parent', 'type', 'digest', 'size', 'uploadTime'],
-      'sort': [{ 'uploadTime': 'asc' }]
+      selector: { _id: { $gt: '0' } },
+      fields: ['_id', 'name', 'uuid', 'type', 'digest', 'size', 'uploadTime'],
+      sort: [{ uploadTime: 'desc' }]
     }, {
       headers: {
         'Content-Type': 'application/json'
@@ -140,15 +161,14 @@ export default {
     });
     return this.parse(data.docs);
   },
-  async search(name: string, parent: string | null, repository: Repository): Promise<FileItem[]> {
+  async search(name: string, parent: string, repository: Repository): Promise<FileItem[]> {
     await this.setToken(repository);
     const databaseName = repository.url.replaceAll('/', '-').replaceAll('.', '_');
-    const { data } = await client.post(`${repository.databaseURL}/${databaseName}/_find`, {
-      'selector': {
-        'parent': { '$eq': parent },
-        'name': { '$eq': name }
+    const { data } = await client.post(`${repository.databaseURL}/${databaseName}/_partition/${parent}/_find`, {
+      selector: {
+        name: { $eq: name }
       },
-      'fields': ['_id', 'name', 'parent', 'type', 'digest', 'size', 'uploadTime']
+      fields: ['_id', 'name', 'uuid', 'type', 'digest', 'size', 'uploadTime']
     }, {
       headers: {
         'Content-Type': 'application/json'
@@ -156,11 +176,10 @@ export default {
     });
     return data.docs;
   },
-  async update(item: DatabaseItem, parent: string | null, repository: Repository): Promise<string> {
+  async update(item: DatabaseItem, parent: string, repository: Repository): Promise<string> {
     await this.setToken(repository);
     const databaseName = repository.url.replaceAll('/', '-').replaceAll('.', '_');
     delete item.files;
-    item.parent = parent;
     if (item._id) {
       try {
         const { headers } = await client.head(`${repository.databaseURL}/${databaseName}/${item._id}`);
@@ -171,19 +190,24 @@ export default {
         throw `"${item.name}" doesn't exist`;
       }
     }
+    else {
+      const { data } = await client.get(`${repository.databaseURL}/_uuids`);
+      item.uuid = data.uuids[0];
+      item._id = `${parent}:${item.uuid}`;
+    }
     const { data } = await client.post(`${repository.databaseURL}/${databaseName}`, item, {
       headers: {
         'Content-Type': 'application/json'
       }
     });
-    return data.id;
+    return data.id.split(':')[1];
   },
-  async rename(item: FileItem, parent: string | null, repository: Repository): Promise<void> {
+  async rename(item: FileItem, parent: string, repository: Repository): Promise<void> {
     const [databaseItem] = await this.search(item.name, parent, repository);
     if (databaseItem) throw 'duplicate';
     await this.update(item, parent, repository);
   },
-  async move(items: FileItem[], to: string | null, repository: Repository): Promise<number> {
+  async move(items: FileItem[], to: string, repository: Repository): Promise<number> {
     let duplicate = 0;
     for (const item of items) {
       const [databaseItem] = await this.search(item.name, to, repository);
@@ -215,20 +239,18 @@ export default {
         type: 'folder',
         uploadTime: item.uploadTime
       }, await parentId, repository);
-    }, null);
+    }, 'root');
     if (item.type === 'folder') {
       await this.update(item, id, repository);
     }
     else {
-      let [file] = await this.search(item.name, id, repository);
-      if (file && file.digest === item.digest) return;
-      let finalName = item.name, index = 0;
+      let finalName = item.name, index = 0, file;
       let [, name, ext] = item.name.match(/(.*)(\.[^.]*)$/) || [];
       if (!name) {
         name = item.name;
         ext = '';
       }
-      while (([file] = await this.search(item.name, id, repository)).length > 0) {
+      while (([file] = await this.search(finalName, id, repository)).length > 0) {
         if (file && file.digest === item.digest) return;
         finalName = `${name} (${++index})${ext}`;
       }
@@ -240,15 +262,15 @@ export default {
     const root: FileItem[] = [];
     array.forEach(item => {
       /*@ts-ignore*/
-      mark[item._id] = item;
+      mark[item.uuid] = item;
       item.id = Symbol();
       if (item.type === 'folder') item.files = [];
     });
     array.forEach(item => {
-      if (item.parent === null) root.push(item);
+      const [parent] = item._id?.split(':') as string[];
+      if (parent === 'root') root.push(item);
       /*@ts-ignore*/
-      else mark[item.parent].files.push(item);
-      delete item.parent;
+      else mark[parent].files.push(item);
     });
     const files: Set<string> = new Set();
     array.forEach(item => item.type === 'file' ? files.add(`${item.digest}|${item.size}`) : '');
