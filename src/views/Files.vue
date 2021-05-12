@@ -625,7 +625,7 @@ export default class Files extends Vue {
         if (!await database.check(this.activeRepository)) throw `${this.$t('database.notSynchronize')}`;
         let parent;
         if (this.currentPath.length === 1) parent = 'root';
-        else parent = this.getPath(this.currentPath.slice(0, -1), this.root).find(e => e.name === this.currentPath[this.currentPath.length - 1].name)?.uuid;
+        else parent = this.getPath(this.currentPath.slice(0, -1), this.root).find(e => e.name === this.currentPath[this.currentPath.length - 1].name)?._id?.split(':')[1];
         if (parent === undefined) throw `${this.$t('unknownError')}`;
         this.renameItem.name = name;
         await database.rename(this.renameItem, parent, this.activeRepository);
@@ -686,7 +686,7 @@ export default class Files extends Vue {
         if (!await database.check(this.activeRepository)) throw `${this.$t('database.notSynchronize')}`;
         let dFolderId = 'root';
         const dFolder = dPath.pop() as PathNode;
-        if (dFolder) dFolderId = this.getPath(dPath).find(file => file.name === dFolder.name)?.uuid ?? 'root';
+        if (dFolder) dFolderId = this.getPath(dPath).find(file => file.name === dFolder.name)?._id?.split(':')[1] ?? 'root';
         const duplicate = await database.move(this.moveItems, dFolderId, this.activeRepository);
         const config = await database.list(this.activeRepository);
         await network.commit(config, this.activeRepository);

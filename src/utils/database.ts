@@ -124,7 +124,6 @@ export default {
       files.forEach(file => {
         const uuid = uuids.pop() as string;
         file._id = `${parent}:${uuid}`;
-        file.uuid = uuid;
         if (file.files) {
           toArray(file.files, uuid);
           delete file.files;
@@ -152,7 +151,7 @@ export default {
     const databaseName = repository.url.replaceAll('/', '-').replaceAll('.', '_');
     const { data } = await client.post(`${repository.databaseURL}/${databaseName}/_find`, {
       selector: { _id: { $gt: '0' } },
-      fields: ['_id', 'name', 'uuid', 'type', 'digest', 'size', 'uploadTime'],
+      fields: ['_id', 'name', 'type', 'digest', 'size', 'uploadTime'],
       sort: [{ uploadTime: 'desc' }]
     }, {
       headers: {
@@ -168,7 +167,7 @@ export default {
       selector: {
         name: { $eq: name }
       },
-      fields: ['_id', 'name', 'uuid', 'type', 'digest', 'size', 'uploadTime']
+      fields: ['_id', 'name', 'type', 'digest', 'size', 'uploadTime']
     }, {
       headers: {
         'Content-Type': 'application/json'
@@ -184,7 +183,7 @@ export default {
       try {
         if (item._id.split(':')[0] !== parent) {
           await this.remove(item._id, repository);
-          item._id = `${parent}:${item.uuid}`;
+          item._id = `${parent}:${item._id.split(':')[1]}`;
         }
         else {
           const { headers } = await client.head(`${repository.databaseURL}/${databaseName}/${item._id}`);
@@ -198,8 +197,7 @@ export default {
     }
     else {
       const { data } = await client.get(`${repository.databaseURL}/_uuids`);
-      item.uuid = data.uuids[0];
-      item._id = `${parent}:${item.uuid}`;
+      item._id = `${parent}:${data.uuids[0]}`;
     }
     try {
       const { data } = await client.post(`${repository.databaseURL}/${databaseName}`, item, {
@@ -286,7 +284,7 @@ export default {
     const root: FileItem[] = [];
     array.forEach(item => {
       /*@ts-ignore*/
-      mark[item.uuid] = item;
+      mark[item._id.split(':')[1]] = item;
       item.id = Symbol();
       if (item.type === 'folder') item.files = [];
     });

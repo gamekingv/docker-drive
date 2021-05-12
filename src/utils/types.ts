@@ -22,7 +22,6 @@ interface FileItem {
   uploadTime?: number;
   id: symbol;
   _id?: string;
-  uuid?: string;
 }
 
 interface Manifest {
