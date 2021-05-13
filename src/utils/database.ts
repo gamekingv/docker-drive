@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-use-before-define */
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { Repository, FileItem, Manifest } from '@/utils/types';
 import qs from 'qs';
