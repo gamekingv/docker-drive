@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/no-use-before-define */
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { Repository, FileItem, Manifest } from '@/utils/types';
 import qs from 'qs';
+import CryptoJS from 'crypto-js';
 
 interface AxiosRequestConfigExtend extends AxiosRequestConfig {
   __retryCount?: number;
@@ -22,7 +24,7 @@ const preset = {
 
 async function errorHandler(error: AxiosError): Promise<AxiosResponse> {
   const config = error.config as AxiosRequestConfigExtend;
-  if (!config || [401, 404].some(status => error.response?.status === status)) {
+  if (!config || [401, 404, 409].some(status => error.response?.status === status)) {
     if (error.response?.status === 401) return await Promise.reject(error.response?.data?.message);
     else return await Promise.reject(error);
   }
@@ -76,8 +78,10 @@ export default {
     const docs: DatabaseItem[] = [], uuids: string[] = [];
     const count = (function getCount(files: FileItem[]): number {
       return files.reduce((count, file) => {
-        count++;
-        if (file.type === 'folder') count += getCount(file.files as FileItem[]);
+        if (file.type === 'folder') {
+          count++;
+          count += getCount(file.files as FileItem[]);
+        }
         return count;
       }, 0);
     })(files);
@@ -122,9 +126,10 @@ export default {
     });
     (function toArray(files: DatabaseItem[], parent: string): void {
       files.forEach(file => {
-        const uuid = uuids.pop() as string;
-        file._id = `${parent}:${uuid}`;
+        file._id = `${parent}:${CryptoJS.MD5(file.name)}`;
         if (file.files) {
+          const uuid = uuids.pop() as string;
+          file.uuid = uuid;
           toArray(file.files, uuid);
           delete file.files;
         }
@@ -151,7 +156,7 @@ export default {
     const databaseName = repository.url.replaceAll('/', '-').replaceAll('.', '_');
     const { data } = await client.post(`${repository.databaseURL}/${databaseName}/_find`, {
       selector: { _id: { $gt: '0' } },
-      fields: ['_id', 'name', 'type', 'digest', 'size', 'uploadTime'],
+      fields: ['_id', 'name', 'type', 'digest', 'size', 'uploadTime', 'uuid'],
       sort: [{ uploadTime: 'desc' }]
     }, {
       headers: {
@@ -167,7 +172,7 @@ export default {
       selector: {
         name: { $eq: name }
       },
-      fields: ['_id', 'name', 'type', 'digest', 'size', 'uploadTime']
+      fields: ['_id', 'name', 'type', 'digest', 'size', 'uploadTime', 'uuid']
     }, {
       headers: {
         'Content-Type': 'application/json'
@@ -180,64 +185,111 @@ export default {
     const databaseName = repository.url.replaceAll('/', '-').replaceAll('.', '_');
     delete item.files;
     if (item._id) {
+      const [parentID, id] = item._id.split(':');
+      const isModifyName = id !== `${CryptoJS.MD5(item.name)}`, isModifyParent = parentID !== parent;
       try {
-        if (item._id.split(':')[0] !== parent) {
-          await this.remove(item._id, repository);
-          item._id = `${parent}:${item._id.split(':')[1]}`;
-        }
-        else {
+        if (isModifyName || isModifyParent) {
+          item._id = `${parent}:${CryptoJS.MD5(item.name)}`;
+        } else {
           const { headers } = await client.head(`${repository.databaseURL}/${databaseName}/${item._id}`);
-          if (headers['etag']) item._rev = headers['etag'].replaceAll('"', '');
+          if (headers['etag']) item._rev = headers['etag'].replace(/.*"([^"]+)".*/, '$1');
           else throw '';
         }
       }
       catch (error) {
         throw `"${item.name}" doesn't exist`;
       }
+      try {
+        const { data } = await client.post(`${repository.databaseURL}/${databaseName}`, item, {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        return item.type === 'file' ? data.id.split(':')[1] : item.uuid;
+      }
+      catch (error) {
+        if (error.response) {
+          if (error.response.status === 409 && error.response.data?.error === 'conflict') {
+            if (!isModifyName && !isModifyParent) {
+              const { headers } = await client.head(`${repository.databaseURL}/${databaseName}/${item._id}`);
+              if (headers['etag']) item._rev = headers['etag'].replace(/.*"([^"]+)".*/, '$1');
+              else throw error;
+              const { data } = await client.post(`${repository.databaseURL}/${databaseName}`, item, {
+                headers: {
+                  'Content-Type': 'application/json'
+                }
+              });
+              return item.type === 'file' ? data.id.split(':')[1] : item.uuid;
+            }
+          }
+        }
+        throw error;
+      }
     }
     else {
-      const { data } = await client.get(`${repository.databaseURL}/_uuids`);
-      item._id = `${parent}:${data.uuids[0]}`;
-    }
-    try {
-      const { data } = await client.post(`${repository.databaseURL}/${databaseName}`, item, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      return data.id.split(':')[1];
-    }
-    catch (error) {
-      if (error.response) {
-        if (error.response.status === 409 && error.response.data?.error === 'conflict') {
-          const { headers } = await client.head(`${repository.databaseURL}/${databaseName}/${item._id}`);
-          if (headers['etag']) item._rev = headers['etag'].replaceAll('"', '');
-          else throw error;
-          const { data } = await client.post(`${repository.databaseURL}/${databaseName}`, item, {
-            headers: {
-              'Content-Type': 'application/json'
-            }
-          });
-          return data.id.split(':')[1];
-        }
+      if (item.type === 'folder') {
+        const { data } = await client.get(`${repository.databaseURL}/_uuids`);
+        item.uuid = data.uuids[0];
       }
-      throw error;
+      item._id = `${parent}:${CryptoJS.MD5(item.name)}`;
+      try {
+        const { data } = await client.post(`${repository.databaseURL}/${databaseName}`, item, {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        return item.type === 'file' ? data.id.split(':')[1] : item.uuid;
+      }
+      catch (error) {
+        if (error.response?.status === 409 && error.response?.data?.error === 'conflict') {
+          if (item.type === 'folder') return item.uuid as string;
+          else {
+            let finalName = item.name, finalId = item._id, index = 0, exist = true;
+            let [, name, ext] = item.name.match(/(.*)(\.[^.]*)$/) || [];
+            if (!name) {
+              name = item.name;
+              ext = '';
+            }
+            while (exist) {
+              finalName = `${name} (${++index})${ext}`;
+              try {
+                const { data } = await client.get(`${repository.databaseURL}/${databaseName}/${finalId}`);
+                if (data.digest === item.digest) throw 'fileExisted';
+                finalId = `${parent}:${CryptoJS.MD5(finalName)}`;
+                await client.post(`${repository.databaseURL}/${databaseName}`, Object.assign(item, { _id: finalId, name: finalName }), {
+                  headers: {
+                    'Content-Type': 'application/json'
+                  }
+                });
+                exist = false;
+                return finalId.split(':')[1];
+              }
+              catch (error) {
+                if (error.response?.status !== 409 || error.response?.data?.error !== 'conflict') throw error;
+              }
+            }
+          }
+        }
+        throw error;
+      }
     }
   },
   async rename(item: FileItem, parent: string, repository: Repository): Promise<void> {
-    const [databaseItem] = await this.search(item.name, parent, repository);
-    if (databaseItem) throw 'duplicate';
+    const oldId = item._id as string;
     await this.update(item, parent, repository);
+    await this.remove(oldId, repository);
   },
   async move(items: FileItem[], to: string, repository: Repository): Promise<number> {
     let duplicate = 0;
     for (const item of items) {
-      const [databaseItem] = await this.search(item.name, to, repository);
-      if (databaseItem) {
-        duplicate++;
-        continue;
+      try {
+        const oldId = item._id as string;
+        await this.update(item, to, repository);
+        await this.remove(oldId, repository);
       }
-      await this.update(item, to, repository);
+      catch (error) {
+        duplicate++;
+      }
     }
     return duplicate;
   },
@@ -245,11 +297,11 @@ export default {
     await this.setToken(repository);
     const databaseName = repository.url.replaceAll('/', '-').replaceAll('.', '_');
     const { headers } = await client.head(`${repository.databaseURL}/${databaseName}/${id}`);
-    await client.delete(`${repository.databaseURL}/${databaseName}/${id}?rev=${headers['etag'].replaceAll('"', '')}`);
+    await client.delete(`${repository.databaseURL}/${databaseName}/${id}?rev=${headers['etag'].replace(/.*"([^"]+)".*/, '$1')}`);
   },
   async add(paths: string[], item: FileItem, repository: Repository): Promise<void> {
     /*@ts-ignore*/
-    const id = await paths.reduce(async (parentId, path) => {
+    const parent = await paths.reduce(async (parentId, path) => {
       const [folder] = await this.search(path, await parentId, repository);
       if (folder) {
         folder.uploadTime = item.uploadTime;
@@ -262,31 +314,18 @@ export default {
         uploadTime: item.uploadTime
       }, await parentId, repository);
     }, 'root');
-    if (item.type === 'folder') {
-      await this.update(item, id, repository);
-    }
-    else {
-      let finalName = item.name, index = 0, file;
-      let [, name, ext] = item.name.match(/(.*)(\.[^.]*)$/) || [];
-      if (!name) {
-        name = item.name;
-        ext = '';
-      }
-      while (([file] = await this.search(finalName, id, repository)).length > 0) {
-        if (file && file.digest === item.digest) return;
-        finalName = `${name} (${++index})${ext}`;
-      }
-      await this.update(Object.assign(item, { name: finalName }), id, repository);
-    }
+    await this.update(item, parent, repository);
   },
   parse(array: DatabaseItem[]): Config {
     const mark = {};
     const root: FileItem[] = [];
     array.forEach(item => {
-      /*@ts-ignore*/
-      mark[item._id.split(':')[1]] = item;
       item.id = Symbol();
-      if (item.type === 'folder') item.files = [];
+      if (item.type === 'folder') {
+        /*@ts-ignore*/
+        mark[item.uuid] = item;
+        item.files = [];
+      }
     });
     array.forEach(item => {
       const [parent] = item._id?.split(':') as string[];
