@@ -320,7 +320,7 @@
           <v-btn
             color="primary"
             :disabled="
-              isCommitting ||
+              disableOperate ||
               (actionType === 'move' && selectedFolder.length === 0)
             "
             @click.stop="
