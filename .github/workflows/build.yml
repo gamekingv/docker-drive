@@ -14,7 +14,6 @@ jobs:
       # 安装环境
       - name: Install Enviroment
         run: |
-          npm install yarn
           yarn
 
       # 编译扩展
