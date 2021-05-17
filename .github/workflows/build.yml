@@ -1,11 +1,6 @@
 name: build
 on:
   workflow_dispatch:
-    inputs:
-      type:
-        description: 'release detail'
-        required: true
-        default: ''
 
 jobs:
   build:
@@ -28,14 +23,14 @@ jobs:
           yarn build
 
       # 获取版本号
-      - name: Get Version
+      - name: Get Manifest
         id: get_manifest
         run: |
           echo "::set-output name=manifest::$(cat extension/manifest.json)"
-          echo "extension_manifest=$(cat extension/manifest.json)" >> $GITHUB_ENV
-      - id: parse_manifest
+      - name: Get Version
+        id: parse_manifest
         run: |
-          echo "::set-output name=version::${{ fromJSON(env.extension_manifest).version }}"
+          echo "::set-output name=version::${{ fromJSON(steps.get_manifest.outputs.manifest).version }}"
 
       # 打包扩展
       - name: Pack ZIP
