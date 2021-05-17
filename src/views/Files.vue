@@ -122,6 +122,12 @@
               <v-icon left>mdi-auto-download</v-icon>
               <v-list-item-title>{{ $t("sendToAria2") }}</v-list-item-title>
             </v-list-item>
+            <v-list-item @click="copyAria2DownloadText()">
+              <v-icon left>mdi-auto-download</v-icon>
+              <v-list-item-title>{{
+                $t("copyAria2DownloadText")
+              }}</v-list-item-title>
+            </v-list-item>
           </v-list>
         </v-menu>
       </v-col>
@@ -213,6 +219,12 @@
             <v-list-item @click="sendToAria2([item])">
               <v-icon left>mdi-auto-download</v-icon>
               <v-list-item-title>{{ $t("sendToAria2") }}</v-list-item-title>
+            </v-list-item>
+            <v-list-item @click="copyAria2DownloadText([item])">
+              <v-icon left>mdi-auto-download</v-icon>
+              <v-list-item-title>{{
+                $t("copyAria2DownloadText")
+              }}</v-list-item-title>
             </v-list-item>
           </v-list>
         </v-menu>
@@ -808,6 +820,24 @@ export default class Files extends Vue {
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
       else this.alert(`${this.$t('unknownError')}${error?.toString()}`, 'error');
     }
+  }
+  private async copyAria2DownloadText(items = this.selectedFiles): Promise<void> {
+    if (!this.activeRepository) return this.alert(`${this.$t('unknownError')}`, 'error');
+    this.loading();
+    try {
+      const info: { name: string; digest: string; link?: string }[] = this.generateDownloadInfo(items, '');
+      for (const item of info) {
+        item.link = await network.getDownloadURL(item.digest, this.activeRepository);
+      }
+      await navigator.clipboard.writeText(info.map(item => item.link ? `${item.link}\r\n  out=${item.name}` : '').join('\r\n'));
+      this.alert(`${this.$t('copyAria2DownloadTextResult')}`, 'success');
+    }
+    catch (error) {
+      if (error?.message === 'need login') this.login(error.authenticateHeader, this.copyAria2DownloadText.bind(this, items));
+      else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
+      else this.alert(`${this.$t('unknownError')}${error?.toString()}`, 'error');
+    }
+    this.loaded();
   }
   private sendToBrowser(url: string, filename: string): void {
     chrome.downloads.download({ url, filename: filename.replace(/[\\/:*?"<>|]/g, '') });
