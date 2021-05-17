@@ -26,11 +26,11 @@ jobs:
       - name: Get Manifest
         id: get_manifest
         run: |
-          echo "::set-output name=manifest::$(cat extension/manifest.json)"
+          echo "::set-output name=manifest_string::$(cat extension/manifest.json)"
       - name: Get Version
         id: parse_manifest
         run: |
-          echo "::set-output name=version::${{ fromJSON(steps.get_manifest.outputs.manifest).version }}"
+          echo "::set-output name=manifest::${{ fromJSON(steps.get_manifest.outputs.manifest_string) }}"
 
       # 打包扩展
       - name: Pack ZIP
@@ -55,9 +55,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
-          tag_name: v${{ steps.parse_manifest.outputs.version }}
-          release_name: v${{ steps.parse_manifest.outputs.version }}
-          body: "更新到 v${{ steps.parse_manifest.outputs.version }} 版本"
+          tag_name: v${{ steps.parse_manifest.outputs.manifest.version }}
+          release_name: v${{ steps.parse_manifest.outputs.manifest.version }}
+          body: "更新到 v${{ steps.parse_manifest.outputs.manifest.version }} 版本"
           draft: false
           prerelease: false
       - name: Upload CRX
