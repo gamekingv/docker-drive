@@ -30,7 +30,7 @@ jobs:
       - name: Get Version
         id: parse_manifest
         run: |
-          echo "::set-output name=manifest::${{ fromJSON(steps.get_manifest.outputs.manifest_string) }}"
+          echo "${{ fromJSON(steps.get_manifest.outputs.manifest_string).version }}"
 
       # 打包扩展
       - name: Pack ZIP
