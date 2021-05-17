@@ -73,6 +73,15 @@ jobs:
           asset_path: ./build/extension.crx
           asset_name: extension.crx
           asset_content_type: application/octet-stream
+      - name: Upload ZIP
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./build/extension.zip
+          asset_name: extension.zip
+          asset_content_type: application/octet-stream
       - name: Upload XML
         uses: actions/upload-release-asset@v1
         env:
