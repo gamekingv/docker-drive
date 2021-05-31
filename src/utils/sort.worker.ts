@@ -20,7 +20,7 @@ registerPromiseWorker(({ displayListString, listSortBy, listSortDesc, searchText
   switch (sortBy) {
     case 'name': {
       sortedList = displayList.sort((a, b): number => {
-        if (a.name.toUpperCase() < b.name.toUpperCase()) return sortDesc;
+        if (a.name.localeCompare(b.name) < 0) return sortDesc;
         else return -sortDesc;
       });
       break;
