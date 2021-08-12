@@ -1,8 +1,9 @@
 import axios, { AxiosError, AxiosInstance, AxiosResponse, CancelTokenSource, AxiosPromise, AxiosRequestConfig } from 'axios';
-import CryptoJS from 'crypto-js';
 import { Repository, FileItem, Manifest } from '@/utils/types';
 import storage from '@/utils/storage';
 import PromiseWorker from 'promise-worker';
+import listWorker from '@/utils/list.worker';
+// import test from '../test-data.json';
 
 interface Aria2RequestBody {
   jsonrpc: string;
@@ -34,7 +35,8 @@ axios.interceptors.response.use(undefined, errorHandler);
 
 export default {
   async requestSender(url: string, instance: AxiosInstance, repository: Repository): Promise<AxiosResponse> {
-    if (repository.token) instance.defaults.headers.common['Authorization'] = `Bearer ${repository.token}`;
+    const token = await storage.getRepositoryToken(repository.id);
+    if (token) instance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     instance.interceptors.response.use(undefined, errorHandler);
     try {
       return await instance.request({ url });
@@ -43,10 +45,10 @@ export default {
       const { status, headers } = error.response ?? {};
       if (status === 401) {
         try {
-          const token = await this.getToken(headers['www-authenticate'], repository);
-          if (token) {
-            repository.token = token;
-            instance.defaults.headers.common['Authorization'] = `Bearer ${repository.token}`;
+          const newToken = await this.getToken(headers['www-authenticate'], repository);
+          if (newToken) {
+            await storage.setRepositoryToken(repository.id, newToken);
+            instance.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
           }
           else throw 'getTokenFailed';
           return await instance.request({ url });
@@ -73,7 +75,12 @@ export default {
     }
     else throw 'getTokenFailed';
   },
-  async getManifests(repository: Repository): Promise<{ config: { files?: FileItem[]; fileItems?: FileItem[] }; layers: Manifest[] }> {
+  async getManifests(repository: Repository): Promise<{ config: FileItem[]; layers: Manifest[] }> {
+    // const worker = new listWorker();
+    // const promiseWorker = new PromiseWorker(worker);
+    // const config = await promiseWorker.postMessage({ configString: JSON.stringify(test) });
+    // worker.terminate();
+    // return { config, layers: [] };
     const [server, namespace, image] = repository.url.split('/') ?? [];
     const manifestsURL = `https://${server}/v2/${namespace}/${image}/manifests/latest`;
     const manifestsInstance = axios.create({
@@ -81,7 +88,8 @@ export default {
       headers: {
         'Accept': 'application/vnd.docker.distribution.manifest.v2+json',
         'repository': [server, namespace, image].join('/')
-      }
+      },
+      timeout: 30000
     });
     try {
       const { data } = await this.requestSender(manifestsURL, manifestsInstance, repository);
@@ -89,56 +97,26 @@ export default {
       const digest: string = data?.config?.digest;
       if (digest && layers) {
         const configDownloadURL = await this.getDownloadURL(digest, repository);
-        const { data } = await axios.get(configDownloadURL);
-        if (data) return { config: data, layers };
+        const { data: configString } = await axios.get(configDownloadURL, {
+          transformResponse: res => res,
+          timeout: 30000
+        });
+        if (configString) {
+          const worker = new listWorker();
+          const promiseWorker = new PromiseWorker(worker);
+          const config = await promiseWorker.postMessage({ configString });
+          worker.terminate();
+          return { config, layers };
+        }
         else throw 'loadConfigFailed';
       }
       else throw 'loadConfigFailed';
     }
     catch (error) {
       const { status } = error.response ?? {};
-      if (status === 404) return { config: { files: [] }, layers: [] };
+      if (status === 404) return { config: [], layers: [] };
       else throw error;
     }
-  },
-  parseConfig(config: { fileItems?: FileItem[]; files?: FileItem[] }): FileItem[] {
-    let list!: FileItem[];
-    if (config.fileItems) {
-      const cacheRoot = { name: 'root', type: 'folder', files: [], id: Symbol() };
-      config.fileItems.forEach(({ name: pathString, size, digest, uploadTime }) => {
-        if (!uploadTime) uploadTime = Date.now();
-        const path = pathString.substr(1).split('/');
-        const type = digest ? 'file' : 'folder';
-        let filePointer: FileItem = cacheRoot;
-        const id = Symbol();
-        for (let i = 0; i < path.length - 1; i++) {
-          const nextPointer = filePointer.files?.find(e => e.name === path[i]);
-          const id = Symbol();
-          if (nextPointer) filePointer = nextPointer;
-          else {
-            const item: FileItem = { name: path[i], type: 'folder', files: [], id };
-            if (!item.uploadTime || item.uploadTime < uploadTime) item.uploadTime = uploadTime;
-            filePointer.files?.push(item);
-            filePointer = item;
-          }
-        }
-        if (type === 'folder') filePointer.files?.push({ name: path[path.length - 1], type, files: [], id });
-        else filePointer.files?.push({ name: path[path.length - 1], type, size, digest, uploadTime, id });
-      });
-      list = cacheRoot.files;
-    }
-    else if (config.files) {
-      const addID = (files: FileItem[]): void => {
-        files.forEach(file => {
-          file.id = Symbol();
-          if (file.files) addID(file.files);
-        });
-      };
-      addID(config.files);
-      list = config.files;
-    }
-    else throw 'loadConfigFailed';
-    return list;
   },
   async getDownloadURL(digest: string, repository: Repository): Promise<string> {
     const [server, namespace, image] = repository.url.split('/') ?? [];
@@ -158,12 +136,12 @@ export default {
         request.cancel('ok');
       }
       else if (e.statusCode === 401) return e;
-      else throw 'unknownError';
+      else throw 'internalError';
     };
     try {
       chrome.webRequest.onHeadersReceived.addListener(getHeader, { urls: [url] }, ['blocking', 'responseHeaders']);
       await this.requestSender(url, instance, repository);
-      throw 'unknownError';
+      throw 'internalError';
     }
     catch (error) {
       chrome.webRequest.onHeadersReceived.removeListener(getHeader);
@@ -187,8 +165,9 @@ export default {
     return await this.requestSender(url, instance, repository);
   },
   async sentToAria2(items: { name: string; digest: string }[], repository: Repository): Promise<{ success: number; fail: number }> {
-    const { aria2 } = await storage.getValue('aria2');
+    const aria2 = await storage.getAria2Config();
     const [server, namespace, image] = repository.url.split('/') ?? [];
+    const token = storage.getRepositoryToken(repository.id);
     const requestBody: Aria2RequestBody[] = [];
     const timestamp = Date.now();
     const address = aria2?.address ? aria2.address : 'http://localhost:6800/jsonrpc';
@@ -199,7 +178,7 @@ export default {
       id: `${timestamp}${i}`,
       params: [...secret, [`https://${server}/v2/${namespace}/${image}/blobs/${item.digest}`], {
         'out': `${item.name}`,
-        'header': [`repository: ${repository.url}`, `Authorization: Bearer ${repository.token}`]
+        'header': [`repository: ${repository.url}`, `Authorization: Bearer ${token}`]
       }]
     }));
     await this.getUploadURL(repository);
@@ -224,10 +203,9 @@ export default {
     if (headers['location']) return headers['location'] as string;
     else throw 'getUploadURLFailed';
   },
-  async uploadConfig(config: string, repository: Repository): Promise<{ digest: string; size: number }> {
+  async uploadConfig(config: string, digest: string, repository: Repository): Promise<{ digest: string; size: number }> {
     const [server, namespace, image] = repository.url.split('/') ?? [];
     const size = config.length;
-    const digest = `sha256:${CryptoJS.SHA256(config)}`;
     const url = await this.getUploadURL(repository);
     const instance = axios.create({
       method: 'put',
@@ -261,8 +239,6 @@ export default {
       data: new Blob([file], { type: 'application/octet-stream' })
     }));
     const [{ headers }, digest] = await Promise.all([this.requestSender(`${url}`, patchInstance, repository), this.hashFile(file, hashWorker)]);
-    // const { headers } = await this.requestSender(`${url}`, patchInstance, repository);
-    // const digest = await this.hashFile(file, hashWorker);
     const instance = axios.create({
       method: 'put',
       headers: {
@@ -285,19 +261,17 @@ export default {
     });
     await this.requestSender(url, instance, repository);
   },
-  async commit(config: { files: FileItem[]; layers: Manifest[] }, repository: Repository): Promise<void> {
+  async commit(config: FileItem[], repository: Repository, layers?: Manifest[]): Promise<void> {
     const [server, namespace, image] = repository.url.split('/') ?? [];
-    const { digest, size } = await this.uploadConfig(JSON.stringify({ files: config.files }), repository);
-    const manifest = {
-      schemaVersion: 2,
-      mediaType: 'application/vnd.docker.distribution.manifest.v2+json',
-      config: {
-        mediaType: 'application/vnd.docker.container.image.v1+json',
-        size,
-        digest
-      },
-      layers: config.layers
-    };
+    const worker = new listWorker();
+    const promiseWorker = new PromiseWorker(worker);
+    const { configString, manifestString, digest }: {
+      configString: string;
+      manifestString: string;
+      digest: string;
+    } = await promiseWorker.postMessage({ config, layers });
+    worker.terminate();
+    await this.uploadConfig(configString, digest, repository);
     const url = `https://${server}/v2/${namespace}/${image}/manifests/latest`;
     const instance = axios.create({
       method: 'put',
@@ -305,9 +279,10 @@ export default {
         'Content-Type': 'application/vnd.docker.distribution.manifest.v2+json',
         'repository': [server, namespace, image].join('/')
       },
+      timeout: 0
     });
     instance.interceptors.request.use(e => Object.assign(e, {
-      data: JSON.stringify(manifest)
+      data: manifestString
     }));
     await this.requestSender(url, instance, repository);
   },

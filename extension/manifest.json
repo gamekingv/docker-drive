@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "__MSG_extensionName__",
-  "version": "0.3.6",
+  "version": "0.4.0",
   "description": "__MSG_extensionDescription__",
   "icons": {
     "16": "dist/favicon.png",
@@ -10,7 +10,6 @@
     "128": "dist/favicon.png"
   },
   "browser_action": {
-    "browser_style": true,
     "default_icon": "dist/favicon.png"
   },
   "options_ui": {

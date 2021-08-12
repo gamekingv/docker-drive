@@ -5,14 +5,47 @@
     content-class="image-viewer-mask"
     transition="fade-transition"
   >
+    <v-toolbar
+      class="image-viewer-top-bar"
+      color="rgba(0,0,0,0.3)"
+      min-width="100vw"
+      dark
+      flat
+    >
+      <v-tooltip bottom :open-delay="300">
+        <template v-slot:activator="{ on, attrs }">
+          <v-btn
+            icon
+            v-bind="attrs"
+            v-on="on"
+            @click.stop="
+              if (!multiple) {
+                multipleInitialized = false;
+                imageURLs = Object.assign([], { [index]: imageURLs[index] });
+              }
+              multiple = !multiple;
+            "
+          >
+            <v-icon>mdi-image-multiple</v-icon>
+          </v-btn>
+        </template>
+        <span>{{ $t("switchMode") }}</span>
+      </v-tooltip>
+      <v-toolbar-title v-if="images[index]" class="pl-5">{{
+        images[index].name
+      }}</v-toolbar-title>
+      <v-spacer></v-spacer>
+      <v-btn class="ml-5" icon @click.stop="showImage = false">
+        <v-icon>mdi-close</v-icon>
+      </v-btn>
+    </v-toolbar>
     <v-fade-transition mode="out-in">
-      <v-hover v-if="showViewer" v-slot="{ hover }">
+      <div v-if="showViewer" key="viewer" class="fill-height">
         <v-fade-transition mode="out-in">
           <v-carousel
             v-if="!multiple"
             v-model="index"
             hide-delimiters
-            show-arrows-on-hover
             :continuous="false"
             height="100%"
             @change="onImageChange"
@@ -20,35 +53,21 @@
             <v-carousel-item v-for="(image, i) in images" :key="i">
               <image-loader :url="imageURLs[i]" @retry="reload(i)" />
             </v-carousel-item>
-            <v-slide-y-transition>
-              <v-toolbar
-                v-if="hover"
-                min-width="100vw"
-                absolute
-                color="transparent"
-                flat
-              >
-                <v-btn
-                  fab
-                  depressed
-                  small
-                  color="rgba(0,0,0,0.3)"
-                  @click.stop="multiple = !multiple"
-                >
-                  <v-icon>mdi-image-multiple</v-icon>
-                </v-btn>
-                <v-spacer></v-spacer>
-                <v-btn
-                  fab
-                  depressed
-                  small
-                  color="rgba(0,0,0,0.3)"
-                  @click.stop="showImage = false"
-                >
-                  <v-icon>mdi-close</v-icon>
-                </v-btn>
-              </v-toolbar>
-            </v-slide-y-transition>
+            <template v-slot:prev="{ on, attrs }">
+              <div
+                class="carousel-button carousel-button-prev"
+                v-bind="attrs"
+                v-on="on"
+              ></div>
+            </template>
+            <template v-slot:next="{ on, attrs }">
+              <div
+                class="carousel-button carousel-button-next"
+                v-bind="attrs"
+                v-on="on"
+              ></div>
+            </template>
+            <img v-show="false" :src="preloadURL" />
           </v-carousel>
           <v-col v-else class="pa-0 overflow-x-hidden">
             <v-toolbar
@@ -72,41 +91,16 @@
                 @retry="reload(i)"
               />
             </template>
-            <v-slide-y-transition>
-              <v-toolbar
-                v-if="hover"
-                class="multiple-image-mode-toolbar"
-                min-width="100vw"
-                color="transparent"
-                flat
-              >
-                <v-btn
-                  fab
-                  depressed
-                  small
-                  color="rgba(0,0,0,0.3)"
-                  style="pointer-events: auto"
-                  @click.stop="multiple = !multiple"
-                >
-                  <v-icon>mdi-image</v-icon>
-                </v-btn>
-                <v-spacer></v-spacer>
-                <v-btn
-                  fab
-                  depressed
-                  small
-                  color="rgba(0,0,0,0.3)"
-                  style="pointer-events: auto"
-                  @click.stop="showImage = false"
-                >
-                  <v-icon>mdi-close</v-icon>
-                </v-btn>
-              </v-toolbar>
-            </v-slide-y-transition>
           </v-col>
         </v-fade-transition>
-      </v-hover>
-      <v-row v-else class="fill-height ma-0" align="center" justify="center">
+      </div>
+      <v-row
+        v-else
+        key="loader"
+        class="fill-height ma-0"
+        align="center"
+        justify="center"
+      >
         <v-progress-circular
           color="primary"
           indeterminate
@@ -114,6 +108,9 @@
         ></v-progress-circular>
       </v-row>
     </v-fade-transition>
+    <v-chip class="rounded-r-0 rounded-bl-0 image-count" x-small label
+      >{{ index + 1 }}/{{ images.length }}</v-chip
+    >
   </v-dialog>
 </template>
 
@@ -138,14 +135,13 @@ export default class ImageViewer extends Vue {
   @Prop() private readonly displayList!: FileItem[]
   @Prop() private readonly listSortBy!: string | string[] | undefined
   @Prop() private readonly listSortDesc!: boolean | boolean[] | undefined
-  @Prop() private readonly searchText!: string | undefined
   @Prop(String) private readonly name!: string
   @PropSync('show') private readonly showImage!: boolean
 
   @Emit()
   private login(authenticateHeader?: string, fn?: Function): void { ({ authenticateHeader, fn }); }
   @Emit()
-  private alert(text: string, type?: string): void { ({ text, type }); }
+  private alert(text: string, type?: string, error?: Error): void { ({ text, type, error }); }
 
   @Watch('showImage')
   private async onShow(val: boolean): Promise<void> {
@@ -156,7 +152,6 @@ export default class ImageViewer extends Vue {
         displayListString: JSON.stringify(this.displayList),
         listSortBy: this.listSortBy,
         listSortDesc: this.listSortDesc,
-        searchText: this.searchText,
         itemName: this.name
       });
       worker.terminate();
@@ -167,15 +162,7 @@ export default class ImageViewer extends Vue {
       if (this.multiple) this.multipleInitialized = false;
       this.$nextTick(() => this.showViewer = true);
     }
-    else this.showViewer = false;
-  }
-  @Watch('multiple')
-  private onModeChange(val: boolean): void {
-    if (val) {
-      this.multipleInitialized = false;
-      this.imageURLs.fill(undefined, 0, this.index);
-      this.imageURLs.fill(undefined, this.index + 1);
-    }
+    else this.$nextTick(() => this.showViewer = false);
   }
 
   private imageURLs: (string | undefined)[] = []
@@ -184,6 +171,7 @@ export default class ImageViewer extends Vue {
   private multiple = false
   private multipleInitialized = false
   private images: { name: string; digest: string }[] = []
+  private preloadURL = ''
 
   private async onImageChange(i: number): Promise<void> {
     try {
@@ -193,7 +181,8 @@ export default class ImageViewer extends Vue {
       }
       if (!this.imageURLs[i + 1] && this.images[i + 1] && !this.multiple) {
         this.$set(this.imageURLs, i + 1, 'loading');
-        this.$set(this.imageURLs, i + 1, await network.getDownloadURL(this.images[i + 1].digest, this.activeRepository));
+        this.preloadURL = await network.getDownloadURL(this.images[i + 1].digest, this.activeRepository);
+        this.$set(this.imageURLs, i + 1, this.preloadURL);
       }
       if (!this.imageURLs[i - 1] && this.images[i - 1] && !this.multiple) {
         this.$set(this.imageURLs, i - 1, 'loading');
@@ -203,27 +192,29 @@ export default class ImageViewer extends Vue {
     catch (error) {
       if (error?.message === 'need login') this.login(error.authenticateHeader, this.onImageChange.bind(this, i));
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
-      else this.alert(`${this.$t('unknownError')}${error?.toString()}`, 'error');
+      else this.alert(`${this.$t('unknownError')}`, 'error', error);
       if (!this.imageURLs[i] || this.imageURLs[i] === 'loading') this.$set(this.imageURLs, i, 'error');
       if ((!this.imageURLs[i + 1] || this.imageURLs[i + 1] === 'loading') && !this.multiple) this.$set(this.imageURLs, i + 1, 'error');
       if ((!this.imageURLs[i - 1] || this.imageURLs[i - 1] === 'loading') && !this.multiple) this.$set(this.imageURLs, i - 1, 'error');
     }
   }
-  private async onIntersect(i: number, [entry]: IntersectionObserverEntry[]): Promise<void> {
+  private onIntersect(i: number, [entry]: IntersectionObserverEntry[]): void {
     if (entry?.isIntersecting === false) return;
     try {
+      this.index = i;
       if (!this.imageURLs[i + 1] && this.images[i + 1]) {
-        this.$set(this.imageURLs, i + 1, 'loading');
-        this.$set(this.imageURLs, i + 1, await network.getDownloadURL(this.images[i + 1].digest, this.activeRepository));
+        this.$nextTick(async () => {
+          this.$set(this.imageURLs, i + 1, 'loading');
+          this.$set(this.imageURLs, i + 1, await network.getDownloadURL(this.images[i + 1].digest, this.activeRepository));
+        });
       }
     }
     catch (error) {
       if (error?.message === 'need login') this.login(error.authenticateHeader, this.onIntersect.bind(this, i, [entry]));
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
-      else this.alert(`${this.$t('unknownError')}${error?.toString()}`, 'error');
+      else this.alert(`${this.$t('unknownError')}`, 'error', error);
       this.$set(this.imageURLs, i + 1, 'error');
     }
-    this.index = i;
   }
   private async onScrollToTop([entry]: IntersectionObserverEntry[]): Promise<void> {
     if (!this.multipleInitialized) {
@@ -242,7 +233,7 @@ export default class ImageViewer extends Vue {
       catch (error) {
         if (error?.message === 'need login') this.login(error.authenticateHeader, this.onScrollToTop.bind(this, [entry]));
         else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
-        else this.alert(`${this.$t('unknownError')}${error?.toString()}`, 'error');
+        else this.alert(`${this.$t('unknownError')}`, 'error', error);
         this.$set(this.imageURLs, i - 1, 'error');
       }
     }
@@ -254,7 +245,7 @@ export default class ImageViewer extends Vue {
     catch (error) {
       if (error?.message === 'need login') this.login(error.authenticateHeader, this.reload.bind(this, i));
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
-      else this.alert(`${this.$t('unknownError')}${error?.toString()}`, 'error');
+      else this.alert(`${this.$t('unknownError')}`, 'error', error);
       this.$set(this.imageURLs, i, 'error');
     }
   }
@@ -266,6 +257,36 @@ export default class ImageViewer extends Vue {
   position: fixed;
   top: 0;
   pointer-events: none;
+}
+.image-viewer-top-bar {
+  position: fixed;
+  top: 0;
+  opacity: 0;
+  z-index: 2;
+  transition: opacity 0.3s;
+}
+.image-viewer-top-bar:hover {
+  opacity: 1;
+}
+.image-count {
+  width: auto;
+  position: fixed;
+  right: 0;
+  bottom: 0;
+}
+.carousel-button {
+  position: fixed;
+  height: 100vh;
+  width: 40vw;
+  top: 0;
+}
+.carousel-button.carousel-button-next {
+  right: 0;
+  cursor: url("../assets/arrow-right.svg") 16 16, pointer;
+}
+.carousel-button.carousel-button-prev {
+  left: 0;
+  cursor: url("../assets/arrow-left.svg") 16 16, pointer;
 }
 </style>
 

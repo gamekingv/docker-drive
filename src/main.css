@@ -2,11 +2,16 @@ html {
   overflow: hidden;
 }
 
-html,
-body,
+body {
+  font-family: initial;
+  font-size: inherit;
+}
+
 #app,
 #main,
-#main-container {
+#main-container,
+html,
+body {
   height: 100%;
 }
 
@@ -20,6 +25,16 @@ body,
 ::-webkit-scrollbar-corner,
 ::-webkit-scrollbar-track {
   background: transparent !important;
+}
+
+.v-menu__content.theme--light::-webkit-scrollbar-corner,
+.v-menu__content.theme--light::-webkit-scrollbar-track {
+  background: #fff !important;
+}
+
+.v-menu__content.theme--dark::-webkit-scrollbar-corner,
+.v-menu__content.theme--dark::-webkit-scrollbar-track {
+  background: #1e1e1e !important;
 }
 
 ::-webkit-resizer,
@@ -59,3 +74,33 @@ input[type="number"] {
 }
 
 /*input[type="number"]:end*/
+
+/*navigation-drawer*/
+
+.v-navigation-drawer.theme--dark {
+  background-color: #272727;
+}
+
+/*navigation-drawer:end*/
+
+/*data-table*/
+
+.v-data-table a {
+  text-decoration: none;
+}
+
+.v-data-table>.v-data-table__wrapper tbody tr:last-child:hover td:first-child,
+.v-data-table>.v-data-table__wrapper tbody tr:last-child:hover td:last-child {
+  border-radius: 0;
+}
+
+/*data-table:end*/
+
+/*button-group*/
+
+.v-application--is-ltr .v-btn-toggle>.v-btn:last-of-type {
+  border-top-right-radius: inherit;
+  border-bottom-right-radius: inherit;
+}
+
+/*button-group:end*/

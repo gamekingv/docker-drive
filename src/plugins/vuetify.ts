@@ -10,7 +10,7 @@ export default new Vuetify({
   theme: { dark: true },
   lang: {
     locales: { zhHans },
-    current: chrome.i18n.getUILanguage().toLowerCase().includes('zh') ? 'zhHans' : 'en',
+    current: (chrome?.i18n?.getUILanguage() ?? navigator.language)?.toLowerCase().includes('zh') ? 'zhHans' : 'en',
   },
   icons: {
     iconfont: 'mdi',

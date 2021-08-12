@@ -1,19 +1,14 @@
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { Repository, FileItem, Manifest } from '@/utils/types';
+import { Repository, FileItem, DatabaseItem } from '@/utils/types';
+import { getID } from '@/utils/id-generator';
+import storage from '@/utils/storage';
+import PromiseWorker from 'promise-worker';
+import listWorker from '@/utils/list.worker';
 import qs from 'qs';
 import CryptoJS from 'crypto-js';
 
 interface AxiosRequestConfigExtend extends AxiosRequestConfig {
   __retryCount?: number;
-}
-
-interface Config {
-  files: FileItem[];
-  layers: Manifest[];
-}
-
-interface DatabaseItem extends FileItem {
-  _rev?: string;
 }
 
 const preset = {
@@ -54,14 +49,15 @@ export default {
     return { token: data.access_token, expiration: data.expiration };
   },
   async setToken(repository: Repository): Promise<void> {
-    if (!repository.databaseToken) return;
+    const databaseToken = await storage.getDatabaseToken(repository.id) ?? { token: '', expiration: 0 };
+    if (!repository.databaseApiKey) return;
     const now = Date.now() / 1000;
-    if (now >= repository.databaseToken.expiration - 60) {
-      const { token, expiration } = await this.getToken(repository.databaseToken.apikey);
-      repository.databaseToken.token = token;
-      repository.databaseToken.expiration = expiration;
+    if (now >= databaseToken.expiration - 60) {
+      const { token, expiration } = await this.getToken(repository.databaseApiKey);
+      Object.assign(databaseToken, { token, expiration });
+      storage.setDatabaseToken(repository.id, databaseToken);
     }
-    client.defaults.headers.common['Authorization'] = `Bearer ${repository.databaseToken.token}`;
+    client.defaults.headers.common['Authorization'] = `Bearer ${databaseToken.token}`;
   },
   async initialize(files: FileItem[], repository: Repository): Promise<void> {
     await this.setToken(repository);
@@ -150,7 +146,7 @@ export default {
     }
     return true;
   },
-  async list(repository: Repository): Promise<Config> {
+  async list(repository: Repository): Promise<FileItem[]> {
     await this.setToken(repository);
     const databaseName = repository.url.replaceAll('/', '-').replaceAll('.', '_');
     const { data } = await client.post(`${repository.databaseURL}/${databaseName}/_find`, {
@@ -162,7 +158,7 @@ export default {
         'Content-Type': 'application/json'
       }
     });
-    return this.parse(data.docs);
+    return await this.parse(data.docs);
   },
   async search(name: string, parent: string, repository: Repository): Promise<FileItem[]> {
     await this.setToken(repository);
@@ -182,6 +178,8 @@ export default {
   async update(item: DatabaseItem, parent: string, repository: Repository): Promise<string> {
     await this.setToken(repository);
     const databaseName = repository.url.replaceAll('/', '-').replaceAll('.', '_');
+    /*@ts-ignore*/
+    delete item.id;
     delete item.files;
     if (item._id) {
       const [parentID, id] = item._id.split(':');
@@ -278,16 +276,18 @@ export default {
     await this.update(item, parent, repository);
     await this.remove(oldId, repository);
   },
-  async move(items: FileItem[], to: string, repository: Repository): Promise<number> {
-    let duplicate = 0;
+  async move(items: FileItem[], to: string, repository: Repository): Promise<FileItem[]> {
+    const duplicate: FileItem[] = [];
     for (const item of items) {
       try {
         const oldId = item._id as string;
+        const [parentID] = oldId.split(':');
+        if (parentID === to) continue;
         await this.update(item, to, repository);
         await this.remove(oldId, repository);
       }
       catch (error) {
-        duplicate++;
+        duplicate.push(item);
       }
     }
     return duplicate;
@@ -307,7 +307,7 @@ export default {
         return await this.update(folder, await parentId, repository);
       }
       else return await this.update({
-        id: Symbol(),
+        id: getID(),
         name: path,
         type: 'folder',
         uploadTime: item.uploadTime
@@ -315,32 +315,11 @@ export default {
     }, 'root');
     await this.update(item, parent, repository);
   },
-  parse(array: DatabaseItem[]): Config {
-    const mark = {};
-    const root: FileItem[] = [];
-    array.forEach(item => {
-      item.id = Symbol();
-      if (item.type === 'folder') {
-        /*@ts-ignore*/
-        mark[item.uuid] = item;
-        item.files = [];
-      }
-    });
-    array.forEach(item => {
-      const [parent] = item._id?.split(':') as string[];
-      if (parent === 'root') root.push(item);
-      /*@ts-ignore*/
-      else mark[parent].files.push(item);
-    });
-    const files: Set<string> = new Set();
-    array.forEach(item => item.type === 'file' ? files.add(`${item.digest}|${item.size}`) : '');
-    const layers = Array.from(files).map(file => {
-      const [digest, size] = file.split('|');
-      return {
-        mediaType: 'application/vnd.docker.image.rootfs.diff.tar.gzip',
-        digest, size: Number(size)
-      };
-    });
-    return { files: root, layers };
+  async parse(array: DatabaseItem[]): Promise<FileItem[]> {
+    const worker = new listWorker();
+    const promiseWorker = new PromiseWorker(worker);
+    const config: FileItem[] = await promiseWorker.postMessage({ database: array });
+    worker.terminate();
+    return config;
   }
 };

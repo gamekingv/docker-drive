@@ -25,28 +25,31 @@ function progressPercentage({ uploadedSize, totalSize }: { uploadedSize: number;
 
 function iconFormat(originalName: string): string {
   const name = originalName.toLowerCase();
-  if (/.*\.(mp4|mkv|avi)$/.test(name)) return 'mdi-youtube';
-  else if (/.*\.(ass|srt|ssa|vtt)$/.test(name)) return 'mdi-closed-caption';
-  else if (/\.(jpg|png|gif|bmp|webp|ico)$/.test(name)) return 'mdi-file-image';
+  if (/.*\.(mp4|mkv|avi)$/.test(name)) return 'mdi-video-outline';
+  else if (/.*\.(ass|srt|ssa|vtt)$/.test(name)) return 'mdi-closed-caption-outline';
+  else if (/\.(jpe?g|png|gif|bmp|webp|ico)$/.test(name)) return 'mdi-file-image-outline';
   else return 'mdi-file';
 }
 
-function iconColor(originalName: string): string {
-  const name = originalName.toLowerCase();
-  if (/.*\.(mp4)$/.test(name)) return 'purple lighten-2';
-  else if (/.*\.(mkv)$/.test(name)) return 'teal lighten-2';
-  else if (/.*\.(avi)$/.test(name)) return 'red lighten-2';
-  else if (/.*\.(ass)$/.test(name)) return 'red lighten-2';
-  else if (/.*\.(srt)$/.test(name)) return 'teal lighten-2';
-  else if (/.*\.(ssa)$/.test(name)) return 'pink lighten-2';
-  else if (/.*\.(vtt)$/.test(name)) return 'purple lighten-2';
-  else if (/.*\.(jpg)$/.test(name)) return 'red lighten-2';
-  else if (/.*\.(png)$/.test(name)) return 'teal lighten-2';
-  else if (/.*\.(gif)$/.test(name)) return 'pink lighten-2';
-  else if (/.*\.(bmp)$/.test(name)) return 'purple lighten-2';
-  else if (/.*\.(webp)$/.test(name)) return 'indigo lighten-2';
-  else if (/.*\.(ico)$/.test(name)) return 'orange lighten-2';
-  else return 'mdi-file';
+function iconColor(name: string): string {
+  const [, ext] = name.toLowerCase().match(/.*\.([^.]*)$/) ?? [];
+  switch (ext) {
+    case 'mp4': return 'purple lighten-2';
+    case 'mkv': return 'teal lighten-2';
+    case 'avi': return 'red lighten-2';
+    case 'ass': return 'red lighten-2';
+    case 'srt': return 'teal lighten-2';
+    case 'ssa': return 'pink lighten-2';
+    case 'vtt': return 'purple lighten-2';
+    case 'jpeg':
+    case 'jpg': return 'red lighten-2';
+    case 'png': return 'teal lighten-2';
+    case 'gif': return 'pink lighten-2';
+    case 'bmp': return 'purple lighten-2';
+    case 'webp': return 'indigo lighten-2';
+    case 'ico': return 'orange lighten-2';
+    default: return 'mdi-file';
+  }
 }
 
 export {

@@ -1,147 +1,231 @@
 <template>
   <div class="fill-height">
-    <v-list v-if="repositories.length > 0" class="transparent" two-line>
-      <template v-for="(repository, index) in repositories">
-        <v-list-item :key="repository.id">
-          <v-list-item-avatar>
-            <v-btn
-              icon
-              class="transparent"
-              @click.stop="activeRepositoryID = repository.id"
-            >
-              <v-icon
-                class="transparent"
-                :color="repository.id === activeRepositoryID ? 'green' : 'grey'"
-                >mdi-check</v-icon
-              >
-            </v-btn>
-          </v-list-item-avatar>
-          <v-list-item-avatar>
-            <v-icon v-if="repository.secret" class="transparent" color="green"
-              >mdi-lock-check</v-icon
-            >
-            <v-icon v-else class="transparent" color="amber">mdi-lock</v-icon>
-          </v-list-item-avatar>
-          <v-list-item-content>
-            <v-list-item-title>{{ repository.name }}</v-list-item-title>
-            <v-list-item-subtitle>{{ repository.url }}</v-list-item-subtitle>
-          </v-list-item-content>
-          <v-list-item-action v-if="repository.useDatabase" class="ml-4">
-            <v-btn icon @click.stop="initialDatabase(repository)">
-              <v-icon>mdi-database-sync</v-icon>
-            </v-btn>
-          </v-list-item-action>
-          <v-list-item-action class="ml-2">
-            <v-btn icon @click.stop="editAction(repository)">
-              <v-icon>mdi-pencil</v-icon>
-            </v-btn>
-          </v-list-item-action>
-          <v-list-item-action class="ml-2">
-            <v-btn icon @click.stop="deleteAction(repository.id)">
-              <v-icon>mdi-trash-can-outline</v-icon>
-            </v-btn>
-          </v-list-item-action>
-        </v-list-item>
-        <v-divider
-          v-if="index < repositories.length - 1"
-          :key="index"
-          inset
-        ></v-divider>
-      </template>
-      <v-list-item class="d-flex justify-center">
-        <v-btn icon large @click.stop="addAction()">
-          <v-icon>mdi-plus</v-icon>
-        </v-btn>
-      </v-list-item>
-    </v-list>
-    <v-row v-else class="fill-height" align="center" justify="center">
-      <v-card
-        color="transparent"
-        class="d-flex justify-center align-center"
-        outlined
-        style="border-style: dashed; border-color: #616161 !important"
-        width="80%"
-        height="80%"
-      >
-        <v-card-text class="text-center">
-          <v-btn color="primary" @click.stop="addAction()">
-            <v-icon left>mdi-plus</v-icon>{{ $t("add") }}</v-btn
+    <v-item-group
+      v-if="repositories.length > 0"
+      v-model="activeRepositoryID"
+      mandatory
+    >
+      <v-row dense>
+        <v-col cols="12" md="4" sm="6">
+          <v-sheet
+            class="overflow-hidden"
+            outlined
+            rounded
+            @click.stop="addAction()"
           >
-        </v-card-text>
-      </v-card>
+            <v-list-item link>
+              <v-list-item-content>
+                <v-icon large>mdi-plus</v-icon>
+              </v-list-item-content>
+            </v-list-item>
+          </v-sheet>
+        </v-col>
+        <v-item
+          v-for="repository in repositories"
+          v-slot="{ active, toggle }"
+          :key="repository.id"
+          :value="repository.id"
+        >
+          <v-col cols="12" md="4" sm="6">
+            <v-sheet
+              class="overflow-hidden"
+              rounded
+              outlined
+              @click.stop="toggle"
+            >
+              <v-list-item
+                :input-value="active"
+                :color="`grey darken-${$vuetify.theme.dark ? 1 : 3}`"
+                link
+              >
+                <v-list-item-avatar>
+                  <v-icon
+                    v-if="repository.secret"
+                    class="transparent"
+                    color="green"
+                    >mdi-lock-check</v-icon
+                  >
+                  <v-icon v-else class="transparent" color="amber"
+                    >mdi-lock</v-icon
+                  >
+                </v-list-item-avatar>
+                <v-list-item-content>
+                  <v-list-item-title class="text--primary">{{
+                    repository.name
+                  }}</v-list-item-title>
+                  <v-list-item-subtitle>{{
+                    repository.url
+                  }}</v-list-item-subtitle>
+                </v-list-item-content>
+                <v-list-item-action v-if="repository.useDatabase" class="ml-4">
+                  <v-tooltip top :open-delay="300">
+                    <template v-slot:activator="{ on, attrs }">
+                      <v-btn
+                        small
+                        icon
+                        v-bind="attrs"
+                        v-on="on"
+                        @click.stop="initialDatabase(repository)"
+                      >
+                        <v-icon small>mdi-database-sync</v-icon>
+                      </v-btn>
+                    </template>
+                    <span>{{ $t("repository.synchronizeTo") }}</span>
+                  </v-tooltip>
+                </v-list-item-action>
+                <v-list-item-action class="ml-2">
+                  <v-tooltip top :open-delay="300">
+                    <template v-slot:activator="{ on, attrs }">
+                      <v-btn
+                        small
+                        icon
+                        v-bind="attrs"
+                        v-on="on"
+                        @click.stop="editAction(repository)"
+                      >
+                        <v-icon small>mdi-pencil</v-icon>
+                      </v-btn>
+                    </template>
+                    <span>{{ $t("edit") }}</span>
+                  </v-tooltip>
+                </v-list-item-action>
+                <v-list-item-action class="ml-2">
+                  <v-tooltip top :open-delay="300">
+                    <template v-slot:activator="{ on, attrs }">
+                      <v-btn
+                        small
+                        icon
+                        v-bind="attrs"
+                        v-on="on"
+                        @click.stop="deleteAction(repository.id)"
+                      >
+                        <v-icon small>mdi-trash-can-outline</v-icon>
+                      </v-btn>
+                    </template>
+                    <span>{{ $t("delete") }}</span>
+                  </v-tooltip>
+                </v-list-item-action>
+              </v-list-item>
+            </v-sheet>
+          </v-col>
+        </v-item>
+      </v-row>
+    </v-item-group>
+    <v-row v-else class="fill-height pa-15" align="center" justify="center">
+      <v-sheet
+        class="d-flex justify-center align-center pa-3"
+        height="100%"
+        width="100%"
+        min-height="100px"
+        min-width="200px"
+        rounded
+        outlined
+      >
+        <v-btn depressed @click.stop="addAction()">
+          <v-icon left>mdi-plus</v-icon>{{ $t("repository.add") }}</v-btn
+        >
+      </v-sheet>
     </v-row>
     <v-dialog v-model="action" persistent scrollable :max-width="400">
       <v-card>
         <v-card-title>
-          <span
-            v-if="actionType === 'edit' || actionType === 'add'"
-            class="headline"
-            >{{ $t(actionType) }}</span
-          >
-          <span v-if="actionType === 'delete'">{{
-            $t("deleteRepository", [
-              repositories.find((e) => e.id === id)
-                ? repositories.find((e) => e.id === id).name
-                : "",
-            ])
-          }}</span>
+          <span>{{ $t(formValue.type) }}</span>
+          <v-spacer></v-spacer>
+          <v-btn plain icon>
+            <v-icon @click.stop="action = false">mdi-close</v-icon>
+          </v-btn>
         </v-card-title>
-        <v-card-text v-if="actionType === 'edit' || actionType === 'add'">
-          <v-container>
-            <v-form ref="form" lazy-validation>
-              <v-row>
+        <v-card-text class="py-0">
+          <v-container class="px-0">
+            <v-form ref="form" v-model="formValidation">
+              <v-row v-if="formValue.type === 'delete'" no-gutters>
+                <v-col cols="12">{{
+                  $t("deleteRepository", [
+                    repositories.find((e) => e.id === id)
+                      ? repositories.find((e) => e.id === id).name
+                      : "",
+                  ])
+                }}</v-col>
+              </v-row>
+              <v-row v-else no-gutters>
                 <v-col cols="12">
                   <v-text-field
-                    v-model="name"
-                    :label="$t('repository.name')"
+                    v-model="formValue.name"
+                    outlined
+                    dense
                     :rules="[(v) => !!v || $t('require')]"
                     required
-                  ></v-text-field>
+                  >
+                    <template v-slot:label>
+                      {{ $t("repository.name")
+                      }}<span class="red--text">*</span>
+                    </template>
+                  </v-text-field>
                 </v-col>
                 <v-col cols="12">
                   <v-text-field
-                    v-model="url"
-                    :label="$t('repository.url')"
+                    v-model="formValue.url"
+                    outlined
+                    dense
                     :rules="[(v) => !!v || $t('require')]"
                     required
-                  ></v-text-field>
+                  >
+                    <template v-slot:label>
+                      {{ $t("repository.url") }}<span class="red--text">*</span>
+                    </template>
+                  </v-text-field>
                 </v-col>
                 <v-col cols="12">
                   <v-text-field
-                    v-model="username"
+                    v-model="formValue.username"
+                    outlined
+                    dense
                     :label="$t('account')"
                   ></v-text-field>
                 </v-col>
                 <v-col cols="12">
                   <v-text-field
-                    v-model="password"
+                    v-model="formValue.password"
+                    outlined
+                    dense
                     :label="$t('password')"
                     type="password"
                   ></v-text-field>
                 </v-col>
                 <v-col cols="12">
                   <v-checkbox
-                    v-model="useDatabase"
+                    v-model="formValue.useDatabase"
                     :label="$t('database.use')"
-                    hint="* 测试功能，请勿开启"
+                    dense
+                    hint="* 测试功能，请勿随意开启"
                     persistent-hint
                   ></v-checkbox>
                 </v-col>
-                <v-col v-if="useDatabase" cols="12">
+                <v-col v-if="formValue.useDatabase" class="mt-2" cols="12">
                   <v-text-field
-                    v-model="databaseURL"
-                    :label="$t('database.url')"
-                    :rules="[(v) => !useDatabase || !!v || $t('require')]"
+                    v-model="formValue.databaseURL"
+                    outlined
+                    dense
+                    :rules="[(v) => !!v || $t('require')]"
                     required
-                  ></v-text-field>
+                  >
+                    <template v-slot:label>
+                      {{ $t("database.url") }}<span class="red--text">*</span>
+                    </template>
+                  </v-text-field>
                 </v-col>
-                <v-col v-if="useDatabase" cols="12">
+                <v-col v-if="formValue.useDatabase" cols="12">
                   <v-text-field
-                    v-model="databaseApiKey"
-                    label="API KEY"
-                    :rules="[(v) => !useDatabase || !!v || $t('require')]"
+                    v-model="formValue.databaseApiKey"
+                    outlined
+                    dense
+                    :rules="[(v) => !!v || $t('require')]"
                     required
-                  ></v-text-field>
+                  >
+                    <template v-slot:label>
+                      API KEY<span class="red--text">*</span>
+                    </template>
+                  </v-text-field>
                 </v-col>
               </v-row>
             </v-form>
@@ -150,18 +234,19 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn
-            color="primary"
+            depressed
+            :disabled="!formValidation"
             @click.stop="
-              actionType === 'edit'
-                ? form.validate() && edit()
-                : actionType === 'add'
-                ? form.validate() && add()
-                : deleteRepository()
+              formValue.type === 'edit'
+                ? edit()
+                : formValue.type === 'add'
+                ? add()
+                : formValue.type === 'delete' && deleteRepository()
             "
           >
             {{ $t("ok") }}
           </v-btn>
-          <v-btn color="error" text @click.stop="closeForm()">
+          <v-btn color="error" text @click.stop="action = false">
             {{ $t("cancel") }}
           </v-btn>
         </v-card-actions>
@@ -171,10 +256,11 @@
 </template>
 
 <script lang="ts">
-import { Vue, Component, Prop, PropSync, Ref, Emit } from 'vue-property-decorator';
+import { Vue, Component, Prop, Ref, Emit, Watch } from 'vue-property-decorator';
 import { Repository, VForm } from '@/utils/types';
 import network from '@/utils/network';
 import database from '@/utils/database';
+import storage from '@/utils/storage';
 
 @Component
 
@@ -186,85 +272,123 @@ export default class Repositories extends Vue {
   @Emit()
   private loaded(): void { return; }
   @Emit()
-  private login(authenticateHeader?: string, fn?: Function): void { ({ authenticateHeader, fn }); }
+  private login(authenticateHeader?: string, fn?: Function): void { authenticateHeader; fn; }
   @Emit()
-  private alert(text: string, type?: string): void { ({ text, type }); }
-  @Emit()
-  private add(): Repository {
-    let secret = '';
-    const name = this.name, url = this.url, id = Date.now();
-    const useDatabase = this.useDatabase, databaseURL = this.useDatabase ? this.databaseURL : '';
-    const databaseToken = { apikey: useDatabase ? this.databaseApiKey : '', token: '', expiration: 0 };
-    if (this.username) secret = btoa(`${this.username}:${this.password}`);
-    this.closeForm();
-    return { name, url, token: '', id, secret, useDatabase, databaseURL, databaseToken };
-  }
-  @Emit()
-  private edit(): Repository {
-    let secret = '';
-    const name = this.name, url = this.url, id = this.id;
-    const useDatabase = this.useDatabase, databaseURL = useDatabase ? this.databaseURL : '';
-    const databaseToken = { apikey: useDatabase ? this.databaseApiKey : '', token: '', expiration: 0 };
-    if (this.username) secret = btoa(`${this.username}:${this.password}`);
-    this.closeForm();
-    return { name, url, token: '', id, secret, useDatabase, databaseURL, databaseToken };
-  }
-  @Emit('delete')
-  private deleteRepository(): number {
-    this.closeForm();
-    return this.id;
-  }
+  private alert(text: string, type?: string, error?: Error): void { text; type; error; }
 
   @Prop(String) private readonly initialType!: string
-  @Prop(Array) private readonly repositories!: Repository[]
-  @PropSync('active') private activeRepositoryID!: number
 
   private action = false
-  private actionType = ''
-  private name = ''
-  private url = ''
+  private readonly defaultFormValue: {
+    type: string;
+    name: string;
+    url: string;
+    username: string;
+    password: string;
+    useDatabase: boolean;
+    databaseURL: string;
+    databaseApiKey: string;
+  } = {
+      type: '',
+      name: '',
+      url: '',
+      username: '',
+      password: '',
+      useDatabase: false,
+      databaseURL: '',
+      databaseApiKey: ''
+    }
+  private formValue = Object.assign({}, this.defaultFormValue)
+  private formValidation = true
   private id = 0
-  private username = ''
-  private password = ''
-  private useDatabase = false
-  private databaseURL = ''
-  private databaseApiKey = ''
+  private repositories: Repository[] = []
+  private activeRepositoryID = 0
 
-  private created(): void {
+  @Watch('activeRepositoryID')
+  private async onActiveRepositoryIDChange(val: number): Promise<void> {
+    await storage.setValue('active', val);
+  }
+
+  private async created(): Promise<void> {
+    this.repositories = await storage.getRepositories();
+    this.activeRepositoryID = await storage.getActiveID();
     if (this.initialType === 'add') this.addAction();
   }
   private editAction(repository: Repository): void {
-    this.actionType = 'edit';
-    this.name = repository.name;
-    this.url = repository.url;
+    this.resetForm({
+      type: 'edit',
+      name: repository.name,
+      url: repository.url,
+      useDatabase: repository.useDatabase ?? false,
+      databaseURL: repository.databaseURL ?? '',
+      databaseApiKey: repository.databaseApiKey ?? ''
+    });
     this.id = repository.id;
-    this.useDatabase = repository.useDatabase ?? false;
-    this.databaseURL = repository.databaseURL ?? '';
-    this.databaseApiKey = repository.databaseToken?.apikey ?? '';
     this.action = true;
   }
   private addAction(): void {
-    this.actionType = 'add';
+    this.resetForm({ type: 'add' });
     this.action = true;
   }
   private deleteAction(id: number): void {
-    this.actionType = 'delete';
+    this.resetForm({ type: 'delete' });
     this.id = id;
     this.action = true;
   }
-  private closeForm(): void {
-    if (this.form) {
-      this.form.reset();
-      this.form.resetValidation();
-    }
+  private resetForm(value?: {
+    type: string;
+    name?: string;
+    url?: string;
+    username?: string;
+    password?: string;
+    useDatabase?: boolean;
+    databaseURL?: string;
+    databaseApiKey?: string;
+  }): void {
+    Object.assign(this.formValue, this.defaultFormValue, value);
+    this.form?.resetValidation();
+  }
+  private async add(): Promise<void> {
     this.action = false;
+    let secret = '';
+    const { name, url, username, password, useDatabase } = this.formValue;
+    const id = Date.now();
+    const databaseURL = useDatabase ? this.formValue.databaseURL : '';
+    const databaseApiKey = useDatabase ? this.formValue.databaseApiKey : '';
+    if (username) secret = btoa(`${username}:${password}`);
+    const newRepository = { name, url, id, secret, useDatabase, databaseURL, databaseApiKey };
+    this.repositories.push(newRepository);
+    await storage.setValue('repositories', this.repositories);
+    this.activeRepositoryID = id;
+  }
+  private async edit(): Promise<void> {
+    this.action = false;
+    let secret = '';
+    const { name, url, username, password, useDatabase } = this.formValue;
+    const id = this.id;
+    const databaseURL = useDatabase ? this.formValue.databaseURL : '';
+    const databaseApiKey = useDatabase ? this.formValue.databaseApiKey : '';
+    if (username) secret = btoa(`${username}:${password}`);
+    const repository = this.repositories.find(e => e.id === id) as Repository;
+    Object.assign(repository, { name, url, useDatabase, databaseURL, databaseApiKey });
+    if (secret) repository.secret = secret;
+    await storage.setValue('repositories', this.repositories);
+  }
+  private async deleteRepository(): Promise<void> {
+    this.action = false;
+    const id = this.id;
+    this.repositories.splice(this.repositories.findIndex(e => e.id === id), 1);
+    if (this.activeRepositoryID === id) {
+      const newActiveId = this.repositories[0]?.id ?? 0;
+      this.activeRepositoryID = newActiveId;
+    }
+    await storage.setValue('repositories', this.repositories);
   }
   private async initialDatabase(repository: Repository): Promise<void> {
     try {
       this.loading();
       const { config } = await network.getManifests(repository);
-      const files = network.parseConfig(config);
-      await database.initialize(files, repository);
+      await database.initialize(config, repository);
       const newConfig = await database.list(repository);
       await network.commit(newConfig, repository);
       this.loaded();
@@ -273,7 +397,7 @@ export default class Repositories extends Vue {
       this.loaded();
       if (error?.message === 'need login') this.login(error.authenticateHeader);
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
-      else this.alert(`${this.$t('unknownError')}${error?.toString()}`, 'error');
+      else this.alert(`${this.$t('unknownError')}`, 'error', error);
     }
   }
 }

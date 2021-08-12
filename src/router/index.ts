@@ -7,19 +7,25 @@ Vue.use(VueRouter);
 const routes: Array<RouteConfig> = [
   {
     path: '/',
+    redirect: '/files'
+  },
+  {
+    path: '/files/:repository?/:path*',
     name: 'Files',
     component: Files
   },
   {
     path: '/repositories',
     name: 'Repositories',
+    // eslint-disable-next-line
     component: () => import('@/views/Repositories.vue'),
     props: (route): { initialType: string } => ({ initialType: route.query.type as string })
   },
   {
-    path: '/settings',
-    name: 'Settings',
-    component: () => import('@/views/Settings.vue')
+    path: '/tasks',
+    name: 'Tasks',
+    // eslint-disable-next-line
+    component: () => import('@/views/Tasks.vue')
   }
 ];
 
