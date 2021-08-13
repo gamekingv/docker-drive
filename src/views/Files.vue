@@ -1,5 +1,5 @@
 <template>
-  <div v-if="repositories.length > 0 || state">
+  <div v-if="repositories.length > 0">
     <v-row align="center">
       <v-col cols="12" md="5" sm="7" xs="3" class="py-0">
         <v-select
@@ -785,7 +785,7 @@
       </v-card>
     </v-dialog>
   </div>
-  <v-row v-else class="fill-height pa-15" align="center" justify="center">
+  <v-row v-else-if="!state" class="fill-height pa-15" align="center" justify="center">
     <v-sheet
       class="d-flex justify-center align-center pa-3"
       height="100%"
