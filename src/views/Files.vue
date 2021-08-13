@@ -967,7 +967,10 @@ export default class Files extends Vue {
     const path = to.path.replace(/\/files\/\d+\/?/, '');
     if (from.path === to.path && from.query.search === search && from.query.recursive === recursive) listChanged = false;
     if (listChanged) this.displayList = [];
-    if (isEnter) this.repositories = await storage.getRepositories();
+    if (isEnter) {
+      this.repositories = await storage.getRepositories();
+      if (this.repositories.length === 0) this.loaded();
+    }
     if (!repository) {
       const activeID = await storage.getActiveID();
       if (!this.activeRepositoryID && activeID) {
