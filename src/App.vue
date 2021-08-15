@@ -105,9 +105,10 @@
     <v-navigation-drawer
       v-model="settingPanel"
       :width="300"
+      height="100vh"
       right
       temporary
-      absolute
+      fixed
     >
       <template v-slot:prepend>
         <v-toolbar class="top-bar" flat>
@@ -207,7 +208,7 @@
         }}</v-card-title>
         <v-card-text class="py-0">
           <v-container class="px-0">
-            <v-form ref="form" v-model="formValidation">
+            <v-form ref="form" v-model="formValidation" @submit.prevent>
               <v-row v-if="formValue.type === 'login'" no-gutters>
                 <v-col cols="12">
                   <v-text-field

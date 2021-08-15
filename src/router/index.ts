@@ -1,6 +1,8 @@
 import Vue from 'vue';
 import VueRouter, { RouteConfig } from 'vue-router';
 import Files from '@/views/Files.vue';
+import Repositories from '@/views/Repositories.vue';
+import Tasks from '@/views/Tasks.vue';
 
 Vue.use(VueRouter);
 
@@ -17,15 +19,13 @@ const routes: Array<RouteConfig> = [
   {
     path: '/repositories',
     name: 'Repositories',
-    // eslint-disable-next-line
-    component: () => import('@/views/Repositories.vue'),
+    component: Repositories,
     props: (route): { initialType: string } => ({ initialType: route.query.type as string })
   },
   {
     path: '/tasks',
     name: 'Tasks',
-    // eslint-disable-next-line
-    component: () => import('@/views/Tasks.vue')
+    component: Tasks
   }
 ];
 

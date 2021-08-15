@@ -17,7 +17,7 @@
   "ok": "OK",
   "cancel": "Cancel",
   "require": "Require",
-  "filename": "Name",
+  "fileName": "Name",
   "fileSize": "Size",
   "fileUploadTime": "Upload",
   "perPage": "items per page, total",
@@ -55,6 +55,12 @@
       "folder": " | folder | folders",
       "and": " and ",
       "hint": "Are you sure to delete {0} ?"
+    },
+    "statistic": {
+      "button": "Statistic",
+      "file": "File",
+      "folder": "Folder",
+      "size": "Size"
     }
   },
   "delete": "Delete",
@@ -125,6 +131,10 @@
     "noTask": "No {0} Task",
     "over1h": "Over 1h",
     "remaining": "{0} remaining"
+  },
+  "sort": {
+    "hint": "Sort By",
+    "clear": "No Sort"
   },
   "switchMode": "Switch Viewing Mode"
 }

@@ -85,10 +85,6 @@ input[type="number"] {
 
 /*data-table*/
 
-.v-data-table a {
-  text-decoration: none;
-}
-
 .v-data-table>.v-data-table__wrapper tbody tr:last-child:hover td:first-child,
 .v-data-table>.v-data-table__wrapper tbody tr:last-child:hover td:last-child {
   border-radius: 0;

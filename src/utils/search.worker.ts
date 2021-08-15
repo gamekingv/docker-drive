@@ -38,17 +38,24 @@ registerPromiseWorker(({ list, path, searchText, searchRecursive = false }: { li
             }
           }
         })(filePointer.files, route);
+        searchResult.forEach(file => delete file.files);
         return searchResult;
       }
       else return;
     }
     else {
       const searchResult = filePointer.files?.filter(file => file.name.toLowerCase().includes(searchText.toLowerCase()));
-      searchResult?.forEach(file => file.displayName = highlight(file.name, searchText));
+      searchResult?.forEach(file => {
+        file.displayName = highlight(file.name, searchText);
+        delete file.files;
+      });
       return searchResult;
     }
   }
-  else return filePointer.files;
+  else {
+    filePointer.files?.forEach(file => delete file.files);
+    return filePointer.files;
+  }
 });
 
 export default {} as typeof Worker & { new(): Worker };

@@ -31,29 +31,28 @@
                   :title="task.relativePath || task.name"
                   rounded
                   outlined
+                  style="position: relative"
                 >
-                  <v-list-item link>
+                  <v-sheet
+                    :color="
+                      task.status === 'waiting' || task.status === 'cancel'
+                        ? 'grey'
+                        : task.status === 'uploading' ||
+                          task.status === 'hashing'
+                        ? 'primary'
+                        : task.status === 'complete'
+                        ? 'success'
+                        : 'error'
+                    "
+                    :width="task.progress | progressPercentage"
+                    height="100%"
+                    style="opacity: 0.15; position: absolute"
+                  ></v-sheet>
+                  <v-list-item v-blur link>
                     <v-list-item-avatar>
-                      <v-progress-circular
-                        :value="task.progress | progressPercentage"
-                        :rotate="-90"
-                        :color="
-                          task.status === 'waiting' || task.status === 'cancel'
-                            ? ''
-                            : task.status === 'uploading' ||
-                              task.status === 'hashing'
-                            ? 'primary'
-                            : task.status === 'complete'
-                            ? 'success'
-                            : 'error'
-                        "
-                        :size="40"
-                        :width="5"
-                      >
-                        <v-icon :color="task.name | iconColor">{{
-                          task.name | iconFormat
-                        }}</v-icon>
-                      </v-progress-circular>
+                      <v-icon :color="task.name | iconColor">{{
+                        task.name | iconFormat
+                      }}</v-icon>
                     </v-list-item-avatar>
                     <v-list-item-content>
                       <v-list-item-title>{{

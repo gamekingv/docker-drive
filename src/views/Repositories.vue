@@ -13,7 +13,7 @@
             rounded
             @click.stop="addAction()"
           >
-            <v-list-item link>
+            <v-list-item v-blur link>
               <v-list-item-content>
                 <v-icon large>mdi-plus</v-icon>
               </v-list-item-content>
@@ -34,6 +34,7 @@
               @click.stop="toggle"
             >
               <v-list-item
+                v-blur
                 :input-value="active"
                 :color="`grey darken-${$vuetify.theme.dark ? 1 : 3}`"
                 link
@@ -137,7 +138,7 @@
         </v-card-title>
         <v-card-text class="py-0">
           <v-container class="px-0">
-            <v-form ref="form" v-model="formValidation">
+            <v-form ref="form" v-model="formValidation" @submit.prevent>
               <v-row v-if="formValue.type === 'delete'" no-gutters>
                 <v-col cols="12">{{
                   $t("deleteRepository", [

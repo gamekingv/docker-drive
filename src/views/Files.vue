@@ -165,6 +165,16 @@
                 <v-icon left>mdi-rename-box</v-icon>
                 <v-list-item-title>{{ $t("rename") }}</v-list-item-title>
               </v-list-item>
+              <v-divider></v-divider>
+              <v-list-item
+                :disabled="disableOperate"
+                @click="statisticAction()"
+              >
+                <v-icon left>mdi-information-outline</v-icon>
+                <v-list-item-title>{{
+                  $t("form.statistic.button")
+                }}</v-list-item-title>
+              </v-list-item>
               <v-list-item
                 v-if="selectedFiles.some((item) => item.type === 'file')"
                 @click="copyDownloadLinks()"
@@ -174,7 +184,6 @@
                   $t("copyDownloadLinks")
                 }}</v-list-item-title>
               </v-list-item>
-              <v-divider></v-divider>
               <v-list-item @click="copyAria2DownloadText()">
                 <v-icon left>mdi-download-box</v-icon>
                 <v-list-item-title>{{
@@ -242,12 +251,12 @@
             :item-key="!$route.query.search ? 'name' : 'id'"
             show-select
             hide-default-footer
-            :hide-default-header="dataLoading"
+            :hide-default-header="dataLoading || $vuetify.breakpoint.xs"
             :loading="dataLoading"
             :sort-by.sync="listSortBy"
             :sort-desc.sync="listSortDesc"
             :headers="[
-              { text: $t('filename'), align: 'start', value: 'name' },
+              { text: $t('fileName'), align: 'start', value: 'name' },
               { text: $t('fileSize'), value: 'size' },
               { text: $t('fileUploadTime'), value: 'uploadTime' },
             ]"
@@ -331,6 +340,209 @@
               </v-breadcrumbs>
               <v-divider></v-divider>
             </template>
+            <template
+              v-if="$vuetify.breakpoint.xs"
+              v-slot:header="{ props, on }"
+            >
+              <v-row class="ma-0 py-2 px-2" align="center">
+                <v-menu>
+                  <template v-slot:activator="{ on: menuOn, attrs }">
+                    <v-btn text v-bind="attrs" v-on="menuOn"
+                      >{{
+                        listSortBy
+                          ? $t(
+                              `file${listSortBy.replace(/^[a-z]/g, (e) =>
+                                e.toUpperCase()
+                              )}`
+                            )
+                          : $t("sort.hint")
+                      }}<v-icon right>mdi-menu-down</v-icon></v-btn
+                    >
+                  </template>
+                  <v-list dense>
+                    <v-list-item
+                      v-for="(item, index) in [
+                        { text: `${$t('sort.clear')}`, value: '' },
+                        { text: `${$t('fileName')}`, value: 'name' },
+                        { text: `${$t('fileSize')}`, value: 'size' },
+                        {
+                          text: `${$t('fileUploadTime')}`,
+                          value: 'uploadTime',
+                        },
+                      ]"
+                      :key="index"
+                      :input-value="listSortBy === item.value"
+                      @click="listSortBy = item.value"
+                    >
+                      <v-list-item-title>{{ item.text }}</v-list-item-title>
+                    </v-list-item>
+                  </v-list>
+                </v-menu>
+                <v-btn
+                  v-if="listSortBy"
+                  icon
+                  @click.stop="listSortDesc = !listSortDesc"
+                  ><v-icon small
+                    >mdi-arrow-{{ listSortDesc ? "down" : "up" }}</v-icon
+                  ></v-btn
+                >
+                <v-spacer></v-spacer>
+                <v-simple-checkbox
+                  v-model="props.everyItem"
+                  :indeterminate="props.someItems && !props.everyItem"
+                  color="primary"
+                  @input="on['toggle-select-all']"
+                ></v-simple-checkbox>
+              </v-row>
+              <v-divider></v-divider>
+            </template>
+            <template
+              v-if="$vuetify.breakpoint.xs"
+              v-slot:body="{ items, isSelected, select }"
+            >
+              <v-list class="py-0" dense>
+                <template v-for="(item, index) in items">
+                  <v-list-item
+                    :key="!$route.query.search ? item.name : item.id"
+                    v-blur
+                    link
+                    :input-value="isSelected(item)"
+                    @click.stop="
+                      selectedFiles.length > 0
+                        ? select(item, !isSelected(item))
+                        : item.type === 'folder'
+                        ? $router.push({
+                            path: item.path
+                              ? `/files/${activeRepositoryID}${
+                                  item.path === '/' ? '' : item.path
+                                }/${encodeURIComponent(item.name)}`
+                              : `${$route.path}/${encodeURIComponent(
+                                  item.name
+                                )}`,
+                            query: { pn: $route.query.pn },
+                          })
+                        : itemClick(item)
+                    "
+                    @contextmenu.prevent="
+                      selectedFiles.length === 0 &&
+                        select(item, !isSelected(item))
+                    "
+                  >
+                    <v-list-item-avatar>
+                      <v-icon
+                        v-if="item.type === 'folder'"
+                        color="amber lighten-2"
+                        >mdi-folder</v-icon
+                      >
+                      <v-icon v-else :color="item.name | iconColor">{{
+                        item.name | iconFormat
+                      }}</v-icon></v-list-item-avatar
+                    >
+                    <v-list-item-content>
+                      <v-list-item-title
+                        style="white-space: unset; word-break: break-word"
+                      >
+                        <search-result
+                          :result="item.displayName || item.name"
+                        />
+                      </v-list-item-title>
+                      <v-list-item-subtitle>
+                        <span>{{ item.uploadTime | formatTime }}</span>
+                        <span v-if="item.size" class="ml-2">{{
+                          item.size | sizeFormat
+                        }}</span>
+                      </v-list-item-subtitle>
+                    </v-list-item-content>
+                    <v-list-item-action>
+                      <v-simple-checkbox
+                        :value="isSelected(item)"
+                        color="primary"
+                        :ripple="false"
+                        @input="select(item, $event)"
+                        @click.stop
+                      ></v-simple-checkbox>
+                    </v-list-item-action>
+                  </v-list-item>
+                  <v-divider
+                    v-if="index !== items.length - 1"
+                    :key="index"
+                  ></v-divider>
+                </template>
+              </v-list>
+              <v-bottom-navigation
+                :input-value="selectedFiles.length > 0"
+                fixed
+              >
+                <v-btn :disabled="disableOperate" @click="moveAction()">
+                  <span>{{ $t("move") }}</span>
+                  <v-icon>mdi-file-move</v-icon>
+                </v-btn>
+                <v-btn :disabled="disableOperate" @click="removeAction()">
+                  <span>{{ $t("delete") }}</span>
+                  <v-icon>mdi-trash-can-outline</v-icon>
+                </v-btn>
+                <v-btn
+                  v-if="selectedFiles.length === 1"
+                  :disabled="disableOperate"
+                  @click="renameAction(selectedFiles[0])"
+                >
+                  <span>{{ $t("rename") }}</span>
+                  <v-icon>mdi-rename-box</v-icon>
+                </v-btn>
+                <v-menu offset-y top>
+                  <template v-slot:activator="{ on, attrs }">
+                    <v-btn text small v-bind="attrs" v-on="on">
+                      <span>{{ $t("more") }}</span>
+                      <v-icon>mdi-dots-vertical</v-icon>
+                    </v-btn>
+                  </template>
+                  <v-list dense>
+                    <v-list-item
+                      v-if="
+                        selectedFiles.length === 1 &&
+                        selectedFiles[0].type !== 'folder'
+                      "
+                      @click="itemClick(selectedFiles[0], true)"
+                    >
+                      <v-icon left>mdi-download</v-icon>
+                      <v-list-item-title>{{
+                        $t("download")
+                      }}</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item
+                      :disabled="disableOperate"
+                      @click="statisticAction()"
+                    >
+                      <v-icon left>mdi-information-outline</v-icon>
+                      <v-list-item-title>{{
+                        $t("form.statistic.button")
+                      }}</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item
+                      v-if="selectedFiles.some((item) => item.type === 'file')"
+                      @click="copyDownloadLinks()"
+                    >
+                      <v-icon left>mdi-link</v-icon>
+                      <v-list-item-title>{{
+                        $t("copyDownloadLinks")
+                      }}</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item @click="copyAria2DownloadText()">
+                      <v-icon left>mdi-download-box</v-icon>
+                      <v-list-item-title>{{
+                        $t("copyAria2DownloadText")
+                      }}</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item @click="sendToAria2()">
+                      <v-icon left>mdi-auto-download</v-icon>
+                      <v-list-item-title>{{
+                        $t("sendToAria2")
+                      }}</v-list-item-title>
+                    </v-list-item>
+                  </v-list>
+                </v-menu>
+              </v-bottom-navigation>
+            </template>
             <template v-slot:[`item.name`]="{ item }">
               <v-icon v-if="item.type === 'folder'" color="amber lighten-2"
                 >mdi-folder</v-icon
@@ -338,23 +550,22 @@
               <v-icon v-else :color="item.name | iconColor">{{
                 item.name | iconFormat
               }}</v-icon>
-              <router-link
-                v-if="item.type === 'folder'"
-                class="ml-1 text--primary"
-                :to="{
-                  path: item.path
-                    ? `/files/${activeRepositoryID}${
-                        item.path === '/' ? '' : item.path
-                      }/${encodeURIComponent(item.name)}`
-                    : `${$route.path}/${encodeURIComponent(item.name)}`,
-                  query: { pn: $route.query.pn },
-                }"
-              >
-                <search-result :result="item.displayName || item.name" />
-              </router-link>
-              <span v-else class="clickable ml-1" @click.stop="itemClick(item)">
-                <search-result :result="item.displayName || item.name" />
-              </span>
+              <a
+                class="ml-1 text--primary list-link"
+                @click.stop="
+                  item.type === 'folder'
+                    ? $router.push({
+                        path: item.path
+                          ? `/files/${activeRepositoryID}${
+                              item.path === '/' ? '' : item.path
+                            }/${encodeURIComponent(item.name)}`
+                          : `${$route.path}/${encodeURIComponent(item.name)}`,
+                        query: { pn: $route.query.pn },
+                      })
+                    : itemClick(item)
+                "
+                ><search-result :result="item.displayName || item.name"
+              /></a>
             </template>
             <template v-slot:[`item.size`]="{ item }">
               {{ item.size | sizeFormat }}
@@ -402,7 +613,7 @@
                         }}<v-icon right>mdi-menu-down</v-icon></v-btn
                       >
                     </template>
-                    <v-list>
+                    <v-list dense>
                       <v-list-item
                         v-for="(item, index) in [
                           { text: '10', value: 10 },
@@ -411,6 +622,7 @@
                           { text: `${$t('all')}`, value: -1 },
                         ]"
                         :key="index"
+                        :input-value="listPerPage === item.value"
                         @click="
                           $router.push({
                             path: $route.path,
@@ -467,6 +679,16 @@
                 <v-icon left>mdi-rename-box</v-icon>
                 <v-list-item-title>{{ $t("rename") }}</v-list-item-title>
               </v-list-item>
+              <v-divider></v-divider>
+              <v-list-item
+                :disabled="disableOperate"
+                @click="statisticAction()"
+              >
+                <v-icon left>mdi-information-outline</v-icon>
+                <v-list-item-title>{{
+                  $t("form.statistic.button")
+                }}</v-list-item-title>
+              </v-list-item>
               <v-list-item
                 v-if="selectedFiles.some((item) => item.type === 'file')"
                 @click="copyDownloadLinks()"
@@ -476,7 +698,6 @@
                   $t("copyDownloadLinks")
                 }}</v-list-item-title>
               </v-list-item>
-              <v-divider></v-divider>
               <v-list-item @click="copyAria2DownloadText()">
                 <v-icon left>mdi-download-box</v-icon>
                 <v-list-item-title>{{
@@ -532,7 +753,9 @@
               ? $t("moveTo")
               : formValue.type === "remove"
               ? $t("delete")
-              : formValue.type === "recover" && $t("recovery.title")
+              : formValue.type === "recover"
+              ? $t("recovery.title")
+              : formValue.type === "statistic" && $t("form.statistic.button")
           }}</span>
           <v-spacer></v-spacer>
           <v-btn plain icon>
@@ -544,8 +767,13 @@
         }}</v-card-subtitle>
         <v-card-text class="py-0">
           <v-container class="px-0">
-            <v-form ref="form" v-model="formValidation">
-              <v-row v-if="formValue.type !== 'recover'" no-gutters>
+            <v-form ref="form" v-model="formValidation" @submit.prevent>
+              <v-row
+                v-if="
+                  formValue.type !== 'recover' && formValue.type !== 'statistic'
+                "
+                no-gutters
+              >
                 <v-col
                   v-if="['rename', 'addFolder'].includes(formValue.type)"
                   cols="12"
@@ -639,7 +867,7 @@
                   </v-treeview>
                 </v-col>
               </v-row>
-              <v-row v-else>
+              <v-row v-else-if="formValue.type === 'recover'">
                 <v-col
                   v-for="(file, index) in formValue.lostFiles"
                   :key="file.id"
@@ -676,7 +904,7 @@
                               required
                             >
                               <template v-slot:label
-                                >{{ $t("filename")
+                                >{{ $t("fileName")
                                 }}<span class="red--text">*</span>
                               </template>
                             </v-text-field>
@@ -750,12 +978,34 @@
                   </v-sheet>
                 </v-col>
               </v-row>
+              <v-row
+                v-else-if="formValue.type === 'statistic'"
+                justify="center"
+                align="center"
+              >
+                <v-progress-circular
+                  v-if="formValue.loading"
+                  indeterminate
+                  size="48"
+                  color="primary"
+                  style="margin: 45px 0"
+                ></v-progress-circular>
+                <template v-else>
+                  <v-col cols="6">{{ $t("form.statistic.file") }}</v-col>
+                  <v-col cols="6">{{ removeCounts[0] }}</v-col>
+                  <v-col cols="6">{{ $t("form.statistic.folder") }}</v-col>
+                  <v-col cols="6">{{ removeCounts[1] }}</v-col>
+                  <v-col cols="6">{{ $t("form.statistic.size") }}</v-col>
+                  <v-col cols="6">{{ removeCounts[2] | sizeFormat }}</v-col>
+                </template>
+              </v-row>
             </v-form>
           </v-container>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn
+            v-if="formValue.type !== 'statistic'"
             depressed
             :disabled="
               disableOperate ||
@@ -785,7 +1035,12 @@
       </v-card>
     </v-dialog>
   </div>
-  <v-row v-else-if="!state" class="fill-height pa-15" align="center" justify="center">
+  <v-row
+    v-else-if="!state"
+    class="fill-height pa-15"
+    align="center"
+    justify="center"
+  >
     <v-sheet
       class="d-flex justify-center align-center pa-3"
       height="100%"
@@ -923,6 +1178,10 @@ export default class Files extends Vue {
   private rightClickX = 0
   private rightClickY = 0
 
+  @Watch('$vuetify.breakpoint.xs')
+  private onBreakpointChange(val: boolean): void {
+    if (val) this.rightClickMenu = false;
+  }
   @Watch('activeRepositoryID')
   private async onActiveRepositoryIDChange(val: number): Promise<void> {
     if (val === 0) return;
@@ -1127,17 +1386,18 @@ export default class Files extends Vue {
     this.isCommitting = false;
   }
   private async removeAction(removeItems = this.selectedFiles): Promise<void> {
-    this.removeItems = removeItems;
     this.resetForm({ type: 'remove', loading: true });
     this.action = true;
     const worker = new formWorker();
     const promiseWorker = new PromiseWorker(worker);
-    const { fileCount, folderCount } = await promiseWorker.postMessage({
+    const { fileCount, folderCount, files } = await promiseWorker.postMessage({
       type: 'count',
-      files: removeItems
+      files: removeItems,
+      root: this.root
     });
     worker.terminate();
     this.removeCounts = [fileCount, folderCount];
+    this.removeItems = files;
     this.formValue.loading = false;
   }
   private async removeSelected(): Promise<void> {
@@ -1165,7 +1425,7 @@ export default class Files extends Vue {
       }
     }
     catch (error) {
-      if (error?.message === 'need login') this.login(error.authenticateHeader, this.removeSelected.bind(this, this.removeItems));
+      if (error?.message === 'need login') this.login(error.authenticateHeader);
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
       else this.alert(`${this.$t('unknownError')}`, 'error', error);
     }
@@ -1431,6 +1691,20 @@ export default class Files extends Vue {
       this.alert(`${this.$t('recovery.nothing')}`, 'warning');
     }
   }
+  private async statisticAction(statisticItems = this.selectedFiles): Promise<void> {
+    this.resetForm({ type: 'statistic', loading: true });
+    this.action = true;
+    const worker = new formWorker();
+    const promiseWorker = new PromiseWorker(worker);
+    const { fileCount, folderCount, fileSize } = await promiseWorker.postMessage({
+      type: 'count',
+      files: statisticItems,
+      root: this.root
+    });
+    worker.terminate();
+    this.removeCounts = [fileCount, folderCount, fileSize];
+    this.formValue.loading = false;
+  }
   private async copyDownloadLinks(items = this.selectedFiles): Promise<void> {
     try {
       if (!this.activeRepository) throw 'getRepositoryFailed';
@@ -1581,6 +1855,12 @@ export default class Files extends Vue {
 .folder-tree-item {
   text-overflow: ellipsis;
   overflow: hidden;
+}
+.list-link:hover {
+  text-decoration: underline;
+}
+.list-link:not(:hover) {
+  text-decoration: none;
 }
 .breadcrumb-button::v-deep > span {
   max-width: 100%;
