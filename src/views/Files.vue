@@ -256,6 +256,13 @@
             :sort-by.sync="listSortBy"
             :sort-desc.sync="listSortDesc"
             :headers="[
+              {
+                text: '',
+                align: 'center',
+                value: 'type',
+                sortable: false,
+                width: 64,
+              },
               { text: $t('fileName'), align: 'start', value: 'name' },
               { text: $t('fileSize'), value: 'size' },
               { text: $t('fileUploadTime'), value: 'uploadTime' },
@@ -543,15 +550,17 @@
                 </v-menu>
               </v-bottom-navigation>
             </template>
-            <template v-slot:[`item.name`]="{ item }">
+            <template v-slot:[`item.type`]="{ item }">
               <v-icon v-if="item.type === 'folder'" color="amber lighten-2"
                 >mdi-folder</v-icon
               >
               <v-icon v-else :color="item.name | iconColor">{{
                 item.name | iconFormat
               }}</v-icon>
+            </template>
+            <template v-slot:[`item.name`]="{ item }">
               <a
-                class="ml-1 text--primary list-link"
+                class="text--primary list-link"
                 @click.stop="
                   item.type === 'folder'
                     ? $router.push({
