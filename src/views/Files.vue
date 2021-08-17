@@ -478,6 +478,7 @@
               </v-list>
               <v-bottom-navigation
                 :input-value="selectedFiles.length > 0"
+                scroll-target="#app"
                 fixed
               >
                 <v-btn :disabled="disableOperate" @click="moveAction()">
