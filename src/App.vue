@@ -387,7 +387,7 @@ export default class APP extends Vue {
   }
   private setTheme(theme: string): void {
     if (theme === 'browser') {
-      const { matches } = window.matchMedia('(prefers-color-scheme: dark)');
+      const { matches } = matchMedia('(prefers-color-scheme: dark)');
       if (matches) this.$vuetify.theme.dark = true;
       else this.$vuetify.theme.dark = false;
     }
@@ -397,6 +397,7 @@ export default class APP extends Vue {
     }
     else if (theme === 'dark') this.$vuetify.theme.dark = true;
     else this.$vuetify.theme.dark = false;
+    document.getElementsByTagName('body')[0].className = this.$vuetify.theme.dark ? 'dark' : 'light';
   }
   private loginAction(authenticateHeader?: string, fn?: Function): void {
     this.resetForm({ type: 'login' });
@@ -617,10 +618,6 @@ export default class APP extends Vue {
 </script>
 
 <style scoped lang="scss">
-#main-container {
-  overflow-y: scroll;
-  overflow-x: hidden;
-}
 .v-divider.slide-x-transition-move {
   transition: transform 0.6s;
 }

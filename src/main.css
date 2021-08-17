@@ -1,18 +1,10 @@
-html {
-  overflow: hidden;
-}
-
 body {
   font-family: initial;
   font-size: inherit;
 }
 
-#app,
-#main,
-#main-container,
-html,
-body {
-  height: 100%;
+body.dark {
+  background-color: #121212;
 }
 
 /*===scrollbar===*/
@@ -25,16 +17,6 @@ body {
 ::-webkit-scrollbar-corner,
 ::-webkit-scrollbar-track {
   background: transparent !important;
-}
-
-.v-menu__content.theme--light::-webkit-scrollbar-corner,
-.v-menu__content.theme--light::-webkit-scrollbar-track {
-  background: #fff !important;
-}
-
-.v-menu__content.theme--dark::-webkit-scrollbar-corner,
-.v-menu__content.theme--dark::-webkit-scrollbar-track {
-  background: #1e1e1e !important;
 }
 
 ::-webkit-resizer,
@@ -100,3 +82,21 @@ input[type="number"] {
 }
 
 /*button-group:end*/
+
+/*menu*/
+
+.v-menu__content.theme--light::-webkit-scrollbar-corner,
+.v-menu__content.theme--light::-webkit-scrollbar-track {
+  background: #fff !important;
+}
+
+.v-menu__content.theme--dark::-webkit-scrollbar-corner,
+.v-menu__content.theme--dark::-webkit-scrollbar-track {
+  background: #1e1e1e !important;
+}
+
+.v-menu__content {
+  z-index: 4 !important;
+}
+
+/*menu:end*/

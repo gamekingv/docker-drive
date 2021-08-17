@@ -1199,7 +1199,6 @@ export default class Files extends Vue {
   @Watch('listPage')
   private onListPageChange(): void {
     this.$vuetify.goTo(0, {
-      container: '#main-container',
       duration: 0,
     });
   }
