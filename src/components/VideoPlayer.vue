@@ -87,7 +87,7 @@ export default class VideoPlayer extends Vue {
             const { data: assString }: { data: string } = await network.downloadFile(track.url, this.activeRepository);
             const ass = ASSparser(assString);
             const textTrack = this.video.addTextTrack('subtitles', label);
-            ass.events.dialogue.forEach(dialogue => dialogue.Text.combined !== '' && textTrack.addCue(new VTTCue(dialogue.Start, dialogue.End, dialogue.Text.combined.replaceAll('\\N', '\r\n'))));
+            ass.events.dialogue.forEach(dialogue => dialogue.Text.combined !== '' && textTrack.addCue(new VTTCue(dialogue.Start, dialogue.End, dialogue.Text.combined.replace(/\\N/g, '\r\n'))));
           }
         }
         catch (error) {

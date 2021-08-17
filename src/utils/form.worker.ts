@@ -27,7 +27,7 @@ registerPromiseWorker(async ({ type, files, root, rootID = 'root' }: { type: str
           }
           else if (item.type === 'folder') {
             folderCount++;
-            getCount(item.files as FileItem[], `${path}${item.name.replaceAll('/', '')}/`);
+            getCount(item.files as FileItem[], `${path}${item.name.replace(/\//g, '')}/`);
           }
         }
       })(files, '');
