@@ -1784,7 +1784,7 @@ export default class Files extends Vue {
   private async sendToAria2(items = this.selectedFiles): Promise<void> {
     try {
       if (!this.activeRepository) throw 'getRepositoryFailed';
-      const info = this.generateDownloadInfo(items, '');
+      const info = await this.generateDownloadInfo(items);
       const { success, fail } = await network.sentToAria2(info, this.activeRepository);
       this.alert(`${this.$t('sendResult', [success, fail])}`);
     }
@@ -1798,7 +1798,7 @@ export default class Files extends Vue {
     try {
       if (!this.activeRepository) throw 'getRepositoryFailed';
       this.loading();
-      const info: { name: string; digest: string; link?: string }[] = this.generateDownloadInfo(items, '');
+      const info: { name: string; digest: string; link?: string }[] = await this.generateDownloadInfo(items);
       for (const item of info) {
         item.link = await network.getDownloadURL(item.digest, this.activeRepository);
       }
@@ -1816,13 +1816,16 @@ export default class Files extends Vue {
     chrome.downloads.download({ url, filename: filename.replace(/[\\/:*?"<>|]/g, '') });
     this.alert(`${this.$t('sendToBrowser')}`, 'success');
   }
-  private generateDownloadInfo(items: FileItem[], path: string): { name: string; digest: string }[] {
-    const result: { name: string; digest: string }[] = [];
-    items.forEach(item => {
-      if (item.type === 'file') result.push({ name: `${path}${item.name.replace(/[\\/*?:<>|"]/g, '')}`, digest: item.digest as string });
-      else if (item.type === 'folder') result.push(...this.generateDownloadInfo(item.files as FileItem[], `${path}${item.name.replaceAll('/', '')}/`));
+  private async generateDownloadInfo(items: FileItem[]): Promise<{ name: string; digest: string }[]> {
+    const worker = new formWorker();
+    const promiseWorker = new PromiseWorker(worker);
+    const { info } = await promiseWorker.postMessage({
+      type: 'count',
+      files: items,
+      root: this.root
     });
-    return result;
+    worker.terminate();
+    return info;
   }
   private showRightClickMenu(e: MouseEvent, row: RowItem): void {
     e.preventDefault();

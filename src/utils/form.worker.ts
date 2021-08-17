@@ -17,19 +17,21 @@ registerPromiseWorker(async ({ type, files, root, rootID = 'root' }: { type: str
           })(root.files as FileItem[], file.id);
         }
       });
-      (function getRemoveCount(items: FileItem[]): void {
+      const info: { name: string; digest: string }[] = [];
+      (function getCount(items: FileItem[], path: string): void {
         for (const item of items) {
           if (item.type === 'file') {
             fileCount++;
             fileSize += item.size as number;
+            info.push({ name: `${path}${item.name.replace(/[\\/*?:<>|"]/g, '')}`, digest: item.digest as string });
           }
           else if (item.type === 'folder') {
             folderCount++;
-            getRemoveCount(item.files as FileItem[]);
+            getCount(item.files as FileItem[], `${path}${item.name.replaceAll('/', '')}/`);
           }
         }
-      })(files);
-      return { fileCount, folderCount, fileSize, files };
+      })(files, '');
+      return { fileCount, folderCount, fileSize, files, info };
     }
     case 'folderList': {
       const folderRoot = { name: '', files: [], id: 'root', disabled: false };
