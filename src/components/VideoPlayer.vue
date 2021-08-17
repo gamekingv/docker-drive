@@ -12,7 +12,10 @@
         <v-icon>mdi-close</v-icon>
       </v-btn>
     </v-toolbar>
-    <div class="video">
+    <div
+      class="video"
+      :style="`height: calc(100% - ${$vuetify.breakpoint.mdAndUp ? 64 : 56}px)`"
+    >
       <video
         v-if="showVideo"
         ref="video"
@@ -104,13 +107,12 @@ export default class VideoPlayer extends Vue {
 <style scoped lang="scss">
 .video {
   width: 100%;
-  height: calc(100% - 64px);
   align-items: center;
   display: flex;
 }
 video {
   width: 100%;
-  max-height: 100%;
+  height: 100%;
 }
 video::cue {
   background-color: transparent;
