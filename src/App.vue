@@ -316,7 +316,7 @@ export default class APP extends Vue {
   private taskPage = 1
   private taskPageLength = 1
   private settingPanel = false
-  private theme = 'browser'
+  private theme = ''
   private address = ''
   private secret = ''
   private aria2AddressError = false
