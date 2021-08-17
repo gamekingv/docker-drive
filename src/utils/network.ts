@@ -167,6 +167,7 @@ export default {
   async sentToAria2(items: { name: string; digest: string }[], repository: Repository): Promise<{ success: number; fail: number }> {
     const aria2 = await storage.getAria2Config();
     const [server, namespace, image] = repository.url.split('/') ?? [];
+    await this.getUploadURL(repository);
     const token = await storage.getRepositoryToken(repository.id);
     const requestBody: Aria2RequestBody[] = [];
     const timestamp = Date.now();
@@ -181,7 +182,6 @@ export default {
         'header': [`repository: ${repository.url}`, `Authorization: Bearer ${token}`]
       }]
     }));
-    await this.getUploadURL(repository);
     const { data } = await axios.post(`${address}?tm=${timestamp}`, JSON.stringify(requestBody), {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
