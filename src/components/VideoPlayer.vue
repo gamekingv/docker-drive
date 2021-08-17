@@ -2,52 +2,34 @@
   <v-dialog
     v-model="showVideo"
     fullscreen
-    content-class="video-container"
+    content-class="black"
     transition="fade-transition"
   >
-    <v-hover v-slot="{ hover }">
-      <div class="video">
-        <video
-          v-if="showVideo"
-          ref="video"
-          class="video"
-          controls
-          @pause="videoEventHandler"
-          @play="videoEventHandler"
-        >
-          <source :src="videoURL" />
-          <track
-            v-for="(subtitle, index) in subtitles"
-            :key="index"
-            :label="subtitle.label"
-            kind="subtitles"
-            :src="subtitle.url"
-          />
-        </video>
-        <v-fade-transition>
-          <v-overlay
-            v-if="!isVideoPlay || hover"
-            class="video-overlay"
-            opacity="1"
-            color="transparent"
-          >
-            <v-toolbar min-width="100vw" absolute color="transparent" flat>
-              <v-toolbar-title>{{
-                showVideo ? videoTitle : ""
-              }}</v-toolbar-title>
-              <v-spacer></v-spacer>
-              <v-btn
-                style="pointer-events: auto"
-                icon
-                @click.stop="showVideo = false"
-              >
-                <v-icon large>mdi-close</v-icon>
-              </v-btn>
-            </v-toolbar>
-          </v-overlay>
-        </v-fade-transition>
-      </div>
-    </v-hover>
+    <v-toolbar flat>
+      <v-toolbar-title>{{ videoTitle }}</v-toolbar-title>
+      <v-spacer></v-spacer>
+      <v-btn class="ml-5" icon @click.stop="showVideo = false">
+        <v-icon>mdi-close</v-icon>
+      </v-btn>
+    </v-toolbar>
+    <div class="video">
+      <video
+        v-if="showVideo"
+        ref="video"
+        controls
+        @pause="videoEventHandler"
+        @play="videoEventHandler"
+      >
+        <source :src="videoURL" />
+        <track
+          v-for="(subtitle, index) in subtitles"
+          :key="index"
+          :label="subtitle.label"
+          kind="subtitles"
+          :src="subtitle.url"
+        />
+      </video>
+    </div>
   </v-dialog>
 </template>
 
@@ -122,27 +104,17 @@ export default class VideoPlayer extends Vue {
 <style scoped lang="scss">
 .video {
   width: 100%;
-  max-height: 100%;
-  overflow: hidden;
+  height: calc(100% - 64px);
+  align-items: center;
   display: flex;
+}
+video {
+  width: 100%;
+  max-height: 100%;
 }
 video::cue {
   background-color: transparent;
   text-shadow: rgb(0 0 0) 1px 0px 1px, rgb(0 0 0) 0px 1px 1px,
     rgb(0 0 0) 0px -1px 1px, rgb(0 0 0) -1px 0px 1px;
-}
-.video-overlay {
-  background-image: linear-gradient(black, transparent 25%);
-  pointer-events: none;
-  align-items: unset;
-  justify-content: unset;
-}
-</style>
-
-<style lang="scss">
-.video-container {
-  overflow: hidden;
-  background-color: black;
-  display: flex;
 }
 </style>
