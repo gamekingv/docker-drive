@@ -61,7 +61,7 @@ export default {
   },
   async initialize(files: FileItem[], repository: Repository): Promise<void> {
     await this.setToken(repository);
-    const databaseName = repository.url.replace(/\//, '-').replace(/\./g, '_');
+    const databaseName = repository.url.replace(/\//g, '-').replace(/\./g, '_');
     try {
       await client.head(`${repository.databaseURL}/${databaseName}`);
       await client.delete(`${repository.databaseURL}/${databaseName}`);
@@ -137,7 +137,7 @@ export default {
   },
   async check(repository: Repository): Promise<boolean> {
     await this.setToken(repository);
-    const databaseName = repository.url.replace(/\//, '-').replace(/\./g, '_');
+    const databaseName = repository.url.replace(/\//g, '-').replace(/\./g, '_');
     try {
       await client.head(`${repository.databaseURL}/${databaseName}`);
     }
@@ -148,7 +148,7 @@ export default {
   },
   async list(repository: Repository): Promise<FileItem[]> {
     await this.setToken(repository);
-    const databaseName = repository.url.replace(/\//, '-').replace(/\./g, '_');
+    const databaseName = repository.url.replace(/\//g, '-').replace(/\./g, '_');
     const { data } = await client.post(`${repository.databaseURL}/${databaseName}/_find`, {
       selector: { _id: { $gt: '0' } },
       fields: ['_id', 'name', 'type', 'digest', 'size', 'uploadTime', 'uuid'],
@@ -162,7 +162,7 @@ export default {
   },
   async search(name: string, parent: string, repository: Repository): Promise<FileItem[]> {
     await this.setToken(repository);
-    const databaseName = repository.url.replace(/\//, '-').replace(/\./g, '_');
+    const databaseName = repository.url.replace(/\//g, '-').replace(/\./g, '_');
     const { data } = await client.post(`${repository.databaseURL}/${databaseName}/_partition/${parent}/_find`, {
       selector: {
         name: { $eq: name }
@@ -177,7 +177,7 @@ export default {
   },
   async update(item: DatabaseItem, parent: string, repository: Repository): Promise<string> {
     await this.setToken(repository);
-    const databaseName = repository.url.replace(/\//, '-').replace(/\./g, '_');
+    const databaseName = repository.url.replace(/\//g, '-').replace(/\./g, '_');
     /*@ts-ignore*/
     delete item.id;
     delete item.files;
@@ -294,7 +294,7 @@ export default {
   },
   async remove(id: string, repository: Repository): Promise<void> {
     await this.setToken(repository);
-    const databaseName = repository.url.replace(/\//, '-').replace(/\./g, '_');
+    const databaseName = repository.url.replace(/\//g, '-').replace(/\./g, '_');
     const { headers } = await client.head(`${repository.databaseURL}/${databaseName}/${id}`);
     await client.delete(`${repository.databaseURL}/${databaseName}/${id}?rev=${headers['etag'].replace(/.*"([^"]+)".*/, '$1')}`);
   },
