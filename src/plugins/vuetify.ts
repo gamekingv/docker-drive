@@ -5,6 +5,9 @@ import Blur from './blur-directive';
 import zhHans from 'vuetify/src/locale/zh-Hans';
 import 'typeface-roboto/index.css';
 import '@mdi/font/css/materialdesignicons.css';
+import { buildAsExtension } from '@/build-type.json';
+
+const language = buildAsExtension ? (chrome?.i18n?.getUILanguage() ?? navigator.language) : navigator.language;
 
 Vue.use(Vuetify, {
   directives: {
@@ -17,7 +20,7 @@ export default new Vuetify({
   theme: { dark: true },
   lang: {
     locales: { zhHans },
-    current: (chrome?.i18n?.getUILanguage() ?? navigator.language)?.toLowerCase().includes('zh') ? 'zhHans' : 'en',
+    current: language.toLowerCase().includes('zh') ? 'zhHans' : 'en',
   },
   icons: {
     iconfont: 'mdi',

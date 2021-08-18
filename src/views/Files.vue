@@ -1,6 +1,6 @@
 <template>
   <div v-if="repositories.length > 0">
-    <v-row align="center">
+    <v-row v-if="buildAsExtension" align="center">
       <v-col cols="12" md="5" sm="7" xs="3" class="py-0">
         <v-select
           v-model="activeRepositoryID"
@@ -84,7 +84,12 @@
           multiple
           @input="getFolder.files && upload(Array.from(getFolder.files))"
         />
-        <v-btn-toggle active-class="no-active" dense borderless>
+        <v-btn-toggle
+          v-if="buildAsExtension"
+          active-class="no-active"
+          dense
+          borderless
+        >
           <v-menu transition="slide-y-transition" offset-y>
             <template v-slot:activator="{ on, attrs }">
               <v-btn class="pa-3" v-bind="attrs" v-on="on"
@@ -197,6 +202,45 @@
             </v-list>
           </v-menu>
         </v-btn-toggle>
+        <v-menu
+          v-else-if="selectedFiles.length > 0 && !$vuetify.breakpoint.xs"
+          transition="slide-y-transition"
+          offset-y
+        >
+          <template v-slot:activator="{ on, attrs }">
+            <v-btn depressed v-bind="attrs" v-on="on"
+              >{{ $t("more")
+              }}<v-icon right small>mdi-dots-vertical</v-icon></v-btn
+            >
+          </template>
+          <v-list dense>
+            <v-list-item :disabled="disableOperate" @click="statisticAction()">
+              <v-icon left>mdi-information-outline</v-icon>
+              <v-list-item-title>{{
+                $t("form.statistic.button")
+              }}</v-list-item-title>
+            </v-list-item>
+            <v-list-item
+              v-if="selectedFiles.some((item) => item.type === 'file')"
+              @click="copyDownloadLinks()"
+            >
+              <v-icon left>mdi-link</v-icon>
+              <v-list-item-title>{{
+                $t("copyDownloadLinks")
+              }}</v-list-item-title>
+            </v-list-item>
+            <v-list-item @click="copyAria2DownloadText()">
+              <v-icon left>mdi-download-box</v-icon>
+              <v-list-item-title>{{
+                $t("copyAria2DownloadText")
+              }}</v-list-item-title>
+            </v-list-item>
+            <v-list-item @click="sendToAria2()">
+              <v-icon left>mdi-auto-download</v-icon>
+              <v-list-item-title>{{ $t("sendToAria2") }}</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
       </v-col>
       <v-col cols="12" sm="5" xs="6">
         <v-text-field
@@ -481,21 +525,27 @@
                 scroll-target="#app"
                 fixed
               >
-                <v-btn :disabled="disableOperate" @click="moveAction()">
-                  <span>{{ $t("move") }}</span>
-                  <v-icon>mdi-file-move</v-icon>
-                </v-btn>
-                <v-btn :disabled="disableOperate" @click="removeAction()">
-                  <span>{{ $t("delete") }}</span>
-                  <v-icon>mdi-trash-can-outline</v-icon>
-                </v-btn>
-                <v-btn
-                  v-if="selectedFiles.length === 1"
-                  :disabled="disableOperate"
-                  @click="renameAction(selectedFiles[0])"
-                >
-                  <span>{{ $t("rename") }}</span>
-                  <v-icon>mdi-rename-box</v-icon>
+                <template v-if="buildAsExtension">
+                  <v-btn :disabled="disableOperate" @click="moveAction()">
+                    <span>{{ $t("move") }}</span>
+                    <v-icon>mdi-file-move</v-icon>
+                  </v-btn>
+                  <v-btn :disabled="disableOperate" @click="removeAction()">
+                    <span>{{ $t("delete") }}</span>
+                    <v-icon>mdi-trash-can-outline</v-icon>
+                  </v-btn>
+                  <v-btn
+                    v-if="selectedFiles.length === 1"
+                    :disabled="disableOperate"
+                    @click="renameAction(selectedFiles[0])"
+                  >
+                    <span>{{ $t("rename") }}</span>
+                    <v-icon>mdi-rename-box</v-icon>
+                  </v-btn>
+                </template>
+                <v-btn v-else @click="statisticAction()">
+                  <span>{{ $t("form.statistic.button") }}</span>
+                  <v-icon>mdi-information-outline</v-icon>
                 </v-btn>
                 <v-menu offset-y top>
                   <template v-slot:activator="{ on, attrs }">
@@ -508,7 +558,8 @@
                     <v-list-item
                       v-if="
                         selectedFiles.length === 1 &&
-                        selectedFiles[0].type !== 'folder'
+                        selectedFiles[0].type !== 'folder' &&
+                        buildAsExtension
                       "
                       @click="itemClick(selectedFiles[0], true)"
                     >
@@ -518,6 +569,7 @@
                       }}</v-list-item-title>
                     </v-list-item>
                     <v-list-item
+                      v-if="buildAsExtension"
                       :disabled="disableOperate"
                       @click="statisticAction()"
                     >
@@ -663,33 +715,35 @@
             offset-x
           >
             <v-list dense>
-              <v-list-item
-                v-if="
-                  selectedFiles.length === 1 &&
-                  selectedFiles[0].type !== 'folder'
-                "
-                @click="itemClick(selectedFiles[0], true)"
-              >
-                <v-icon left>mdi-download</v-icon>
-                <v-list-item-title>{{ $t("download") }}</v-list-item-title>
-              </v-list-item>
-              <v-list-item :disabled="disableOperate" @click="moveAction()">
-                <v-icon left>mdi-file-move</v-icon>
-                <v-list-item-title>{{ $t("move") }}</v-list-item-title>
-              </v-list-item>
-              <v-list-item :disabled="disableOperate" @click="removeAction()">
-                <v-icon left>mdi-trash-can-outline</v-icon>
-                <v-list-item-title>{{ $t("delete") }}</v-list-item-title>
-              </v-list-item>
-              <v-list-item
-                v-if="selectedFiles.length === 1"
-                :disabled="disableOperate"
-                @click="renameAction(selectedFiles[0])"
-              >
-                <v-icon left>mdi-rename-box</v-icon>
-                <v-list-item-title>{{ $t("rename") }}</v-list-item-title>
-              </v-list-item>
-              <v-divider></v-divider>
+              <template v-if="buildAsExtension">
+                <v-list-item
+                  v-if="
+                    selectedFiles.length === 1 &&
+                    selectedFiles[0].type !== 'folder'
+                  "
+                  @click="itemClick(selectedFiles[0], true)"
+                >
+                  <v-icon left>mdi-download</v-icon>
+                  <v-list-item-title>{{ $t("download") }}</v-list-item-title>
+                </v-list-item>
+                <v-list-item :disabled="disableOperate" @click="moveAction()">
+                  <v-icon left>mdi-file-move</v-icon>
+                  <v-list-item-title>{{ $t("move") }}</v-list-item-title>
+                </v-list-item>
+                <v-list-item :disabled="disableOperate" @click="removeAction()">
+                  <v-icon left>mdi-trash-can-outline</v-icon>
+                  <v-list-item-title>{{ $t("delete") }}</v-list-item-title>
+                </v-list-item>
+                <v-list-item
+                  v-if="selectedFiles.length === 1"
+                  :disabled="disableOperate"
+                  @click="renameAction(selectedFiles[0])"
+                >
+                  <v-icon left>mdi-rename-box</v-icon>
+                  <v-list-item-title>{{ $t("rename") }}</v-list-item-title>
+                </v-list-item>
+                <v-divider></v-divider>
+              </template>
               <v-list-item
                 :disabled="disableOperate"
                 @click="statisticAction()"
@@ -1082,6 +1136,7 @@ import { getID } from '@/utils/id-generator';
 import PromiseWorker from 'promise-worker';
 import searchWorker from '@/utils/search.worker';
 import formWorker from '@/utils/form.worker';
+import { buildAsExtension } from '@/build-type.json';
 
 interface BreadcrumbsNode extends PathNode {
   disabled: boolean;
@@ -1214,6 +1269,9 @@ export default class Files extends Vue {
   }
   private get disableOperate(): boolean {
     return !this.activeRepository?.useDatabase && this.isCommitting;
+  }
+  private get buildAsExtension(): boolean {
+    return buildAsExtension;
   }
 
   private created(): void {

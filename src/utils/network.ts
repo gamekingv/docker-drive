@@ -3,6 +3,7 @@ import { Repository, FileItem, Manifest } from '@/utils/types';
 import storage from '@/utils/storage';
 import PromiseWorker from 'promise-worker';
 import listWorker from '@/utils/list.worker';
+import { buildAsExtension } from '@/build-type.json';
 // import test from '../test-data.json';
 
 interface Aria2RequestBody {
@@ -18,7 +19,7 @@ interface AxiosRequestConfigExtend extends AxiosRequestConfig {
 
 const preset = {
   retry: 3,
-  timeout: 10000
+  timeout: buildAsExtension ? 10000 : 60000
 };
 
 function errorHandler(error: AxiosError): AxiosPromise {
@@ -81,36 +82,51 @@ export default {
     // const config = await promiseWorker.postMessage({ configString: JSON.stringify(test) });
     // worker.terminate();
     // return { config, layers: [] };
-    const [server, namespace, image] = repository.url.split('/') ?? [];
-    const manifestsURL = `https://${server}/v2/${namespace}/${image}/manifests/latest`;
-    const manifestsInstance = axios.create({
-      method: 'get',
-      headers: {
-        'Accept': 'application/vnd.docker.distribution.manifest.v2+json',
-        'repository': [server, namespace, image].join('/')
-      },
-      timeout: 30000
-    });
     try {
-      const { data } = await this.requestSender(manifestsURL, manifestsInstance, repository);
-      const layers = data?.layers;
-      const digest: string = data?.config?.digest;
-      if (digest && layers) {
-        const configDownloadURL = await this.getDownloadURL(digest, repository);
-        const { data: configString } = await axios.get(configDownloadURL, {
-          transformResponse: res => res,
+      if (buildAsExtension) {
+        const [server, namespace, image] = repository.url.split('/') ?? [];
+        const manifestsURL = `https://${server}/v2/${namespace}/${image}/manifests/latest`;
+        const manifestsInstance = axios.create({
+          method: 'get',
+          headers: {
+            'Accept': 'application/vnd.docker.distribution.manifest.v2+json',
+            'repository': [server, namespace, image].join('/')
+          },
           timeout: 30000
+        });
+        const { data } = await this.requestSender(manifestsURL, manifestsInstance, repository);
+        const layers = data?.layers;
+        const digest: string = data?.config?.digest;
+        if (digest && layers) {
+          const configDownloadURL = await this.getDownloadURL(digest, repository);
+          const { data: configString } = await axios.get(configDownloadURL, {
+            transformResponse: res => res,
+            timeout: 30000
+          });
+          if (configString) {
+            const worker = new listWorker();
+            const promiseWorker = new PromiseWorker(worker);
+            const config = await promiseWorker.postMessage({ configString });
+            worker.terminate();
+            return { config, layers };
+          }
+          else throw 'loadConfigFailed';
+        }
+        else throw 'loadConfigFailed';
+      }
+      else {
+        const { data: configString } = await axios.get('/api/manifests', {
+          transformResponse: res => res
         });
         if (configString) {
           const worker = new listWorker();
           const promiseWorker = new PromiseWorker(worker);
           const config = await promiseWorker.postMessage({ configString });
           worker.terminate();
-          return { config, layers };
+          return { config, layers: [] };
         }
         else throw 'loadConfigFailed';
       }
-      else throw 'loadConfigFailed';
     }
     catch (error) {
       const { status } = error.response ?? {};
@@ -119,56 +135,67 @@ export default {
     }
   },
   async getDownloadURL(digest: string, repository: Repository): Promise<string> {
-    const [server, namespace, image] = repository.url.split('/') ?? [];
-    let downloadURL = '';
-    const url = `https://${server}/v2/${namespace}/${image}/blobs/${digest}`;
-    const request = axios.CancelToken.source();
-    const instance = axios.create({
-      method: 'get',
-      headers: {
-        'repository': [server, namespace, image].join('/')
-      },
-      cancelToken: request.token
-    });
-    const getHeader = (e: chrome.webRequest.WebResponseHeadersDetails): void | chrome.webRequest.WebResponseHeadersDetails => {
-      if (e.statusCode >= 300 && e.statusCode < 400) {
-        downloadURL = e.responseHeaders?.find(e => e.name.toLowerCase() === 'location')?.value as string;
-        request.cancel('ok');
+    if (buildAsExtension) {
+      const [server, namespace, image] = repository.url.split('/') ?? [];
+      let downloadURL = '';
+      const url = `https://${server}/v2/${namespace}/${image}/blobs/${digest}`;
+      const request = axios.CancelToken.source();
+      const instance = axios.create({
+        method: 'get',
+        headers: {
+          'repository': [server, namespace, image].join('/')
+        },
+        cancelToken: request.token
+      });
+      const getHeader = (e: chrome.webRequest.WebResponseHeadersDetails): void | chrome.webRequest.WebResponseHeadersDetails => {
+        if (e.statusCode >= 300 && e.statusCode < 400) {
+          downloadURL = e.responseHeaders?.find(e => e.name.toLowerCase() === 'location')?.value as string;
+          request.cancel('ok');
+        }
+        else if (e.statusCode === 401) return e;
+        else throw 'internalError';
+      };
+      try {
+        chrome.webRequest.onHeadersReceived.addListener(getHeader, { urls: [url] }, ['blocking', 'responseHeaders']);
+        await this.requestSender(url, instance, repository);
+        throw 'internalError';
       }
-      else if (e.statusCode === 401) return e;
-      else throw 'internalError';
-    };
-    try {
-      chrome.webRequest.onHeadersReceived.addListener(getHeader, { urls: [url] }, ['blocking', 'responseHeaders']);
-      await this.requestSender(url, instance, repository);
-      throw 'internalError';
+      catch (error) {
+        chrome.webRequest.onHeadersReceived.removeListener(getHeader);
+        if (error?.message === 'ok') return downloadURL;
+        else {
+          request.cancel();
+          throw error;
+        }
+      }
     }
-    catch (error) {
-      chrome.webRequest.onHeadersReceived.removeListener(getHeader);
-      if (error?.message === 'ok') return downloadURL;
-      else {
-        request.cancel();
-        throw error;
-      }
+    else {
+      const { data: downloadUrl } = await axios.get(`/api/file/${digest.replace('sha256:', '')}`);
+      return downloadUrl;
     }
   },
   async downloadFile(digest: string, repository: Repository): Promise<AxiosResponse> {
-    const [server, namespace, image] = repository.url.split('/') ?? [];
-    const url = `https://${server}/v2/${namespace}/${image}/blobs/${digest}`;
-    const instance = axios.create({
-      method: 'get',
-      headers: {
-        'repository': [server, namespace, image].join('/')
-      },
-      timeout: 0
-    });
-    return await this.requestSender(url, instance, repository);
+    if (buildAsExtension) {
+      const [server, namespace, image] = repository.url.split('/') ?? [];
+      const url = `https://${server}/v2/${namespace}/${image}/blobs/${digest}`;
+      const instance = axios.create({
+        method: 'get',
+        headers: {
+          'repository': [server, namespace, image].join('/')
+        },
+        timeout: 0
+      });
+      return await this.requestSender(url, instance, repository);
+    }
+    else return await axios.get(`/api/file/${digest.replace('sha256:', '')}?type=download`);
   },
   async sentToAria2(items: { name: string; digest: string }[], repository: Repository): Promise<{ success: number; fail: number }> {
     const aria2 = await storage.getAria2Config();
+    const { protocol, host } = location;
     const [server, namespace, image] = repository.url.split('/') ?? [];
-    await this.getUploadURL(repository);
-    const token = await storage.getRepositoryToken(repository.id);
+    if (buildAsExtension) await this.getUploadURL(repository);
+    let token: string | undefined;
+    if (buildAsExtension) token = await storage.getRepositoryToken(repository.id);
     const requestBody: Aria2RequestBody[] = [];
     const timestamp = Date.now();
     const address = aria2?.address ? aria2.address : 'http://localhost:6800/jsonrpc';
@@ -177,9 +204,10 @@ export default {
       jsonrpc: '2.0',
       method: 'aria2.addUri',
       id: `${timestamp}${i}`,
-      params: [...secret, [`https://${server}/v2/${namespace}/${image}/blobs/${item.digest}`], {
+      params: [...secret, [buildAsExtension ? `https://${server}/v2/${namespace}/${image}/blobs/${item.digest}` :
+        `${protocol}://${host}/api/file/${item.digest.replace('sha256:', '')}?type=source`], {
         'out': `${item.name}`,
-        'header': [`repository: ${repository.url}`, `Authorization: Bearer ${token}`]
+        'header': buildAsExtension ? [`repository: ${repository.url}`, `Authorization: Bearer ${token}`] : []
       }]
     }));
     const { data } = await axios.post(`${address}?tm=${timestamp}`, JSON.stringify(requestBody), {

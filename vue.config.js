@@ -36,4 +36,13 @@ module.exports = {
       exclude: /node_modules/
     });
   },
+
+  devServer: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000', //API服务器的地址
+        changeOrigin: true, // 是否跨域，虚拟的站点需要更管origin
+      }
+    },
+  }
 };

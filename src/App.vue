@@ -1,6 +1,6 @@
 <template>
   <v-app id="app">
-    <v-navigation-drawer v-model="drawer" app floating>
+    <v-navigation-drawer v-if="buildAsExtension" v-model="drawer" app floating>
       <template v-slot:prepend>
         <v-toolbar class="top-bar" flat>
           <v-icon large color="blue lighten-1">mdi-database-import</v-icon>
@@ -49,6 +49,7 @@
 
     <v-app-bar app class="top-bar" flat>
       <v-app-bar-nav-icon
+        v-if="buildAsExtension"
         class="hidden-lg-and-up"
         @click.stop="drawer = !drawer"
       >
@@ -64,7 +65,7 @@
           </v-badge>
         </template>
       </v-app-bar-nav-icon>
-      <v-toolbar-title class="hidden-lg-and-up">{{
+      <v-toolbar-title :class="buildAsExtension ? '' : 'hidden-lg-and-up'">{{
         $t("name")
       }}</v-toolbar-title>
       <v-spacer></v-spacer>
@@ -292,6 +293,7 @@ import storage from '@/utils/storage';
 import Files from '@/views/Files.vue';
 import database from '@/utils/database';
 import { getID } from '@/utils/id-generator';
+import { buildAsExtension } from '@/build-type.json';
 
 @Component({
   filters: {
@@ -341,6 +343,9 @@ export default class APP extends Vue {
   }
   private get operating(): boolean {
     return this.runningTask > 0 || this.isCommitting;
+  }
+  private get buildAsExtension(): boolean {
+    return buildAsExtension;
   }
 
   @Watch('runningTask')

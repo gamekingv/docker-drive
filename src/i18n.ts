@@ -1,5 +1,8 @@
 import Vue from 'vue';
 import VueI18n, { LocaleMessages } from 'vue-i18n';
+import { buildAsExtension } from '@/build-type.json';
+
+const language = buildAsExtension ? (chrome?.i18n?.getUILanguage() ?? navigator.language) : navigator.language;
 
 Vue.use(VueI18n);
 
@@ -17,7 +20,7 @@ function loadLocaleMessages(): LocaleMessages {
 }
 
 export default new VueI18n({
-  locale: (chrome?.i18n?.getUILanguage() ?? navigator.language)?.toLowerCase().includes('zh') ? 'zh' : 'en',
+  locale: language.toLowerCase().includes('zh') ? 'zh' : 'en',
   fallbackLocale: 'en',
   messages: loadLocaleMessages()
 });

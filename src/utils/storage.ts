@@ -1,4 +1,5 @@
 import { Repository } from '@/utils/types';
+import { buildAsExtension } from '@/build-type.json';
 
 interface Aria2Config {
   address: string;
@@ -13,13 +14,14 @@ interface DatabaseToken {
 export default {
   // eslint-disable-next-line
   async setValue(key: string, value: any): Promise<void> {
-    if (chrome?.storage)
+    if (buildAsExtension && chrome?.storage) {
       await chrome.storage.local.set({ [key]: value });
+    }
     else localStorage.setItem(key, JSON.stringify(value));
   },
   // eslint-disable-next-line
   async getValue(key: string): Promise<any> {
-    if (chrome?.storage)
+    if (buildAsExtension && chrome?.storage)
       return new Promise((res) => {
         chrome.storage.local.get([key], result => res(result));
       });
@@ -34,12 +36,18 @@ export default {
     return theme;
   },
   async getRepositories(): Promise<Repository[]> {
-    const { repositories = [] } = await this.getValue('repositories');
-    return repositories;
+    if (buildAsExtension) {
+      const { repositories = [] } = await this.getValue('repositories');
+      return repositories;
+    }
+    else return [{ id: 1, name: '', url: '', secret: '' }];
   },
   async getActiveID(): Promise<number> {
-    const { active = 0 } = await this.getValue('active');
-    return active;
+    if (buildAsExtension) {
+      const { active = 0 } = await this.getValue('active');
+      return active;
+    }
+    else return 1;
   },
   async getAria2Config(): Promise<Aria2Config | undefined> {
     const { aria2 } = await this.getValue('aria2');
