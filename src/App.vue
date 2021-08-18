@@ -65,7 +65,7 @@
           </v-badge>
         </template>
       </v-app-bar-nav-icon>
-      <v-toolbar-title :class="buildAsExtension ? '' : 'hidden-lg-and-up'">{{
+      <v-toolbar-title :class="buildAsExtension ? 'hidden-lg-and-up' : ''">{{
         $t("name")
       }}</v-toolbar-title>
       <v-spacer></v-spacer>
