@@ -66,7 +66,12 @@
       </v-col>
     </v-row>
     <v-row align="center">
-      <v-col cols="12" sm="7" xs="6">
+      <v-col
+        v-if="buildAsExtension || !$vuetify.breakpoint.xs"
+        cols="12"
+        sm="7"
+        xs="6"
+      >
         <input
           v-show="false"
           ref="getFiles"
@@ -203,7 +208,7 @@
           </v-menu>
         </v-btn-toggle>
         <v-menu
-          v-else-if="selectedFiles.length > 0 && !$vuetify.breakpoint.xs"
+          v-else-if="selectedFiles.length > 0"
           transition="slide-y-transition"
           offset-y
         >
