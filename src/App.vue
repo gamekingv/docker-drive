@@ -85,7 +85,12 @@
     </v-app-bar>
 
     <v-main id="main">
-      <v-container id="main-container" class="py-8 px-6" fluid>
+      <v-container
+        id="main-container"
+        class="py-8 px-6"
+        fluid
+        style="height: 100%"
+      >
         <v-fade-transition mode="out-in">
           <router-view
             ref="child"
