@@ -41,7 +41,7 @@
                           task.status === 'hashing'
                         ? 'primary'
                         : task.status === 'complete'
-                        ? 'success'
+                        ? ''
                         : 'error'
                     "
                     :width="task.progress | progressPercentage"
