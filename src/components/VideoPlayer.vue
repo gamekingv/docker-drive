@@ -20,6 +20,7 @@
         v-if="showVideo"
         ref="video"
         controls
+        preload
         @pause="videoEventHandler"
         @play="videoEventHandler"
       >
