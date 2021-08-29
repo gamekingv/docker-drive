@@ -8,7 +8,7 @@
           item-text="name"
           item-value="id"
           :label="$t('selectRepository')"
-          :background-color="$vuetify.theme.dark ? '' : 'grey lighten-3'"
+          :background-color="dark ? '' : 'grey lighten-3'"
           solo
           flat
           hide-details
@@ -66,12 +66,7 @@
       </v-col>
     </v-row>
     <v-row align="center">
-      <v-col
-        v-if="buildAsExtension || !$vuetify.breakpoint.xs"
-        cols="12"
-        sm="7"
-        xs="6"
-      >
+      <v-col v-if="buildAsExtension || !xs" cols="12" sm="7" xs="6">
         <input
           v-show="false"
           ref="getFiles"
@@ -254,7 +249,7 @@
           :label="
             searchRecursive ? $t('searchRecursiveHint') : $t('searchHint')
           "
-          :background-color="$vuetify.theme.dark ? '' : 'grey lighten-3'"
+          :background-color="dark ? '' : 'grey lighten-3'"
           solo
           flat
           dense
@@ -300,7 +295,7 @@
             :item-key="!$route.query.search ? 'name' : 'id'"
             show-select
             hide-default-footer
-            :hide-default-header="dataLoading || $vuetify.breakpoint.xs"
+            :hide-default-header="dataLoading || xs"
             :loading="dataLoading"
             :sort-by.sync="listSortBy"
             :sort-desc.sync="listSortDesc"
@@ -396,10 +391,7 @@
               </v-breadcrumbs>
               <v-divider></v-divider>
             </template>
-            <template
-              v-if="$vuetify.breakpoint.xs"
-              v-slot:header="{ props, on }"
-            >
+            <template v-if="xs" v-slot:header="{ props, on }">
               <v-row class="ma-0 py-2 px-2" align="center">
                 <v-menu>
                   <template v-slot:activator="{ on: menuOn, attrs }">
@@ -452,10 +444,7 @@
               </v-row>
               <v-divider></v-divider>
             </template>
-            <template
-              v-if="$vuetify.breakpoint.xs"
-              v-slot:body="{ items, isSelected, select }"
-            >
+            <template v-if="xs" v-slot:body="{ items, isSelected, select }">
               <v-list class="py-0" dense>
                 <template v-for="(item, index) in items">
                   <v-list-item
@@ -807,8 +796,7 @@
         formValue.type === 'move' || formValue.type === 'recover' ? 600 : 400
       "
       :fullscreen="
-        $vuetify.breakpoint.xs &&
-        (formValue.type === 'move' || formValue.type === 'recover')
+        xs && (formValue.type === 'move' || formValue.type === 'recover')
       "
     >
       <v-card>
@@ -946,9 +934,7 @@
                   <v-badge color="transparent" bottom overlap bordered avatar>
                     <template v-slot:badge>
                       <v-btn
-                        :color="`grey ${
-                          $vuetify.theme.dark ? 'darken' : 'lighten'
-                        }-3`"
+                        :color="`grey ${dark ? 'darken' : 'lighten'}-3`"
                         fab
                         depressed
                         x-small
@@ -1139,6 +1125,7 @@ import database from '@/utils/database';
 import storage from '@/utils/storage';
 import { getID } from '@/utils/id-generator';
 import PromiseWorker from 'promise-worker';
+import sortWorker from '@/utils/sort.worker';
 import searchWorker from '@/utils/search.worker';
 import formWorker from '@/utils/form.worker';
 import { buildAsExtension } from '@/build-type.json';
@@ -1196,6 +1183,8 @@ export default class Files extends Vue {
     this.getFolder.value = '';
     return this.currentPath.map(e => e.name);
   }
+  @Emit()
+  private audio(items: { id: number; name: string; digest: string; cover: string }[], index: number, id: number): void { items; index; id; }
 
   @Prop(String) private readonly repository!: string
   @Prop(String) private readonly path!: string
@@ -1248,22 +1237,6 @@ export default class Files extends Vue {
   private rightClickX = 0
   private rightClickY = 0
 
-  @Watch('$vuetify.breakpoint.xs')
-  private onBreakpointChange(val: boolean): void {
-    if (val) this.rightClickMenu = false;
-  }
-  @Watch('activeRepositoryID')
-  private async onActiveRepositoryIDChange(val: number): Promise<void> {
-    if (val === 0) return;
-    await storage.setValue('active', val);
-  }
-  @Watch('listPage')
-  private onListPageChange(): void {
-    this.$vuetify.goTo(0, {
-      duration: 0,
-    });
-  }
-
   private get breadcrumbsPath(): BreadcrumbsNode[] {
     const breadcrumbs = this.currentPath.map(path => Object.assign({}, path, { disabled: false }));
     breadcrumbs[breadcrumbs.length - 1].disabled = true;
@@ -1277,6 +1250,28 @@ export default class Files extends Vue {
   }
   private get buildAsExtension(): boolean {
     return buildAsExtension;
+  }
+  private get xs(): boolean {
+    return this.$vuetify.breakpoint.xs;
+  }
+  private get dark(): boolean {
+    return this.$vuetify.theme.dark;
+  }
+
+  @Watch('xs')
+  private onBreakpointChange(val: boolean): void {
+    if (val) this.rightClickMenu = false;
+  }
+  @Watch('activeRepositoryID')
+  private async onActiveRepositoryIDChange(val: number): Promise<void> {
+    if (val === 0) return;
+    await storage.setValue('active', val);
+  }
+  @Watch('listPage')
+  private onListPageChange(): void {
+    this.$vuetify.goTo(0, {
+      duration: 0,
+    });
   }
 
   private created(): void {
@@ -1828,7 +1823,35 @@ export default class Files extends Vue {
         }
         this.showVideo = true;
       }
-      else this.sendToBrowser(await network.getDownloadURL(item.digest, this.activeRepository), item.name);
+      else if (/\.(mp3|ogg|wav|flac|aac)$/.test(item.name.toLowerCase())) {
+        const worker = new sortWorker();
+        const promiseWorker = new PromiseWorker(worker);
+        const { items, index }: { items: { id: number; name: string; digest: string; cover: string }[]; index: number } = await promiseWorker.postMessage({
+          displayList: item.path ? this.getPath(item.path.split('/').map(e => decodeURIComponent(e))) : this.displayList,
+          listSortBy: this.listSortBy,
+          listSortDesc: this.listSortDesc,
+          itemName: item.name,
+          type: 'audio'
+        });
+        this.audio(items, index, this.activeRepositoryID);
+      }
+      else if (/\.(m3u8)$/.test(item.name.toLowerCase())) {
+        const { data: m3u8 } = await network.downloadFile(item.digest, this.activeRepository);
+        const path = item.path ? item.path.split('/').map(e => decodeURIComponent(e)) : this.currentPath;
+        const worker = new searchWorker();
+        const promiseWorker = new PromiseWorker(worker);
+        const list: { id: number; name: string; digest: string; cover: string }[] = await promiseWorker.postMessage({
+          list: this.root,
+          path: path.slice(1),
+          m3u8
+        });
+        worker.terminate();
+        if (list.length > 0) this.audio(list, 0, this.activeRepositoryID);
+        else this.alert(`${this.$t('audio.parsePlaylistFailed')}`, 'warning');
+      }
+      else if (this.buildAsExtension) {
+        this.sendToBrowser(await network.getDownloadURL(item.digest, this.activeRepository), item.name);
+      }
     }
     catch (error) {
       if (error?.message === 'need login') this.login(error.authenticateHeader, this.itemClick.bind(this, item, forceDownload));
@@ -1903,10 +1926,8 @@ export default class Files extends Vue {
       if (this.activeRepository?.useDatabase) {
         const config = await database.list(this.activeRepository);
         await network.commit(config, this.activeRepository);
-        this.root.files = config;
-        await this.updateDisplayList();
       }
-      else await this.getConfig();
+      await this.getConfig(true);
     }
     catch (error) {
       if (error?.message === 'need login') this.login(error.authenticateHeader);
@@ -1930,6 +1951,9 @@ export default class Files extends Vue {
 .folder-tree-item {
   text-overflow: ellipsis;
   overflow: hidden;
+}
+.list-link {
+  word-break: break-word;
 }
 .list-link:hover {
   text-decoration: underline;

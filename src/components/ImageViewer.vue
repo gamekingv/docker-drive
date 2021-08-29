@@ -148,14 +148,15 @@ export default class ImageViewer extends Vue {
     if (val) {
       const worker = new sortWorker();
       const promiseWorker = new PromiseWorker(worker);
-      const { images, index }: { images: { name: string; digest: string }[]; index: number } = await promiseWorker.postMessage({
-        displayListString: JSON.stringify(this.displayList),
+      const { items, index }: { items: { name: string; digest: string }[]; index: number } = await promiseWorker.postMessage({
+        displayList: this.displayList,
         listSortBy: this.listSortBy,
         listSortDesc: this.listSortDesc,
-        itemName: this.name
+        itemName: this.name,
+        type: 'image'
       });
       worker.terminate();
-      this.images = images;
+      this.images = items;
       this.index = index;
       this.imageURLs = [];
       this.onImageChange(this.index);

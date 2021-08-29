@@ -40,11 +40,11 @@ export default {
       const { repositories = [] } = await this.getValue('repositories');
       return repositories;
     }
-    else return [{ id: 1, name: '', url: '', secret: '' }];
+    else return [{ id: 1, name: 'anime', url: '', secret: '' }, { id: 2, name: 'music', url: '', secret: '' }];
   },
   async getActiveID(): Promise<number> {
-    if (buildAsExtension) {
-      const { active = 0 } = await this.getValue('active');
+    const { active = 0 } = await this.getValue('active');
+    if (buildAsExtension || active) {
       return active;
     }
     else return 1;

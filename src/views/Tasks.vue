@@ -46,7 +46,11 @@
                     "
                     :width="task.progress | progressPercentage"
                     height="100%"
-                    style="opacity: 0.15; position: absolute"
+                    style="
+                      opacity: 0.15;
+                      position: absolute;
+                      transition: width 0.3s;
+                    "
                   ></v-sheet>
                   <v-list-item v-blur link>
                     <v-list-item-avatar>
@@ -61,8 +65,7 @@
                       <v-list-item-subtitle v-if="task.status === 'uploading'"
                         >{{ task.speed | sizeFormat }}/s ({{
                           task.progress.uploadedSize | sizeFormat
-                        }}/{{ task.progress.totalSize | sizeFormat }}) -
-                        {{
+                        }}/{{ task.progress.totalSize | sizeFormat }}){{
                           remainingFormat(task.remainingTime)
                         }}</v-list-item-subtitle
                       >
@@ -209,7 +212,7 @@ export default class Tasks extends Vue {
     if (remainingTime < 60) timeString = ` ${remainingTime.toFixed(0)}${this.$t('second')}`;
     else if (remainingTime < 60 * 60) timeString = ` ${(remainingTime / 60).toFixed(0)}${this.$t('minute')}`;
     else timeString = `${this.$t('task.over1h')}`;
-    return `${this.$t('task.remaining', [timeString])}`;
+    return ` - ${this.$t('task.remaining', [timeString])}`;
   }
 }
 </script>

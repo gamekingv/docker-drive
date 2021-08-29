@@ -28,6 +28,8 @@ function iconFormat(originalName: string): string {
   if (/.*\.(mp4|mkv|avi)$/.test(name)) return 'mdi-video-outline';
   else if (/.*\.(ass|srt|ssa|vtt)$/.test(name)) return 'mdi-closed-caption-outline';
   else if (/\.(jpe?g|png|gif|bmp|webp|ico)$/.test(name)) return 'mdi-file-image-outline';
+  else if (/\.(mp3|ogg|wav|flac|aac)$/.test(name)) return 'mdi-music-box-outline';
+  else if (/\.(m3u8)$/.test(name)) return 'mdi-playlist-music';
   else return 'mdi-file';
 }
 
@@ -37,10 +39,12 @@ function iconColor(name: string): string {
     case 'mp4': return 'purple lighten-2';
     case 'mkv': return 'teal lighten-2';
     case 'avi': return 'red lighten-2';
+
     case 'ass': return 'red lighten-2';
     case 'srt': return 'teal lighten-2';
     case 'ssa': return 'pink lighten-2';
     case 'vtt': return 'purple lighten-2';
+
     case 'jpeg':
     case 'jpg': return 'red lighten-2';
     case 'png': return 'teal lighten-2';
@@ -48,6 +52,15 @@ function iconColor(name: string): string {
     case 'bmp': return 'purple lighten-2';
     case 'webp': return 'indigo lighten-2';
     case 'ico': return 'orange lighten-2';
+
+    case 'mp3': return 'red lighten-2';
+    case 'ogg': return 'teal lighten-2';
+    case 'wav': return 'pink lighten-2';
+    case 'flac': return 'purple lighten-2';
+    case 'aac': return 'indigo lighten-2';
+
+    case 'm3u8': return 'orange lighten-2';
+
     default: return 'mdi-file';
   }
 }

@@ -115,7 +115,7 @@ export default {
         else throw 'loadConfigFailed';
       }
       else {
-        const { data: configString } = await axios.get('/api/manifests', {
+        const { data: configString } = await axios.get(`/api/manifests?repo=${repository.id}`, {
           transformResponse: res => res
         });
         if (configString) {
@@ -170,7 +170,7 @@ export default {
       }
     }
     else {
-      const { data: downloadUrl } = await axios.get(`/api/file/${digest.replace('sha256:', '')}`);
+      const { data: downloadUrl } = await axios.get(`/api/file/${digest.replace('sha256:', '')}?repo=${repository.id}`);
       return downloadUrl;
     }
   },
@@ -187,7 +187,7 @@ export default {
       });
       return await this.requestSender(url, instance, repository);
     }
-    else return await axios.get(`/api/file/${digest.replace('sha256:', '')}?type=download`);
+    else return await axios.get(`/api/file/${digest.replace('sha256:', '')}?type=download&repo=${repository.id}`);
   },
   async sentToAria2(items: { name: string; digest: string }[], repository: Repository): Promise<{ success: number; fail: number }> {
     const aria2 = await storage.getAria2Config();

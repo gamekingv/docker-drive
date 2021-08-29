@@ -12,7 +12,14 @@ function highlight(text: string, search: string): { text: string; highlight: boo
   else return [{ text, highlight: false }];
 }
 
-registerPromiseWorker(({ list, path, searchText, searchRecursive = false }: { list: FileItem; path: PathNode[] | string[]; searchText: string; searchRecursive: boolean }): FileItem[] | undefined => {
+registerPromiseWorker(({ list, path, searchText, searchRecursive = false, m3u8 }:
+  {
+    list: FileItem;
+    path: PathNode[] | string[];
+    searchText: string;
+    searchRecursive: boolean;
+    m3u8: string;
+  }) => {
   let filePointer: FileItem = list;
   let route = '';
   for (const pathNode of path) {
@@ -22,7 +29,27 @@ registerPromiseWorker(({ list, path, searchText, searchRecursive = false }: { li
     if (nextPointer?.type === 'folder') filePointer = nextPointer;
     else return;
   }
-  if (searchText) {
+  if (m3u8) {
+    const list = m3u8.replace(/\r/g, '').split('\n').filter(e => e).map(e => e.split('\\'));
+    if (filePointer.files) {
+      return list.map(path => {
+        if (!/\.(mp3|ogg|wav|flac|aac)$/.test(path[path.length - 1])) return;
+        let folderPointer = filePointer;
+        let remainPath = path.length;
+        for (const name of path) {
+          const nextPointer = folderPointer.files?.find(e => e.name === name);
+          if (!--remainPath && nextPointer?.type === 'file') {
+            const cover = folderPointer.files?.find(e => /^cover\.(jpg|png|gif|bmp|webp|ico)$/.test(e.name))?.digest ?? '';
+            folderPointer.files?.find(e => e.name === name);
+            return { name: nextPointer.name, digest: nextPointer.digest, cover };
+          }
+          else if (nextPointer?.type === 'folder') folderPointer = nextPointer;
+          else return;
+        }
+      }).filter(e => e).map((e, i) => Object.assign(e, { id: i }));
+    }
+  }
+  else if (searchText) {
     if (searchRecursive) {
       if (filePointer.files) {
         const searchResult: FileItem[] = [];

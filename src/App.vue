@@ -103,8 +103,17 @@
             @alert="showAlert"
             @upload="addToTaskList"
             @cancel="cancelTask"
+            @audio="playAudio"
           />
         </v-fade-transition>
+        <audio-player
+          :list="audioList"
+          :repo="audioRepoID"
+          :index.sync="audioIndex"
+          :show.sync="showAudio"
+          @change-index="audioIndex = $event"
+          @alert="showAlert"
+        ></audio-player>
       </v-container>
     </v-main>
 
@@ -139,14 +148,8 @@
               <v-item v-slot="{ active, toggle }" :value="n">
                 <v-card
                   :color="active ? 'primary' : 'grey'"
-                  :class="`${
-                    active
-                      ? ''
-                      : $vuetify.theme.dark
-                      ? ' darken-3'
-                      : ' lighten-3'
-                  }`"
-                  :dark="$vuetify.theme.dark || active"
+                  :class="`${active ? '' : dark ? ' darken-3' : ' lighten-3'}`"
+                  :dark="dark || active"
                   flat
                   @click.stop="toggle"
                 >
@@ -289,6 +292,7 @@
 
 <script lang="ts">
 import { Vue, Component, Ref, Watch } from 'vue-property-decorator';
+import AudioPlayer from '@/components/AudioPlayer.vue';
 import axios from 'axios';
 import { Repository, FileItem, VForm, Task } from '@/utils/types';
 import { sizeFormat, progressPercentage, iconFormat, iconColor } from '@/utils/filters';
@@ -301,6 +305,9 @@ import { getID } from '@/utils/id-generator';
 import { buildAsExtension } from '@/build-type.json';
 
 @Component({
+  components: {
+    AudioPlayer
+  },
   filters: {
     sizeFormat,
     progressPercentage,
@@ -342,6 +349,10 @@ export default class APP extends Vue {
   private alerts: { show: boolean; text: string; type: string; shown: boolean }[] = []
   private alertText = ''
   private alertColor = ''
+  private audioList: { name: string; digest: string; cover: string }[] = []
+  private audioIndex = 0
+  private audioRepoID = 0
+  private showAudio = false
 
   private get runningTask(): number {
     return this.taskList.filter(e => e.status === 'uploading' || e.status === 'hashing' || e.status === 'waiting').length;
@@ -351,6 +362,12 @@ export default class APP extends Vue {
   }
   private get buildAsExtension(): boolean {
     return buildAsExtension;
+  }
+  private get dark(): boolean {
+    return this.$vuetify.theme.dark;
+  }
+  private set dark(val: boolean) {
+    this.$vuetify.theme.dark = val;
   }
 
   @Watch('runningTask')
@@ -381,6 +398,13 @@ export default class APP extends Vue {
       duration: 0
     });
   }
+  @Watch('showAudio')
+  private onShowAudioChange(val: boolean): void {
+    if (!val) {
+      this.audioList = [];
+      this.audioIndex = 0;
+    }
+  }
 
   private async created(): Promise<void> {
     document.title = `${this.$t('name')}`;
@@ -398,16 +422,16 @@ export default class APP extends Vue {
   private setTheme(theme: string): void {
     if (theme === 'browser') {
       const { matches } = matchMedia('(prefers-color-scheme: dark)');
-      if (matches) this.$vuetify.theme.dark = true;
-      else this.$vuetify.theme.dark = false;
+      if (matches) this.dark = true;
+      else this.dark = false;
     }
     else if (theme === 'time') {
       const hour = new Date().getHours();
-      this.$vuetify.theme.dark = hour >= 18 || hour < 6;
+      this.dark = hour >= 18 || hour < 6;
     }
-    else if (theme === 'dark') this.$vuetify.theme.dark = true;
-    else this.$vuetify.theme.dark = false;
-    document.getElementsByTagName('body')[0].className = this.$vuetify.theme.dark ? 'dark' : 'light';
+    else if (theme === 'dark') this.dark = true;
+    else this.dark = false;
+    document.getElementsByTagName('body')[0].className = this.dark ? 'dark' : 'light';
   }
   private loginAction(authenticateHeader?: string, fn?: Function): void {
     this.resetForm({ type: 'login' });
@@ -591,9 +615,11 @@ export default class APP extends Vue {
     task.status = 'cancel';
     task.file = undefined;
   }
-  private clearCompleteTask(): void {
-    this.taskList = this.taskList.filter(e => e.status !== 'complete');
-    this.taskPage = 1;
+  private async playAudio(items: { id: number; name: string; digest: string; cover: string }[], index: number, id: number): Promise<void> {
+    this.audioRepoID = id;
+    this.audioList = items;
+    this.audioIndex = index;
+    this.showAudio = true;
   }
   private resetForm(value?: { type: string; username?: string; password?: string }): void {
     Object.assign(this.formValue, this.defaultFormValue, value);

@@ -136,5 +136,8 @@
     "hint": "Sort By",
     "clear": "No Sort"
   },
-  "switchMode": "Switch Viewing Mode"
+  "switchMode": "Switch Viewing Mode",
+  "audio": {
+    "parsePlaylistFailed": "No audio found"
+  }
 }

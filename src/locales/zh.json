@@ -135,5 +135,8 @@
     "hint": "排序",
     "clear": "不排序"
   },
-  "switchMode": "切换看图模式"
+  "switchMode": "切换看图模式",
+  "audio": {
+    "parsePlaylistFailed": "没有发现任何音频"
+  }
 }

@@ -95,7 +95,7 @@ input[type="number"] {
   background: #1e1e1e !important;
 }
 
-.v-menu__content {
+.v-menu__content:not(.normal-z-index) {
   z-index: 4 !important;
 }
 
