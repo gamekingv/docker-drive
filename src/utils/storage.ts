@@ -40,7 +40,7 @@ export default {
       const { repositories = [] } = await this.getValue('repositories');
       return repositories;
     }
-    else return [{ id: 1, name: 'anime', url: '', secret: '' }, { id: 2, name: 'music', url: '', secret: '' }];
+    else return Array(100).fill(0).map((e, i) => ({ id: i, name: '', url: '', secret: '' }));
   },
   async getActiveID(): Promise<number> {
     const { active = 0 } = await this.getValue('active');
