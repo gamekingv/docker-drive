@@ -352,10 +352,8 @@ export default class AudioPlayer extends Vue {
     this.duration = 0;
     this.loadedPercentage = 0;
     this.cover = '';
-    if (!this.playingAudio.digest) {
-      this.source = '';
-      return;
-    }
+    this.source = '';
+    if (!this.playingAudio.digest) return;
     this.loading = true;
     const repositories = await storage.getRepositories();
     const activeRepository = repositories.find(e => e.id === this.repo);
