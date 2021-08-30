@@ -37,7 +37,7 @@ registerPromiseWorker(({ displayList, listSortBy, listSortDesc, searchText, item
   }
   if (searchText) sortedList = sortedList.filter(e => e.name.includes(searchText));
   if (type === 'image') {
-    const items = sortedList.filter(e => /\.(jpg|png|gif|bmp|webp|ico)$/.test(e.name));
+    const items = sortedList.filter(e => /\.(jpg|png|gif|bmp|webp|ico)$/.test(e.name.toLowerCase()));
     return { items: items.map(e => ({ name: e.name, digest: e.digest as string })), index: items.findIndex(e => e.name === itemName) };
   }
   else if (type === 'audio') {
