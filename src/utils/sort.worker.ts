@@ -37,12 +37,12 @@ registerPromiseWorker(({ displayList, listSortBy, listSortDesc, searchText, item
   }
   if (searchText) sortedList = sortedList.filter(e => e.name.includes(searchText));
   if (type === 'image') {
-    const items = sortedList.filter(e => /\.(jpg|png|gif|bmp|webp|ico)$/.test(e.name.toLowerCase()));
+    const items = sortedList.filter(e => /\.(jpg|png|gif|bmp|webp|ico)$/.test(e.name));
     return { items: items.map(e => ({ name: e.name, digest: e.digest as string })), index: items.findIndex(e => e.name === itemName) };
   }
   else if (type === 'audio') {
     const items = sortedList.filter(e => /\.(mp3|ogg|wav|flac|aac)$/.test(e.name));
-    const cover = sortedList.find(e => /^cover\.(jpg|png|gif|bmp|webp|ico)$/.test(e.name))?.digest ?? '';
+    const cover = sortedList.find(e => /^cover\.(jpg|png|gif|bmp|webp|ico)$/.test(e.name.toLowerCase()))?.digest ?? '';
     return { items: items.map((e, i) => ({ id: i, name: e.name, digest: e.digest as string, cover })), index: items.findIndex(e => e.name === itemName) };
   }
 });
