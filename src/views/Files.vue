@@ -1,7 +1,7 @@
 <template>
   <div v-if="repositories.length > 0">
     <v-row v-if="buildAsExtension" align="center">
-      <v-col cols="12" md="5" sm="7" xs="3" class="py-0">
+      <v-col cols="12" md="5" sm="7" class="py-0">
         <v-select
           v-model="activeRepositoryID"
           :items="repositories"
@@ -66,7 +66,7 @@
       </v-col>
     </v-row>
     <v-row align="center">
-      <v-col v-if="buildAsExtension || !xs" cols="12" sm="7" xs="6">
+      <v-col v-if="buildAsExtension || !xs" cols="12" sm="7">
         <input
           v-show="false"
           ref="getFiles"
@@ -242,7 +242,7 @@
           </v-list>
         </v-menu>
       </v-col>
-      <v-col cols="12" sm="5" xs="6">
+      <v-col cols="12" sm="5">
         <v-text-field
           v-model="searchText"
           class="py-0"
@@ -634,69 +634,68 @@
             <template v-slot:footer>
               <v-divider v-if="listPageCount > 0"></v-divider>
               <v-row v-if="listPageCount > 0" class="ma-0" align="center">
-                <v-col
-                  cols="12"
-                  sm="6"
-                  xs="6"
-                  class="px-0 py-1 d-flex justify-center justify-sm-start"
-                  style=""
-                >
-                  <v-pagination
-                    v-if="listPageCount > 1"
-                    v-model="listPage"
-                    :length="listPageCount"
-                    @input="
-                      `${$event}` !== $route.query.page &&
-                        $router.push({
-                          path: $route.path,
-                          query: Object.assign({}, $route.query, {
-                            page: `${$event}`,
-                          }),
-                        })
-                    "
-                  ></v-pagination>
-                </v-col>
-                <v-col
-                  cols="12"
-                  sm="6"
-                  xs="6"
-                  class="d-flex align-center justify-center justify-sm-end"
-                >
-                  <v-menu>
-                    <template v-slot:activator="{ on, attrs }">
-                      <v-btn text small v-bind="attrs" v-on="on"
-                        >{{ listPerPage === -1 ? $t("all") : listPerPage
-                        }}<v-icon right>mdi-menu-down</v-icon></v-btn
-                      >
-                    </template>
-                    <v-list dense>
-                      <v-list-item
-                        v-for="(item, index) in [
-                          { text: '10', value: 10 },
-                          { text: '50', value: 50 },
-                          { text: '100', value: 100 },
-                          { text: `${$t('all')}`, value: -1 },
-                        ]"
-                        :key="index"
-                        :input-value="listPerPage === item.value"
-                        @click="
+                <v-col cols="12" md="6" sm="8">
+                  <v-row align="center" justify="center" justify-sm="start">
+                    <v-pagination
+                      v-if="listPageCount > 1"
+                      v-model="listPage"
+                      :length="listPageCount"
+                      :total-visible="7"
+                      @input="
+                        `${$event}` !== $route.query.page &&
                           $router.push({
                             path: $route.path,
                             query: Object.assign({}, $route.query, {
-                              pn: `${item.value}`,
-                              page: undefined,
+                              page: `${$event}`,
                             }),
                           })
-                        "
-                      >
-                        <v-list-item-title>{{ item.text }}</v-list-item-title>
-                      </v-list-item>
-                    </v-list>
-                  </v-menu>
-                  <span class="text-caption ml-1"
-                    >{{ $t("perPage") }} {{ displayList.length }}
-                    {{ $t("unit") }}</span
+                      "
+                    ></v-pagination>
+                  </v-row>
+                </v-col>
+                <v-col cols="12" md="6" sm="4">
+                  <v-row
+                    class="py-1 px-3 flex-shrink-0 flex-nowrap"
+                    align="center"
+                    justify="center"
+                    justify-sm="end"
                   >
+                    <v-menu>
+                      <template v-slot:activator="{ on, attrs }">
+                        <v-btn text small v-bind="attrs" v-on="on"
+                          >{{ listPerPage === -1 ? $t("all") : listPerPage
+                          }}<v-icon right>mdi-menu-down</v-icon></v-btn
+                        >
+                      </template>
+                      <v-list dense>
+                        <v-list-item
+                          v-for="(item, index) in [
+                            { text: '10', value: 10 },
+                            { text: '50', value: 50 },
+                            { text: '100', value: 100 },
+                            { text: `${$t('all')}`, value: -1 },
+                          ]"
+                          :key="index"
+                          :input-value="listPerPage === item.value"
+                          @click="
+                            $router.push({
+                              path: $route.path,
+                              query: Object.assign({}, $route.query, {
+                                pn: `${item.value}`,
+                                page: undefined,
+                              }),
+                            })
+                          "
+                        >
+                          <v-list-item-title>{{ item.text }}</v-list-item-title>
+                        </v-list-item>
+                      </v-list>
+                    </v-menu>
+                    <span class="text-caption ml-1" style="white-space: nowrap"
+                      >{{ $t("perPage") }} {{ displayList.length }}
+                      {{ $t("unit") }}</span
+                    >
+                  </v-row>
                 </v-col>
               </v-row>
             </template>
