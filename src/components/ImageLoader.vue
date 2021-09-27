@@ -1,11 +1,12 @@
 <template>
   <v-row class="fill-height ma-0" align="center" justify="center">
     <v-fade-transition mode="out-in">
-      <img
+      <div
         v-if="loaded && !error && url && url !== 'error' && url !== 'loading'"
-        :src="url"
-        class="image"
-      />
+        style="height: 100%"
+      >
+        <img class="image" :src="url" />
+      </div>
       <v-row
         v-else-if="url === 'loading' || (!error && url !== 'error')"
         class="view-height ma-0"
@@ -58,6 +59,7 @@ export default class ImageLoader extends Vue {
 .image {
   max-width: 100%;
   max-height: 100%;
+  display: block;
 }
 .view-height {
   height: calc(100vh + 1px);
