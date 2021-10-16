@@ -5,12 +5,11 @@ interface Message {
   displayList: FileItem[];
   listSortBy: string | string[] | undefined;
   listSortDesc: boolean | boolean[] | undefined;
-  searchText: string | undefined;
   itemName: string;
   type: string;
 }
 
-registerPromiseWorker(({ displayList, listSortBy, listSortDesc, searchText, itemName, type }: Message) => {
+registerPromiseWorker(({ displayList, listSortBy, listSortDesc, itemName, type }: Message) => {
   let sortBy!: string | undefined, sortDesc!: number;
   let sortedList!: FileItem[];
   if (Array.isArray(listSortBy)) sortBy = listSortBy[0];
@@ -35,13 +34,12 @@ registerPromiseWorker(({ displayList, listSortBy, listSortDesc, searchText, item
       sortedList = displayList;
     }
   }
-  if (searchText) sortedList = sortedList.filter(e => e.name.includes(searchText));
   if (type === 'image') {
-    const items = sortedList.filter(e => /\.(jpg|png|gif|bmp|webp|ico)$/.test(e.name));
+    const items = sortedList.filter(e => /\.(jpg|png|gif|bmp|webp|ico)$/.test(e.name.toLowerCase()));
     return { items: items.map(e => ({ name: e.name, digest: e.digest as string })), index: items.findIndex(e => e.name === itemName) };
   }
   else if (type === 'audio') {
-    const items = sortedList.filter(e => /\.(mp3|ogg|wav|flac|aac)$/.test(e.name));
+    const items = sortedList.filter(e => /\.(mp3|ogg|wav|flac|aac)$/.test(e.name.toLowerCase()));
     const cover = sortedList.find(e => /^cover\.(jpg|png|gif|bmp|webp|ico)$/.test(e.name.toLowerCase()))?.digest ?? '';
     return { items: items.map((e, i) => ({ id: i, name: e.name, digest: e.digest as string, cover })), index: items.findIndex(e => e.name === itemName) };
   }
