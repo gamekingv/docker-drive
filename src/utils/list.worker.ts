@@ -46,18 +46,23 @@ function stringifyConfig(config: FileItem[], layers: Manifest[] = []): {
   manifestString: string;
   digest: string;
 } {
+  const layersSet: Set<string> = new Set();
+  (function removeID(files: FileItem[]): void {
+    files.forEach(file => {
+      /*@ts-ignore*/
+      delete file.id;
+      if (file.files) removeID(file.files);
+      else layersSet.add(`${file.digest}|${file.size}`);
+    });
+  })(config);
   if (layers.length === 0) {
-    (function removeID(files: FileItem[]): void {
-      files.forEach(file => {
-        /*@ts-ignore*/
-        delete file.id;
-        if (file.files) removeID(file.files);
-        else layers.push({
-          mediaType: 'application/vnd.docker.image.rootfs.diff.tar.gzip',
-          digest: file.digest as string, size: file.size as number
-        });
-      });
-    })(config);
+    layers.push(...Array.from(layersSet).map(file => {
+      const [digest, size] = file.split('|');
+      return {
+        mediaType: 'application/vnd.docker.image.rootfs.diff.tar.gzip',
+        digest, size: Number(size)
+      };
+    }));
   }
   const configString = JSON.stringify({ files: config });
   const digest = `sha256:${CryptoJS.SHA256(configString)}`;
@@ -91,8 +96,6 @@ function parseDatabaseConfig(array: DatabaseItem[]): FileItem[] {
     /*@ts-ignore*/
     else mark[parent].files.push(item);
   });
-  const files: Set<string> = new Set();
-  array.forEach(item => item.type === 'file' ? files.add(`${item.digest}|${item.size}`) : '');
   return root;
 }
 
