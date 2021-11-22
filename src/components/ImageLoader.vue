@@ -59,6 +59,7 @@ export default class ImageLoader extends Vue {
   max-width: 100%;
   max-height: 100%;
   flex: 0;
+  object-fit: contain;
 }
 .view-height {
   height: calc(100vh + 1px);
