@@ -138,5 +138,12 @@
   "switchMode": "切换看图模式",
   "audio": {
     "parsePlaylistFailed": "没有发现任何音频"
+  },
+  "configuration": {
+    "title": "配置",
+    "import": "导入",
+    "export": "导出",
+    "importError": "导入出错",
+    "exportSuccess": "导出成功"
   }
 }

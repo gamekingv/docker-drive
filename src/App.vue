@@ -207,6 +207,44 @@
             ></v-text-field>
           </v-col>
         </v-row>
+        <div class="mx-n4 mt-4 mb-3"><v-divider></v-divider></div>
+        <div class="text-subtitle-2 font-weight-black">
+          {{ $t("configuration.title") }}
+        </div>
+        <v-row dense>
+          <v-col cols="6">
+            <v-btn
+              depressed
+              block
+              color="deep-purple darken-1"
+              dark
+              @click.stop="exportConfig"
+              ><v-icon left dark>mdi-export</v-icon
+              >{{ $t("configuration.export") }}</v-btn
+            >
+          </v-col>
+          <v-col cols="6">
+            <v-btn
+              depressed
+              block
+              color="teal darken-2"
+              dark
+              @click.stop="
+                selectConfig.value = '';
+                selectConfig.click();
+              "
+              ><v-icon left dark>mdi-import</v-icon
+              >{{ $t("configuration.import") }}</v-btn
+            >
+            <input
+              v-show="false"
+              ref="selectConfig"
+              type="file"
+              accept="application/json"
+              @input="selectConfig.files && importConfig(selectConfig.files[0])"
+            />
+          </v-col>
+        </v-row>
       </v-container>
     </v-navigation-drawer>
 
@@ -319,8 +357,7 @@ import { buildAsExtension } from '@/build-type.json';
 export default class APP extends Vue {
   @Ref() private readonly child!: Files
   @Ref() private readonly form!: VForm
-  @Ref() private readonly getFiles!: HTMLInputElement
-  @Ref() private readonly getFolder!: HTMLInputElement
+  @Ref() private readonly selectConfig!: HTMLInputElement
 
   private loading = false
   private isCommitting = false;
@@ -649,6 +686,49 @@ export default class APP extends Vue {
         ''
       );
     }
+  }
+  private async importConfig(file: File): Promise<void> {
+    this.loading = true;
+    const reader = new FileReader();
+    reader.addEventListener('loadend', async event => {
+      try {
+        const { theme, repositories, aria2 }: {
+          theme: string;
+          repositories: Repository[];
+          aria2: object;
+        } = JSON.parse(event.target?.result?.toString() || '{}');
+        if (theme) await storage.setValue('theme', theme);
+        if (repositories) {
+          const timestamp = Date.now();
+          repositories.forEach((repository, index) => {
+            repository.id = timestamp + index;
+          });
+          const oldRepositories = await storage.getRepositories();
+          if (oldRepositories) repositories.unshift(...oldRepositories);
+          await storage.setValue('repositories', repositories);
+          if (repositories.length > 0) await storage.setValue('active', repositories[0].id);
+        }
+        if (aria2) await storage.setValue('aria2', aria2);
+        location.reload();
+      }
+      catch (e) {
+        this.showAlert(`${this.$t('configuration.importError')}`, 'error', e);
+        this.loading = false;
+      }
+    });
+    reader.readAsText(file);
+  }
+  private async exportConfig(): Promise<void> {
+    const theme = await storage.getTheme();
+    const repositories = await storage.getRepositories();
+    const aria2 = await storage.getAria2Config();
+    const file = new Blob([JSON.stringify({ theme, repositories, aria2 })], { type: 'application/json' });
+    chrome.downloads.download({
+      url: URL.createObjectURL(file),
+      filename: 'config.json',
+      saveAs: true
+    });
+    this.showAlert(`${this.$t('configuration.exportSuccess')}`, 'success');
   }
 }
 </script>

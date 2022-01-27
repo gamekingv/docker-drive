@@ -139,5 +139,12 @@
   "switchMode": "Switch Viewing Mode",
   "audio": {
     "parsePlaylistFailed": "No audio found"
+  },
+  "configuration": {
+    "title": "Configuration",
+    "import": "Import",
+    "export": "Export",
+    "importError": "Import Error",
+    "exportSuccess": "Export Success"
   }
 }
