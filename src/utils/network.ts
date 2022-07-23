@@ -205,7 +205,7 @@ export default {
       method: 'aria2.addUri',
       id: `${timestamp}${i}`,
       params: [...secret, [buildAsExtension ? `https://${server}/v2/${namespace}/${image}/blobs/${item.digest}` :
-        `${protocol}//${host}/api/file/${item.digest.replace('sha256:', '')}?type=source`], {
+        `${protocol}//${host}/api/file/${item.digest.replace('sha256:', '')}?type=source&repo=${repository.id}`], {
         'out': `${item.name}`,
         'header': buildAsExtension ? [`repository: ${repository.url}`, `Authorization: Bearer ${token}`] : []
       }]
