@@ -62,11 +62,16 @@ export default class VideoPlayer extends Vue {
       this.subtitles = [];
       for (const track of this.tracks) {
         try {
-          const label = track.name.replace(this.videoTitle.substr(0, this.videoTitle.length - 3), '');
-          if (/\.vtt$/.test(track.name)) this.subtitles.push({ label, url: track.url });
+          const label = track.name.replace(this.videoTitle.substring(0, this.videoTitle.length - 3), '');
+          if (/\.vtt$/.test(track.name)) {
+            const url = await network.getDownloadURL(track.url, this.activeRepository);
+            this.subtitles.push({ label, url });
+          }
           else if (/\.srt$/.test(track.name)) {
             const { data: srt }: { data: string } = await network.downloadFile(track.url, this.activeRepository);
-            const vtt = 'WEBVTT\r\n\r\n' + srt.replace(/(\d{2}:\d{2}:\d{2}),(\d{3} --> \d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2.$3');
+            const vtt = 'WEBVTT\r\n\r\n' + srt.replace(/(\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3})(((?!\r?\n\r?\n)[\s\S])*?\{\\an8\})/g, '$1 line:0$2')
+              .replace(/(\d{2}:\d{2}:\d{2}),(\d{3} --> \d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2.$3')
+              .replace(/\{\\[^}]+\}/g, '');
             this.subtitles.push({ label, url: URL.createObjectURL(new Blob([vtt], { type: 'text/vtt' })) });
           }
           else if (/\.(ass|ssa)$/.test(track.name)) {

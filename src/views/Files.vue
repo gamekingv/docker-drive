@@ -1815,7 +1815,7 @@ export default class Files extends Vue {
       }
       else if (/\.(mp4|mkv|avi)$/.test(item.name.toLowerCase())) {
         Object.assign(this.source, { name: item.name, url: await network.getDownloadURL(item.digest, this.activeRepository) });
-        const subtitles = this.displayList.filter(e => e.name.includes(item.name.substr(0, item.name.length - 3)) && /.*\.(vtt|srt|ass|ssa)$/.test(e.name));
+        const subtitles = this.displayList.filter(e => e.name.includes(item.name.substring(0, item.name.length - 3)) && /.*\.(vtt|srt|ass|ssa)$/.test(e.name));
         this.tracks = [];
         for (const subtitle of subtitles) {
           this.tracks.push({ name: subtitle.name, url: subtitle.digest as string });

@@ -9,7 +9,7 @@ function parseConfig(configString: string): FileItem[] {
     const cacheRoot = { name: 'root', type: 'folder', files: [], id: 0 };
     config.fileItems.forEach(({ name: pathString, size, digest, uploadTime }) => {
       if (!uploadTime) uploadTime = Date.now();
-      const path = pathString.substr(1).split('/');
+      const path = pathString.substring(1).split('/');
       const type = digest ? 'file' : 'folder';
       let filePointer: FileItem = cacheRoot;
       const id = getID();
