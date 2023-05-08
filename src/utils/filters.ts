@@ -14,7 +14,7 @@ function sizeFormat(fileSize: number): string {
 function formatTime(time: number): string {
   if (!time) return '-';
   const date = new Date(time);
-  const addZero = (n: number): string => `0${n}`.substring(-2);
+  const addZero = (n: number): string => `0${n}`.substring(`0${n}`.length - 2);
   return `${date.getFullYear()}-${addZero(date.getMonth() + 1)}-${addZero(date.getDate())} ${addZero(date.getHours())}:${addZero(date.getMinutes())}`;
 }
 
