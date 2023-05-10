@@ -131,9 +131,21 @@ export default {
         docs.push(file);
       });
     })(files, 'root');
-    await client.post(`${repository.databaseURL}/${databaseName}/_bulk_docs`, {
-      docs
-    }, { timeout: 0 });
+    const contentLength = JSON.stringify(docs).length;
+    if (contentLength > 800 * 1024) {
+      const part = Math.ceil(contentLength / (800 * 1024));
+      const docCount = Math.floor(docs.length / part);
+      while (docs.length > 0) {
+        await client.post(`${repository.databaseURL}/${databaseName}/_bulk_docs`, {
+          docs: docs.splice(0, docCount)
+        }, { timeout: 0 });
+      }
+    }
+    else {
+      await client.post(`${repository.databaseURL}/${databaseName}/_bulk_docs`, {
+        docs
+      }, { timeout: 0 });
+    }
   },
   async check(repository: Repository): Promise<boolean> {
     await this.setToken(repository);
