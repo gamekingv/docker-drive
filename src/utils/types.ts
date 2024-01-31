@@ -22,6 +22,8 @@ interface FileItem {
   _id?: string;
   uuid?: string;
   path?: string;
+  start?: number;
+  end?: number;
 }
 
 interface FolderList {

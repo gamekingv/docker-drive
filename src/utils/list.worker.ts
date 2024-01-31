@@ -7,7 +7,7 @@ function parseConfig(configString: string): FileItem[] {
   const config: { fileItems?: FileItem[]; files?: FileItem[] } = JSON.parse(configString);
   if (config.fileItems) {
     const cacheRoot = { name: 'root', type: 'folder', files: [], id: 0 };
-    config.fileItems.forEach(({ name: pathString, size, digest, uploadTime }) => {
+    config.fileItems.forEach(({ name: pathString, size, digest, uploadTime, start, end }) => {
       if (!uploadTime) uploadTime = Date.now();
       const path = pathString.substring(1).split('/');
       const type = digest ? 'file' : 'folder';
@@ -25,7 +25,7 @@ function parseConfig(configString: string): FileItem[] {
         }
       }
       if (type === 'folder') filePointer.files?.push({ name: path[path.length - 1], type, files: [], id });
-      else filePointer.files?.push({ name: path[path.length - 1], type, size, digest, uploadTime, id });
+      else filePointer.files?.push({ name: path[path.length - 1], type, size, digest, uploadTime, id, start, end });
     });
     return cacheRoot.files;
   }

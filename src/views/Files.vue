@@ -16,7 +16,7 @@
             $router.push({
               name: 'Files',
               params: { repository: `${$event}` },
-              query: { pn: $route.query.pn },
+              query: { pn: $route.query.pn }
             })
           "
         >
@@ -27,16 +27,11 @@
                 <v-icon color="green" left> mdi-plus </v-icon>
               </v-list-item-action>
               <v-list-item-content>
-                <v-list-item-title>{{
-                  $t("repository.add")
-                }}</v-list-item-title>
+                <v-list-item-title>{{ $t('repository.add') }}</v-list-item-title>
               </v-list-item-content>
             </v-list-item>
           </template>
-          <template
-            v-if="activeRepository && activeRepository.useDatabase"
-            v-slot:append-outer
-          >
+          <template v-if="activeRepository && activeRepository.useDatabase" v-slot:append-outer>
             <v-tooltip top :open-delay="300">
               <template v-slot:activator="{ on, attrs }">
                 <v-btn
@@ -49,7 +44,7 @@
                   <v-icon>mdi-sync</v-icon>
                 </v-btn>
               </template>
-              <span>{{ $t("repository.synchronizeWith") }}</span>
+              <span>{{ $t('repository.synchronizeWith') }}</span>
             </v-tooltip>
           </template>
         </v-select>
@@ -57,11 +52,8 @@
       <v-spacer></v-spacer>
       <v-col class="text-right py-sm-0 pl-sm-0">
         <v-chip label small outlined>
-          {{ `${layers.length}${$t("statistics")}`
-          }}{{
-            layers.reduce((total, layer) => (total += layer.size), 0)
-              | sizeFormat
-          }}
+          {{ `${layers.length}${$t('statistics')}`
+          }}{{ layers.reduce((total, layer) => (total += layer.size), 0) | sizeFormat }}
         </v-chip>
       </v-col>
     </v-row>
@@ -84,16 +76,11 @@
           multiple
           @input="getFolder.files && upload(Array.from(getFolder.files))"
         />
-        <v-btn-toggle
-          v-if="buildAsExtension"
-          active-class="no-active"
-          dense
-          borderless
-        >
+        <v-btn-toggle v-if="buildAsExtension" active-class="no-active" dense borderless>
           <v-menu transition="slide-y-transition" offset-y>
             <template v-slot:activator="{ on, attrs }">
               <v-btn class="pa-3" v-bind="attrs" v-on="on"
-                ><v-icon left>mdi-plus</v-icon>{{ $t("new") }}</v-btn
+                ><v-icon left>mdi-plus</v-icon>{{ $t('new') }}</v-btn
               >
             </template>
             <v-list dense>
@@ -102,37 +89,25 @@
                 @click="addFolderAction()"
               >
                 <v-icon left>mdi-folder-plus-outline</v-icon>
-                <v-list-item-title>{{ $t("newFolder") }}</v-list-item-title>
+                <v-list-item-title>{{ $t('newFolder') }}</v-list-item-title>
               </v-list-item>
               <v-divider></v-divider>
-              <v-list-item
-                :disabled="!!$route.query.search"
-                @click="getFiles.click()"
-              >
+              <v-list-item :disabled="!!$route.query.search" @click="getFiles.click()">
                 <v-icon left>mdi-file-upload</v-icon>
-                <v-list-item-title>{{ $t("uploadFiles") }}</v-list-item-title>
+                <v-list-item-title>{{ $t('uploadFiles') }}</v-list-item-title>
               </v-list-item>
-              <v-list-item
-                :disabled="!!$route.query.search"
-                @click="getFolder.click()"
-              >
+              <v-list-item :disabled="!!$route.query.search" @click="getFolder.click()">
                 <v-icon left>mdi-folder-upload</v-icon>
-                <v-list-item-title>{{ $t("uploadFolder") }}</v-list-item-title>
+                <v-list-item-title>{{ $t('uploadFolder') }}</v-list-item-title>
               </v-list-item>
               <v-divider></v-divider>
               <v-list-item :disabled="disableOperate" @click="recoveryAction()">
                 <v-icon left>mdi-file-restore</v-icon>
-                <v-list-item-title>{{
-                  $t("recovery.button")
-                }}</v-list-item-title>
+                <v-list-item-title>{{ $t('recovery.button') }}</v-list-item-title>
               </v-list-item>
             </v-list>
           </v-menu>
-          <v-menu
-            v-if="selectedFiles.length > 0"
-            transition="slide-y-transition"
-            offset-y
-          >
+          <v-menu v-if="selectedFiles.length > 0" transition="slide-y-transition" offset-y>
             <template v-slot:activator="{ on, attrs }">
               <v-btn
                 style="border-left-width: thin"
@@ -147,20 +122,21 @@
               <v-list-item
                 v-if="
                   selectedFiles.length === 1 &&
-                  selectedFiles[0].type !== 'folder'
+                  selectedFiles[0].type !== 'folder' &&
+                  !selectedFiles[0].end
                 "
                 @click="itemClick(selectedFiles[0], true)"
               >
                 <v-icon left>mdi-download</v-icon>
-                <v-list-item-title>{{ $t("download") }}</v-list-item-title>
+                <v-list-item-title>{{ $t('download') }}</v-list-item-title>
               </v-list-item>
               <v-list-item :disabled="disableOperate" @click="moveAction()">
                 <v-icon left>mdi-file-move</v-icon>
-                <v-list-item-title>{{ $t("move") }}</v-list-item-title>
+                <v-list-item-title>{{ $t('move') }}</v-list-item-title>
               </v-list-item>
               <v-list-item :disabled="disableOperate" @click="removeAction()">
                 <v-icon left>mdi-trash-can-outline</v-icon>
-                <v-list-item-title>{{ $t("delete") }}</v-list-item-title>
+                <v-list-item-title>{{ $t('delete') }}</v-list-item-title>
               </v-list-item>
               <v-list-item
                 v-if="selectedFiles.length === 1"
@@ -168,76 +144,56 @@
                 @click="renameAction(selectedFiles[0])"
               >
                 <v-icon left>mdi-rename-box</v-icon>
-                <v-list-item-title>{{ $t("rename") }}</v-list-item-title>
+                <v-list-item-title>{{ $t('rename') }}</v-list-item-title>
               </v-list-item>
               <v-divider></v-divider>
-              <v-list-item
-                :disabled="disableOperate"
-                @click="statisticAction()"
-              >
+              <v-list-item :disabled="disableOperate" @click="statisticAction()">
                 <v-icon left>mdi-information-outline</v-icon>
-                <v-list-item-title>{{
-                  $t("form.statistic.button")
-                }}</v-list-item-title>
+                <v-list-item-title>{{ $t('form.statistic.button') }}</v-list-item-title>
               </v-list-item>
               <v-list-item
                 v-if="selectedFiles.some((item) => item.type === 'file')"
                 @click="copyDownloadLinks()"
               >
                 <v-icon left>mdi-link</v-icon>
-                <v-list-item-title>{{
-                  $t("copyDownloadLinks")
-                }}</v-list-item-title>
+                <v-list-item-title>{{ $t('copyDownloadLinks') }}</v-list-item-title>
               </v-list-item>
               <v-list-item @click="copyAria2DownloadText()">
                 <v-icon left>mdi-download-box</v-icon>
-                <v-list-item-title>{{
-                  $t("copyAria2DownloadText")
-                }}</v-list-item-title>
+                <v-list-item-title>{{ $t('copyAria2DownloadText') }}</v-list-item-title>
               </v-list-item>
               <v-list-item @click="sendToAria2()">
                 <v-icon left>mdi-auto-download</v-icon>
-                <v-list-item-title>{{ $t("sendToAria2") }}</v-list-item-title>
+                <v-list-item-title>{{ $t('sendToAria2') }}</v-list-item-title>
               </v-list-item>
             </v-list>
           </v-menu>
         </v-btn-toggle>
-        <v-menu
-          v-else-if="selectedFiles.length > 0"
-          transition="slide-y-transition"
-          offset-y
-        >
+        <v-menu v-else-if="selectedFiles.length > 0" transition="slide-y-transition" offset-y>
           <template v-slot:activator="{ on, attrs }">
             <v-btn depressed v-bind="attrs" v-on="on"
-              >{{ $t("more")
-              }}<v-icon right small>mdi-dots-vertical</v-icon></v-btn
+              >{{ $t('more') }}<v-icon right small>mdi-dots-vertical</v-icon></v-btn
             >
           </template>
           <v-list dense>
             <v-list-item :disabled="disableOperate" @click="statisticAction()">
               <v-icon left>mdi-information-outline</v-icon>
-              <v-list-item-title>{{
-                $t("form.statistic.button")
-              }}</v-list-item-title>
+              <v-list-item-title>{{ $t('form.statistic.button') }}</v-list-item-title>
             </v-list-item>
             <v-list-item
               v-if="selectedFiles.some((item) => item.type === 'file')"
               @click="copyDownloadLinks()"
             >
               <v-icon left>mdi-link</v-icon>
-              <v-list-item-title>{{
-                $t("copyDownloadLinks")
-              }}</v-list-item-title>
+              <v-list-item-title>{{ $t('copyDownloadLinks') }}</v-list-item-title>
             </v-list-item>
             <v-list-item @click="copyAria2DownloadText()">
               <v-icon left>mdi-download-box</v-icon>
-              <v-list-item-title>{{
-                $t("copyAria2DownloadText")
-              }}</v-list-item-title>
+              <v-list-item-title>{{ $t('copyAria2DownloadText') }}</v-list-item-title>
             </v-list-item>
             <v-list-item @click="sendToAria2()">
               <v-icon left>mdi-auto-download</v-icon>
-              <v-list-item-title>{{ $t("sendToAria2") }}</v-list-item-title>
+              <v-list-item-title>{{ $t('sendToAria2') }}</v-list-item-title>
             </v-list-item>
           </v-list>
         </v-menu>
@@ -246,9 +202,7 @@
         <v-text-field
           v-model="searchText"
           class="py-0"
-          :label="
-            searchRecursive ? $t('searchRecursiveHint') : $t('searchHint')
-          "
+          :label="searchRecursive ? $t('searchRecursiveHint') : $t('searchHint')"
           :background-color="dark ? '' : 'grey lighten-3'"
           solo
           flat
@@ -278,7 +232,7 @@
                   </v-icon>
                 </v-hover>
               </template>
-              {{ $t("searchRecursiveTips") }}
+              {{ $t('searchRecursiveTips') }}
             </v-tooltip>
           </template>
         </v-text-field>
@@ -305,11 +259,11 @@
                 align: 'center',
                 value: 'type',
                 sortable: false,
-                width: 64,
+                width: 64
               },
               { text: $t('fileName'), align: 'start', value: 'name' },
               { text: $t('fileSize'), value: 'size' },
-              { text: $t('fileUploadTime'), value: 'uploadTime' },
+              { text: $t('fileUploadTime'), value: 'uploadTime' }
             ]"
             @page-count="listPageCount = $event"
             @contextmenu:row="showRightClickMenu"
@@ -323,7 +277,7 @@
                   max-width="100%"
                   :min-width="0"
                   disabled
-                  >{{ $t("searchTitle1", [$route.query.search]) }}</v-btn
+                  >{{ $t('searchTitle1', [$route.query.search]) }}</v-btn
                 >
                 <v-btn
                   class="my-1 px-2 breadcrumb-button"
@@ -337,7 +291,7 @@
                         ? `/${breadcrumbsPath[breadcrumbsPath.length - 1].path}`
                         : ''
                     }`,
-                    query: { pn: $route.query.pn },
+                    query: { pn: $route.query.pn }
                   }"
                   exact
                   >{{ breadcrumbsPath[breadcrumbsPath.length - 1].name }}</v-btn
@@ -349,7 +303,7 @@
                   max-width="100%"
                   :min-width="0"
                   disabled
-                  >{{ $t("searchTitle2") }}</v-btn
+                  >{{ $t('searchTitle2') }}</v-btn
                 >
                 <v-btn
                   class="my-1 px-2 breadcrumb-button"
@@ -362,11 +316,7 @@
                   >{{ $route.query.search }}</v-btn
                 >
               </v-breadcrumbs>
-              <v-breadcrumbs
-                v-else
-                class="pa-2 breadcrumbs"
-                :items="breadcrumbsPath"
-              >
+              <v-breadcrumbs v-else class="pa-2 breadcrumbs" :items="breadcrumbsPath">
                 <template v-slot:divider>
                   <v-icon>mdi-chevron-right</v-icon>
                 </template>
@@ -378,10 +328,8 @@
                     max-width="100%"
                     :min-width="0"
                     :to="{
-                      path: `/files/${activeRepositoryID}${
-                        item.path ? `/${item.path}` : ''
-                      }`,
-                      query: { pn: $route.query.pn },
+                      path: `/files/${activeRepositoryID}${item.path ? `/${item.path}` : ''}`,
+                      query: { pn: $route.query.pn }
                     }"
                     exact
                     exact-path
@@ -398,12 +346,8 @@
                     <v-btn text v-bind="attrs" v-on="menuOn"
                       >{{
                         listSortBy
-                          ? $t(
-                              `file${listSortBy.replace(/^[a-z]/g, (e) =>
-                                e.toUpperCase()
-                              )}`
-                            )
-                          : $t("sort.hint")
+                          ? $t(`file${listSortBy.replace(/^[a-z]/g, (e) => e.toUpperCase())}`)
+                          : $t('sort.hint')
                       }}<v-icon right>mdi-menu-down</v-icon></v-btn
                     >
                   </template>
@@ -415,8 +359,8 @@
                         { text: `${$t('fileSize')}`, value: 'size' },
                         {
                           text: `${$t('fileUploadTime')}`,
-                          value: 'uploadTime',
-                        },
+                          value: 'uploadTime'
+                        }
                       ]"
                       :key="index"
                       :input-value="listSortBy === item.value"
@@ -426,13 +370,8 @@
                     </v-list-item>
                   </v-list>
                 </v-menu>
-                <v-btn
-                  v-if="listSortBy"
-                  icon
-                  @click.stop="listSortDesc = !listSortDesc"
-                  ><v-icon small
-                    >mdi-arrow-{{ listSortDesc ? "down" : "up" }}</v-icon
-                  ></v-btn
+                <v-btn v-if="listSortBy" icon @click.stop="listSortDesc = !listSortDesc"
+                  ><v-icon small>mdi-arrow-{{ listSortDesc ? 'down' : 'up' }}</v-icon></v-btn
                 >
                 <v-spacer></v-spacer>
                 <v-simple-checkbox
@@ -461,41 +400,30 @@
                               ? `/files/${activeRepositoryID}${
                                   item.path === '/' ? '' : item.path
                                 }/${encodeURIComponent(item.name)}`
-                              : `${$route.path}/${encodeURIComponent(
-                                  item.name
-                                )}`,
-                            query: { pn: $route.query.pn },
+                              : `${$route.path}/${encodeURIComponent(item.name)}`,
+                            query: { pn: $route.query.pn }
                           })
                         : itemClick(item)
                     "
                     @contextmenu.prevent="
-                      selectedFiles.length === 0 &&
-                        select(item, !isSelected(item))
+                      selectedFiles.length === 0 && select(item, !isSelected(item))
                     "
                   >
                     <v-list-item-avatar>
-                      <v-icon
-                        v-if="item.type === 'folder'"
-                        color="amber lighten-2"
+                      <v-icon v-if="item.type === 'folder'" color="amber lighten-2"
                         >mdi-folder</v-icon
                       >
                       <v-icon v-else :color="item.name | iconColor">{{
-                        item.name | iconFormat
+                        item.end ? 'combine' : item.name | iconFormat
                       }}</v-icon></v-list-item-avatar
                     >
                     <v-list-item-content>
-                      <v-list-item-title
-                        style="white-space: unset; word-break: break-word"
-                      >
-                        <search-result
-                          :result="item.displayName || item.name"
-                        />
+                      <v-list-item-title style="white-space: unset; word-break: break-word">
+                        <search-result :result="item.displayName || item.name" />
                       </v-list-item-title>
                       <v-list-item-subtitle>
                         <span>{{ item.uploadTime | formatTime }}</span>
-                        <span v-if="item.size" class="ml-2">{{
-                          item.size | sizeFormat
-                        }}</span>
+                        <span v-if="item.size" class="ml-2">{{ item.size | sizeFormat }}</span>
                       </v-list-item-subtitle>
                     </v-list-item-content>
                     <v-list-item-action>
@@ -508,10 +436,7 @@
                       ></v-simple-checkbox>
                     </v-list-item-action>
                   </v-list-item>
-                  <v-divider
-                    v-if="index !== items.length - 1"
-                    :key="index"
-                  ></v-divider>
+                  <v-divider v-if="index !== items.length - 1" :key="index"></v-divider>
                 </template>
               </v-list>
               <v-bottom-navigation
@@ -521,11 +446,11 @@
               >
                 <template v-if="buildAsExtension">
                   <v-btn :disabled="disableOperate" @click="moveAction()">
-                    <span>{{ $t("move") }}</span>
+                    <span>{{ $t('move') }}</span>
                     <v-icon>mdi-file-move</v-icon>
                   </v-btn>
                   <v-btn :disabled="disableOperate" @click="removeAction()">
-                    <span>{{ $t("delete") }}</span>
+                    <span>{{ $t('delete') }}</span>
                     <v-icon>mdi-trash-can-outline</v-icon>
                   </v-btn>
                   <v-btn
@@ -533,18 +458,18 @@
                     :disabled="disableOperate"
                     @click="renameAction(selectedFiles[0])"
                   >
-                    <span>{{ $t("rename") }}</span>
+                    <span>{{ $t('rename') }}</span>
                     <v-icon>mdi-rename-box</v-icon>
                   </v-btn>
                 </template>
                 <v-btn v-else @click="statisticAction()">
-                  <span>{{ $t("form.statistic.button") }}</span>
+                  <span>{{ $t('form.statistic.button') }}</span>
                   <v-icon>mdi-information-outline</v-icon>
                 </v-btn>
                 <v-menu offset-y top>
                   <template v-slot:activator="{ on, attrs }">
                     <v-btn text small v-bind="attrs" v-on="on">
-                      <span>{{ $t("more") }}</span>
+                      <span>{{ $t('more') }}</span>
                       <v-icon>mdi-dots-vertical</v-icon>
                     </v-btn>
                   </template>
@@ -553,14 +478,13 @@
                       v-if="
                         selectedFiles.length === 1 &&
                         selectedFiles[0].type !== 'folder' &&
+                        !selectedFiles[0].end &&
                         buildAsExtension
                       "
                       @click="itemClick(selectedFiles[0], true)"
                     >
                       <v-icon left>mdi-download</v-icon>
-                      <v-list-item-title>{{
-                        $t("download")
-                      }}</v-list-item-title>
+                      <v-list-item-title>{{ $t('download') }}</v-list-item-title>
                     </v-list-item>
                     <v-list-item
                       v-if="buildAsExtension"
@@ -568,41 +492,31 @@
                       @click="statisticAction()"
                     >
                       <v-icon left>mdi-information-outline</v-icon>
-                      <v-list-item-title>{{
-                        $t("form.statistic.button")
-                      }}</v-list-item-title>
+                      <v-list-item-title>{{ $t('form.statistic.button') }}</v-list-item-title>
                     </v-list-item>
                     <v-list-item
                       v-if="selectedFiles.some((item) => item.type === 'file')"
                       @click="copyDownloadLinks()"
                     >
                       <v-icon left>mdi-link</v-icon>
-                      <v-list-item-title>{{
-                        $t("copyDownloadLinks")
-                      }}</v-list-item-title>
+                      <v-list-item-title>{{ $t('copyDownloadLinks') }}</v-list-item-title>
                     </v-list-item>
                     <v-list-item @click="copyAria2DownloadText()">
                       <v-icon left>mdi-download-box</v-icon>
-                      <v-list-item-title>{{
-                        $t("copyAria2DownloadText")
-                      }}</v-list-item-title>
+                      <v-list-item-title>{{ $t('copyAria2DownloadText') }}</v-list-item-title>
                     </v-list-item>
                     <v-list-item @click="sendToAria2()">
                       <v-icon left>mdi-auto-download</v-icon>
-                      <v-list-item-title>{{
-                        $t("sendToAria2")
-                      }}</v-list-item-title>
+                      <v-list-item-title>{{ $t('sendToAria2') }}</v-list-item-title>
                     </v-list-item>
                   </v-list>
                 </v-menu>
               </v-bottom-navigation>
             </template>
             <template v-slot:[`item.type`]="{ item }">
-              <v-icon v-if="item.type === 'folder'" color="amber lighten-2"
-                >mdi-folder</v-icon
-              >
+              <v-icon v-if="item.type === 'folder'" color="amber lighten-2">mdi-folder</v-icon>
               <v-icon v-else :color="item.name | iconColor">{{
-                item.name | iconFormat
+                item.end ? 'combine' : item.name | iconFormat
               }}</v-icon>
             </template>
             <template v-slot:[`item.name`]="{ item }">
@@ -616,7 +530,7 @@
                               item.path === '/' ? '' : item.path
                             }/${encodeURIComponent(item.name)}`
                           : `${$route.path}/${encodeURIComponent(item.name)}`,
-                        query: { pn: $route.query.pn },
+                        query: { pn: $route.query.pn }
                       })
                     : itemClick(item)
                 "
@@ -624,12 +538,10 @@
               /></a>
             </template>
             <template v-slot:[`item.size`]="{ item }">
-              {{ item.size | sizeFormat }}
+              {{ (item.end ? item.end - item.start + 1 : item.size) | sizeFormat }}
             </template>
             <template v-slot:[`item.uploadTime`]="{ item }">
-              <span style="width: 100px">{{
-                item.uploadTime | formatTime
-              }}</span>
+              <span style="width: 100px">{{ item.uploadTime | formatTime }}</span>
             </template>
             <template v-slot:footer>
               <v-divider v-if="listPageCount > 0"></v-divider>
@@ -646,8 +558,8 @@
                           $router.push({
                             path: $route.path,
                             query: Object.assign({}, $route.query, {
-                              page: `${$event}`,
-                            }),
+                              page: `${$event}`
+                            })
                           })
                       "
                     ></v-pagination>
@@ -663,7 +575,7 @@
                     <v-menu>
                       <template v-slot:activator="{ on, attrs }">
                         <v-btn text small v-bind="attrs" v-on="on"
-                          >{{ listPerPage === -1 ? $t("all") : listPerPage
+                          >{{ listPerPage === -1 ? $t('all') : listPerPage
                           }}<v-icon right>mdi-menu-down</v-icon></v-btn
                         >
                       </template>
@@ -673,7 +585,7 @@
                             { text: '10', value: 10 },
                             { text: '50', value: 50 },
                             { text: '100', value: 100 },
-                            { text: `${$t('all')}`, value: -1 },
+                            { text: `${$t('all')}`, value: -1 }
                           ]"
                           :key="index"
                           :input-value="listPerPage === item.value"
@@ -682,8 +594,8 @@
                               path: $route.path,
                               query: Object.assign({}, $route.query, {
                                 pn: `${item.value}`,
-                                page: undefined,
-                              }),
+                                page: undefined
+                              })
                             })
                           "
                         >
@@ -692,8 +604,7 @@
                       </v-list>
                     </v-menu>
                     <span class="text-caption ml-1" style="white-space: nowrap"
-                      >{{ $t("perPage") }} {{ displayList.length }}
-                      {{ $t("unit") }}</span
+                      >{{ $t('perPage') }} {{ displayList.length }} {{ $t('unit') }}</span
                     >
                   </v-row>
                 </v-col>
@@ -710,22 +621,19 @@
             <v-list dense>
               <template v-if="buildAsExtension">
                 <v-list-item
-                  v-if="
-                    selectedFiles.length === 1 &&
-                    selectedFiles[0].type !== 'folder'
-                  "
+                  v-if="selectedFiles.length === 1 && selectedFiles[0].type !== 'folder'"
                   @click="itemClick(selectedFiles[0], true)"
                 >
                   <v-icon left>mdi-download</v-icon>
-                  <v-list-item-title>{{ $t("download") }}</v-list-item-title>
+                  <v-list-item-title>{{ $t('download') }}</v-list-item-title>
                 </v-list-item>
                 <v-list-item :disabled="disableOperate" @click="moveAction()">
                   <v-icon left>mdi-file-move</v-icon>
-                  <v-list-item-title>{{ $t("move") }}</v-list-item-title>
+                  <v-list-item-title>{{ $t('move') }}</v-list-item-title>
                 </v-list-item>
                 <v-list-item :disabled="disableOperate" @click="removeAction()">
                   <v-icon left>mdi-trash-can-outline</v-icon>
-                  <v-list-item-title>{{ $t("delete") }}</v-list-item-title>
+                  <v-list-item-title>{{ $t('delete') }}</v-list-item-title>
                 </v-list-item>
                 <v-list-item
                   v-if="selectedFiles.length === 1"
@@ -733,37 +641,28 @@
                   @click="renameAction(selectedFiles[0])"
                 >
                   <v-icon left>mdi-rename-box</v-icon>
-                  <v-list-item-title>{{ $t("rename") }}</v-list-item-title>
+                  <v-list-item-title>{{ $t('rename') }}</v-list-item-title>
                 </v-list-item>
                 <v-divider></v-divider>
               </template>
-              <v-list-item
-                :disabled="disableOperate"
-                @click="statisticAction()"
-              >
+              <v-list-item :disabled="disableOperate" @click="statisticAction()">
                 <v-icon left>mdi-information-outline</v-icon>
-                <v-list-item-title>{{
-                  $t("form.statistic.button")
-                }}</v-list-item-title>
+                <v-list-item-title>{{ $t('form.statistic.button') }}</v-list-item-title>
               </v-list-item>
               <v-list-item
                 v-if="selectedFiles.some((item) => item.type === 'file')"
                 @click="copyDownloadLinks()"
               >
                 <v-icon left>mdi-link</v-icon>
-                <v-list-item-title>{{
-                  $t("copyDownloadLinks")
-                }}</v-list-item-title>
+                <v-list-item-title>{{ $t('copyDownloadLinks') }}</v-list-item-title>
               </v-list-item>
               <v-list-item @click="copyAria2DownloadText()">
                 <v-icon left>mdi-download-box</v-icon>
-                <v-list-item-title>{{
-                  $t("copyAria2DownloadText")
-                }}</v-list-item-title>
+                <v-list-item-title>{{ $t('copyAria2DownloadText') }}</v-list-item-title>
               </v-list-item>
               <v-list-item @click="sendToAria2()">
                 <v-icon left>mdi-auto-download</v-icon>
-                <v-list-item-title>{{ $t("sendToAria2") }}</v-list-item-title>
+                <v-list-item-title>{{ $t('sendToAria2') }}</v-list-item-title>
               </v-list-item>
             </v-list>
           </v-menu>
@@ -791,27 +690,23 @@
       v-model="action"
       persistent
       scrollable
-      :max-width="
-        formValue.type === 'move' || formValue.type === 'recover' ? 600 : 400
-      "
-      :fullscreen="
-        xs && (formValue.type === 'move' || formValue.type === 'recover')
-      "
+      :max-width="formValue.type === 'move' || formValue.type === 'recover' ? 600 : 400"
+      :fullscreen="xs && (formValue.type === 'move' || formValue.type === 'recover')"
     >
       <v-card>
         <v-card-title>
           <span>{{
-            formValue.type === "rename"
-              ? $t("rename")
-              : formValue.type === "addFolder"
-              ? $t("form.newFolder")
-              : formValue.type === "move"
-              ? $t("moveTo")
-              : formValue.type === "remove"
-              ? $t("delete")
-              : formValue.type === "recover"
-              ? $t("recovery.title")
-              : formValue.type === "statistic" && $t("form.statistic.button")
+            formValue.type === 'rename'
+              ? $t('rename')
+              : formValue.type === 'addFolder'
+              ? $t('form.newFolder')
+              : formValue.type === 'move'
+              ? $t('moveTo')
+              : formValue.type === 'remove'
+              ? $t('delete')
+              : formValue.type === 'recover'
+              ? $t('recovery.title')
+              : formValue.type === 'statistic' && $t('form.statistic.button')
           }}</span>
           <v-spacer></v-spacer>
           <v-btn plain icon>
@@ -819,21 +714,16 @@
           </v-btn>
         </v-card-title>
         <v-card-subtitle v-if="formValue.type === 'recover'" class="mt-0">{{
-          $t("recovery.manual.hint")
+          $t('recovery.manual.hint')
         }}</v-card-subtitle>
         <v-card-text class="py-0">
           <v-container class="px-0">
             <v-form ref="form" v-model="formValidation" @submit.prevent>
               <v-row
-                v-if="
-                  formValue.type !== 'recover' && formValue.type !== 'statistic'
-                "
+                v-if="formValue.type !== 'recover' && formValue.type !== 'statistic'"
                 no-gutters
               >
-                <v-col
-                  v-if="['rename', 'addFolder'].includes(formValue.type)"
-                  cols="12"
-                >
+                <v-col v-if="['rename', 'addFolder'].includes(formValue.type)" cols="12">
                   <v-text-field
                     v-model="formValue.name"
                     outlined
@@ -842,8 +732,7 @@
                       (v) => !!v || $t('require'),
                       (v) =>
                         formValue.type === 'addFolder'
-                          ? !displayList.some((e) => e.name === v) ||
-                            $t('duplicate')
+                          ? !displayList.some((e) => e.name === v) || $t('duplicate')
                           : !(
                               renameItem.path
                                 ? getPath(
@@ -853,9 +742,7 @@
                                       .slice(1)
                                   )
                                 : displayList
-                            ).some(
-                              (e) => renameItem.id !== e.id && e.name === v
-                            ) || $t('duplicate'),
+                            ).some((e) => renameItem.id !== e.id && e.name === v) || $t('duplicate')
                     ]"
                     required
                   ></v-text-field>
@@ -867,19 +754,15 @@
                 >
                   <i18n path="form.delete.hint">
                     <span>
-                      <span
-                        v-if="removeCounts[0] > 0"
-                        class="error--text font-weight-bold"
+                      <span v-if="removeCounts[0] > 0" class="error--text font-weight-bold"
                         >{{ removeCounts[0] }} </span
-                      >{{ $tc("form.delete.file", removeCounts[0])
+                      >{{ $tc('form.delete.file', removeCounts[0])
                       }}<span v-if="removeCounts.every((e) => e > 0)">{{
-                        $t("form.delete.and")
+                        $t('form.delete.and')
                       }}</span
-                      ><span
-                        v-if="removeCounts[1] > 0"
-                        class="error--text font-weight-bold"
+                      ><span v-if="removeCounts[1] > 0" class="error--text font-weight-bold"
                         >{{ removeCounts[1] }} </span
-                      >{{ $tc("form.delete.folder", removeCounts[1]) }}</span
+                      >{{ $tc('form.delete.folder', removeCounts[1]) }}</span
                     >
                   </i18n>
                 </v-col>
@@ -895,11 +778,7 @@
                     color="primary"
                   ></v-progress-circular>
                 </v-row>
-                <v-col
-                  v-if="formValue.type === 'move'"
-                  class="folder-tree"
-                  cols="12"
-                >
+                <v-col v-if="formValue.type === 'move'" class="folder-tree" cols="12">
                   <v-treeview
                     dense
                     rounded
@@ -912,7 +791,7 @@
                   >
                     <template v-slot:prepend="{ open }">
                       <v-icon color="amber lighten-2">
-                        {{ open ? "mdi-folder-open" : "mdi-folder" }}
+                        {{ open ? 'mdi-folder-open' : 'mdi-folder' }}
                       </v-icon>
                     </template>
                     <template v-slot:label="{ item }">
@@ -958,20 +837,14 @@
                               required
                             >
                               <template v-slot:label
-                                >{{ $t("fileName")
-                                }}<span class="red--text">*</span>
+                                >{{ $t('fileName') }}<span class="red--text">*</span>
                               </template>
                             </v-text-field>
                           </v-col>
                           <v-col cols="4" class="pl-0">
                             <v-text-field
                               v-model="file.size"
-                              :rules="[
-                                (v) =>
-                                  !!v &&
-                                  Number.isInteger(Number(v)) &&
-                                  Number(v) > 0,
-                              ]"
+                              :rules="[(v) => !!v && Number.isInteger(Number(v)) && Number(v) > 0]"
                               suffix="B"
                               type="number"
                               outlined
@@ -980,20 +853,14 @@
                               required
                             >
                               <template v-slot:label
-                                >{{ $t("fileSize")
-                                }}<span class="red--text">*</span>
+                                >{{ $t('fileSize') }}<span class="red--text">*</span>
                               </template>
                             </v-text-field>
                           </v-col>
                           <v-col cols="12" class="pt-0">
                             <v-text-field
                               v-model="file.digest"
-                              :rules="[
-                                (v) =>
-                                  !!v &&
-                                  /^[A-Za-z0-9]+$/.test(v) &&
-                                  v.length === 64,
-                              ]"
+                              :rules="[(v) => !!v && /^[A-Za-z0-9]+$/.test(v) && v.length === 64]"
                               prefix="sha256:"
                               outlined
                               dense
@@ -1020,7 +887,7 @@
                         id: getID(),
                         name: '',
                         digest: '',
-                        size: '',
+                        size: ''
                       })
                     "
                   >
@@ -1032,11 +899,7 @@
                   </v-sheet>
                 </v-col>
               </v-row>
-              <v-row
-                v-else-if="formValue.type === 'statistic'"
-                justify="center"
-                align="center"
-              >
+              <v-row v-else-if="formValue.type === 'statistic'" justify="center" align="center">
                 <v-progress-circular
                   v-if="formValue.loading"
                   indeterminate
@@ -1045,11 +908,11 @@
                   style="margin: 45px 0"
                 ></v-progress-circular>
                 <template v-else>
-                  <v-col cols="6">{{ $t("form.statistic.file") }}</v-col>
+                  <v-col cols="6">{{ $t('form.statistic.file') }}</v-col>
                   <v-col cols="6">{{ removeCounts[0] }}</v-col>
-                  <v-col cols="6">{{ $t("form.statistic.folder") }}</v-col>
+                  <v-col cols="6">{{ $t('form.statistic.folder') }}</v-col>
                   <v-col cols="6">{{ removeCounts[1] }}</v-col>
-                  <v-col cols="6">{{ $t("form.statistic.size") }}</v-col>
+                  <v-col cols="6">{{ $t('form.statistic.size') }}</v-col>
                   <v-col cols="6">{{ removeCounts[2] | sizeFormat }}</v-col>
                 </template>
               </v-row>
@@ -1080,21 +943,16 @@
                 : formValue.type === 'recover' && ManualRecover()
             "
           >
-            {{ $t("ok") }}
+            {{ $t('ok') }}
           </v-btn>
           <v-btn color="error" text @click.stop="action = false">
-            {{ $t("cancel") }}
+            {{ $t('cancel') }}
           </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
   </div>
-  <v-row
-    v-else-if="!state"
-    class="fill-height pa-15"
-    align="center"
-    justify="center"
-  >
+  <v-row v-else-if="!state" class="fill-height pa-15" align="center" justify="center">
     <v-sheet
       class="d-flex justify-center align-center pa-3"
       height="100%"
@@ -1105,7 +963,7 @@
       outlined
     >
       <v-btn depressed to="/repositories?type=add"
-        ><v-icon left>mdi-plus</v-icon>{{ $t("repository.add") }}</v-btn
+        ><v-icon left>mdi-plus</v-icon>{{ $t('repository.add') }}</v-btn
       >
     </v-sheet>
   </v-row>
@@ -1160,89 +1018,117 @@ interface LostFile {
     iconColor
   }
 })
-
 export default class Files extends Vue {
-  @Ref() private readonly form!: VForm
-  @Ref() private readonly video!: HTMLMediaElement
-  @Ref() private readonly getFiles!: HTMLInputElement
-  @Ref() private readonly getFolder!: HTMLInputElement
+  @Ref() private readonly form!: VForm;
+  @Ref() private readonly video!: HTMLMediaElement;
+  @Ref() private readonly getFiles!: HTMLInputElement;
+  @Ref() private readonly getFolder!: HTMLInputElement;
 
   @Emit()
-  private loading(): void { return; }
+  private loading(): void {
+    return;
+  }
   @Emit()
-  private loaded(): void { return; }
+  private loaded(): void {
+    return;
+  }
   @Emit()
-  private login(authenticateHeader?: string, fn?: Function): void { authenticateHeader; fn; }
+  private login(authenticateHeader?: string, fn?: Function): void {
+    authenticateHeader;
+    fn;
+  }
   @Emit()
-  private alert(text: string, type?: string, error?: Error): void { text; type; error; }
+  private alert(text: string, type?: string, error?: Error): void {
+    text;
+    type;
+    error;
+  }
   @Emit()
   private upload(files: File[]): string[] {
     files;
     this.getFiles.value = '';
     this.getFolder.value = '';
-    return this.currentPath.map(e => e.name);
+    return this.currentPath.map((e) => e.name);
   }
   @Emit()
-  private audio(items: { id: number; name: string; digest: string; cover: string }[], index: number, id: number): void { items; index; id; }
+  private audio(
+    items: { id: number; name: string; digest: string; cover: string }[],
+    index: number,
+    id: number
+  ): void {
+    items;
+    index;
+    id;
+  }
 
-  @Prop(String) private readonly repository!: string
-  @Prop(String) private readonly path!: string
-  @Prop(String) private readonly page!: string
-  @Prop(String) private readonly perPage!: string
-  @Prop(Boolean) private readonly state!: boolean
-  @PropSync('committing') private isCommitting!: boolean
+  @Prop(String) private readonly repository!: string;
+  @Prop(String) private readonly path!: string;
+  @Prop(String) private readonly page!: string;
+  @Prop(String) private readonly perPage!: string;
+  @Prop(Boolean) private readonly state!: boolean;
+  @PropSync('committing') private isCommitting!: boolean;
 
-  private showVideo = false
-  private showImage = false
-  private activeRepositoryID = 0
-  private repositories: Repository[] = []
-  private displayList: FileItem[] = []
-  private dataLoading = false
-  private source = { name: '', url: '' }
-  private tracks: { name: string; url: string }[] = []
-  private clickedItemName = ''
-  private action = false
+  private showVideo = false;
+  private showImage = false;
+  private activeRepositoryID = 0;
+  private repositories: Repository[] = [];
+  private displayList: FileItem[] = [];
+  private dataLoading = false;
+  private source = { name: '', url: '' };
+  private tracks: { name: string; url: string }[] = [];
+  private clickedItemName = '';
+  private action = false;
   private readonly defaultFormValue: {
-    type: string; name: string; selectedFolder: string; loading: boolean;
+    type: string;
+    name: string;
+    selectedFolder: string;
+    loading: boolean;
     folderList: FolderList[];
     lostFiles: LostFile[];
   } = {
-      type: '',
-      name: '',
-      selectedFolder: '',
-      lostFiles: [],
-      folderList: [],
-      loading: false
-    }
-  private formValue = Object.assign({}, this.defaultFormValue)
-  private formValidation = true
-  private renameItem!: FileItem
-  private removeItems: FileItem[] = []
-  private removeCounts: number[] = []
-  private listPage = 1
-  private listPerPage = 10
-  private listPageCount = 0
-  private root: FileItem = { name: 'root', type: 'folder', files: [], id: 0 }
-  private currentPath: PathNode[] = [{ name: `${this.$t('root')}`, path: '' }]
-  private layers: Manifest[] = []
-  private selectedFiles: FileItem[] = []
-  private folderList: FolderList = { name: `${this.$t('root')}`, files: [], id: 'root', disabled: false }
-  private moveItems: FileItem[] = []
-  private listSortBy: string | string[] | undefined = ''
-  private listSortDesc: boolean | boolean[] | undefined = false
-  private searchText = ''
-  private searchRecursive = false
-  private rightClickMenu = false
-  private rightClickX = 0
-  private rightClickY = 0
+    type: '',
+    name: '',
+    selectedFolder: '',
+    lostFiles: [],
+    folderList: [],
+    loading: false
+  };
+  private formValue = Object.assign({}, this.defaultFormValue);
+  private formValidation = true;
+  private renameItem!: FileItem;
+  private removeItems: FileItem[] = [];
+  private removeCounts: number[] = [];
+  private listPage = 1;
+  private listPerPage = 10;
+  private listPageCount = 0;
+  private root: FileItem = { name: 'root', type: 'folder', files: [], id: 0 };
+  private currentPath: PathNode[] = [{ name: `${this.$t('root')}`, path: '' }];
+  private layers: Manifest[] = [];
+  private selectedFiles: FileItem[] = [];
+  private folderList: FolderList = {
+    name: `${this.$t('root')}`,
+    files: [],
+    id: 'root',
+    disabled: false
+  };
+  private moveItems: FileItem[] = [];
+  private listSortBy: string | string[] | undefined = '';
+  private listSortDesc: boolean | boolean[] | undefined = false;
+  private searchText = '';
+  private searchRecursive = false;
+  private rightClickMenu = false;
+  private rightClickX = 0;
+  private rightClickY = 0;
 
   private get breadcrumbsPath(): BreadcrumbsNode[] {
-    const breadcrumbs = this.currentPath.map(path => Object.assign({}, path, { disabled: false }));
+    const breadcrumbs = this.currentPath.map((path) =>
+      Object.assign({}, path, { disabled: false })
+    );
     breadcrumbs[breadcrumbs.length - 1].disabled = true;
     return breadcrumbs;
   }
   private get activeRepository(): Repository | undefined {
-    return this.repositories.find(e => e.id === this.activeRepositoryID);
+    return this.repositories.find((e) => e.id === this.activeRepositoryID);
   }
   private get disableOperate(): boolean {
     return !this.activeRepository?.useDatabase && this.isCommitting;
@@ -1269,7 +1155,7 @@ export default class Files extends Vue {
   @Watch('listPage')
   private onListPageChange(): void {
     this.$vuetify.goTo(0, {
-      duration: 0,
+      duration: 0
     });
   }
 
@@ -1278,9 +1164,13 @@ export default class Files extends Vue {
   }
   private async beforeRouteEnter(to: Route, from: Route, next: NavigationGuardNext): Promise<void> {
     /*@ts-ignore*/
-    next(vm => vm.beforeRoute(to, from, true));
+    next((vm) => vm.beforeRoute(to, from, true));
   }
-  private async beforeRouteUpdate(to: Route, from: Route, next: NavigationGuardNext): Promise<void> {
+  private async beforeRouteUpdate(
+    to: Route,
+    from: Route,
+    next: NavigationGuardNext
+  ): Promise<void> {
     this.beforeRoute(to, from);
     next();
   }
@@ -1290,7 +1180,8 @@ export default class Files extends Vue {
     const { repository } = to.params;
     const { pn: perPage, page, search, recursive } = to.query;
     const path = to.path.replace(/\/files\/\d+\/?/, '');
-    if (from.path === to.path && from.query.search === search && from.query.recursive === recursive) listChanged = false;
+    if (from.path === to.path && from.query.search === search && from.query.recursive === recursive)
+      listChanged = false;
     if (listChanged) this.displayList = [];
     if (isEnter) {
       this.repositories = await storage.getRepositories();
@@ -1302,33 +1193,38 @@ export default class Files extends Vue {
         this.activeRepositoryID = activeID;
       }
       if (this.activeRepositoryID) {
-        this.$router.replace({ name: 'Files', params: { repository: `${this.activeRepositoryID}` }, query: { pn: perPage } });
+        this.$router.replace({
+          name: 'Files',
+          params: { repository: `${this.activeRepositoryID}` },
+          query: { pn: perPage }
+        });
       }
       return;
-    }
-    else if (isEnter) {
+    } else if (isEnter) {
       this.activeRepositoryID = Number(repository);
       await this.getConfig(true, false, true);
-    }
-    else if (repository !== from.params.repository) {
+    } else if (repository !== from.params.repository) {
       this.activeRepositoryID = Number(repository);
       await this.getConfig(false, false, true);
     }
     if (path !== from.path.replace(/\/files\/\d+\/?/, '')) {
       const pathArray = path ? path.split('/') : [];
       this.currentPath.splice(1);
-      this.currentPath.push(...pathArray.map((item, index) => ({ name: decodeURIComponent(item), path: pathArray.slice(0, index + 1).join('/') })));
+      this.currentPath.push(
+        ...pathArray.map((item, index) => ({
+          name: decodeURIComponent(item),
+          path: pathArray.slice(0, index + 1).join('/')
+        }))
+      );
     }
     if (search && search !== this.searchText) {
       this.searchText = `${search}`;
-    }
-    else if (!search && this.searchText !== '') {
+    } else if (!search && this.searchText !== '') {
       this.searchText = '';
     }
     if (recursive && (recursive === '1') !== this.searchRecursive) {
       this.searchRecursive = recursive === '1';
-    }
-    else if (!recursive && this.searchRecursive !== false) {
+    } else if (!recursive && this.searchRecursive !== false) {
       this.searchRecursive = false;
     }
     if (listChanged) {
@@ -1338,14 +1234,12 @@ export default class Files extends Vue {
     }
     if (page && Number(page) !== this.listPage) {
       this.listPage = Math.min(Number(page), this.listPageCount);
-    }
-    else if (!page && this.listPage !== 1) {
+    } else if (!page && this.listPage !== 1) {
       this.listPage = 1;
     }
     if (perPage && Number(perPage) !== this.listPerPage) {
       this.listPerPage = Number(perPage);
-    }
-    else if (!perPage && this.listPerPage !== 10) {
+    } else if (!perPage && this.listPerPage !== 10) {
       this.listPerPage = 10;
     }
     this.selectedFiles = [];
@@ -1377,9 +1271,9 @@ export default class Files extends Vue {
         this.currentPath.splice(1);
       }
       if (!routeUpdate) await this.updateDisplayList();
-    }
-    catch (error) {
-      if (error?.message === 'need login') this.login(error.authenticateHeader, this.getConfig.bind(this));
+    } catch (error) {
+      if (error?.message === 'need login')
+        this.login(error.authenticateHeader, this.getConfig.bind(this));
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
       else this.alert(`${this.$t('unknownError')}`, 'error', error);
     }
@@ -1391,25 +1285,32 @@ export default class Files extends Vue {
   }
   private search(): void {
     if (this.searchText) {
-      if (this.searchText === (this.$route.query.search) &&
-        (this.searchRecursive ? '1' : '0') === (this.$route.query.recursive)
-      ) return;
+      if (
+        this.searchText === this.$route.query.search &&
+        (this.searchRecursive ? '1' : '0') === this.$route.query.recursive
+      )
+        return;
       this.$router.push({
         path: this.$route.path,
-        query: Object.assign({}, {
-          pn: this.$route.query.pn,
-          search: this.searchText,
-          recursive: this.searchRecursive ? '1' : '0'
-        }),
+        query: Object.assign(
+          {},
+          {
+            pn: this.$route.query.pn,
+            search: this.searchText,
+            recursive: this.searchRecursive ? '1' : '0'
+          }
+        )
       });
-    }
-    else {
+    } else {
       if (!this.$route.query.search) return;
       this.$router.push({
         path: this.$route.path,
-        query: Object.assign({}, {
-          pn: this.$route.query.pn
-        }),
+        query: Object.assign(
+          {},
+          {
+            pn: this.$route.query.pn
+          }
+        )
       });
     }
   }
@@ -1425,9 +1326,10 @@ export default class Files extends Vue {
       this.loading();
       const name = this.formValue.name;
       if (this.activeRepository.useDatabase) {
-        if (!await database.check(this.activeRepository)) throw `${this.$t('database.notSynchronize')}`;
+        if (!(await database.check(this.activeRepository)))
+          throw `${this.$t('database.notSynchronize')}`;
         await database.add(
-          this.currentPath.slice(1).map(node => node.name),
+          this.currentPath.slice(1).map((node) => node.name),
           { name, type: 'folder', id: getID(), uploadTime: Date.now() },
           this.activeRepository
         );
@@ -1435,15 +1337,19 @@ export default class Files extends Vue {
         await network.commit(config, this.activeRepository);
         this.root.files = config;
         await this.updateDisplayList();
-      }
-      else {
-        this.getPath(this.currentPath).push({ name, type: 'folder', files: [], id: getID(), uploadTime: Date.now() });
+      } else {
+        this.getPath(this.currentPath).push({
+          name,
+          type: 'folder',
+          files: [],
+          id: getID(),
+          uploadTime: Date.now()
+        });
         await network.commit(this.root.files as FileItem[], this.activeRepository);
         await this.getConfig(true, true);
       }
       this.selectedFiles = [];
-    }
-    catch (error) {
+    } catch (error) {
       if (error?.message === 'need login') this.login(error.authenticateHeader);
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
       else this.alert(`${this.$t('unknownError')}`, 'error', error);
@@ -1472,25 +1378,52 @@ export default class Files extends Vue {
       if (!this.activeRepository) throw 'getRepositoryFailed';
       this.isCommitting = true;
       this.loading();
-      if (this.activeRepository.useDatabase && !await database.check(this.activeRepository)) throw `${this.$t('database.notSynchronize')}`;
+      if (this.activeRepository.useDatabase && !(await database.check(this.activeRepository)))
+        throw `${this.$t('database.notSynchronize')}`;
       try {
-        await this.remove(this.removeItems, this.currentPath.map(e => e.name), this.activeRepository, this.root);
-      }
-      finally {
+        await this.remove(
+          this.removeItems,
+          this.currentPath.map((e) => e.name),
+          this.activeRepository,
+          this.root
+        );
+      } finally {
         if (this.activeRepository.useDatabase) {
           const config = await database.list(this.activeRepository);
+          const rootString = JSON.stringify(config);
+          for (const layer of this.layers) {
+            if (rootString.split(`"digest":"${layer.digest}"`).length === 1) {
+              try {
+                await network.removeFile(layer.digest, this.activeRepository);
+              } catch (e) {
+                // eslint-disable-next-line
+                if (e.response?.status !== 404) throw e;
+              }
+            }
+          }
           await network.commit(config, this.activeRepository);
+          const { layers } = await network.getManifests(this.activeRepository);
+          this.layers = layers;
           this.root.files = config;
           await this.updateDisplayList();
-        }
-        else {
+        } else {
+          const rootString = JSON.stringify(this.root.files);
+          for (const layer of this.layers) {
+            if (rootString.split(`"digest":"${layer.digest}"`).length === 1) {
+              try {
+                await network.removeFile(layer.digest, this.activeRepository);
+              } catch (e) {
+                // eslint-disable-next-line
+                if (e.response?.status !== 404) throw e;
+              }
+            }
+          }
           await network.commit(this.root.files as FileItem[], this.activeRepository);
           await this.getConfig(true, true);
         }
         this.selectedFiles = [];
       }
-    }
-    catch (error) {
+    } catch (error) {
       if (error?.message === 'need login') this.login(error.authenticateHeader);
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
       else this.alert(`${this.$t('unknownError')}`, 'error', error);
@@ -1498,15 +1431,19 @@ export default class Files extends Vue {
     this.loaded();
     this.isCommitting = false;
   }
-  private async remove(files: FileItem[], currentPath: string[], repository: Repository, root: FileItem): Promise<void> {
+  private async remove(
+    files: FileItem[],
+    currentPath: string[],
+    repository: Repository,
+    root: FileItem
+  ): Promise<void> {
     const rootString = JSON.stringify(root);
     for (const file of files) {
-      const path = file.path ? file.path.split('/').map(e => decodeURIComponent(e)) : currentPath;
+      const path = file.path ? file.path.split('/').map((e) => decodeURIComponent(e)) : currentPath;
       if (repository.useDatabase) {
         try {
           await database.remove(file._id as string, repository);
-        }
-        catch (e) {
+        } catch (e) {
           if (e.response?.status !== 404) throw e;
         }
       }
@@ -1515,17 +1452,14 @@ export default class Files extends Vue {
         const digest = file.digest as string;
         const isSingleRelative = rootString.split(`"digest":"${digest}"`).length === 2;
         try {
-          if (isSingleRelative)
-            await network.removeFile(digest, repository);
-        }
-        catch (e) {
+          if (isSingleRelative) await network.removeFile(digest, repository);
+        } catch (e) {
           if (e.response?.status !== 404) throw e;
         }
-      }
-      else {
+      } else {
         await this.remove(file.files as FileItem[], [...path, file.name], repository, root);
       }
-      const index = currentPathFiles.findIndex(e => e.id === file.id);
+      const index = currentPathFiles.findIndex((e) => e.id === file.id);
       if (index > -1) currentPathFiles.splice(index, 1);
     }
   }
@@ -1541,29 +1475,37 @@ export default class Files extends Vue {
       this.isCommitting = true;
       this.loading();
       const name = this.formValue.name;
-      const path = this.renameItem.path ? this.renameItem.path.split('/').map(e => decodeURIComponent(e)) : this.currentPath.map(e => e.name);
+      const path = this.renameItem.path
+        ? this.renameItem.path.split('/').map((e) => decodeURIComponent(e))
+        : this.currentPath.map((e) => e.name);
       if (this.activeRepository.useDatabase) {
-        if (!await database.check(this.activeRepository)) throw `${this.$t('database.notSynchronize')}`;
+        if (!(await database.check(this.activeRepository)))
+          throw `${this.$t('database.notSynchronize')}`;
         let parent;
         if (path.length === 1) parent = 'root';
-        else parent = this.getPath(path.slice(0, -1)).find(e => e.name === path[path.length - 1])?.uuid;
+        else
+          parent = this.getPath(path.slice(0, -1)).find(
+            (e) => e.name === path[path.length - 1]
+          )?.uuid;
         if (!parent) throw 'internalError';
-        await database.rename(Object.assign({}, this.renameItem, { name }), parent, this.activeRepository);
+        await database.rename(
+          Object.assign({}, this.renameItem, { name }),
+          parent,
+          this.activeRepository
+        );
         const config = await database.list(this.activeRepository);
         await network.commit(config, this.activeRepository);
         this.root.files = config;
         await this.updateDisplayList();
-      }
-      else {
-        const renameItem = this.getPath(path).find(e => e.id === this.renameItem.id);
+      } else {
+        const renameItem = this.getPath(path).find((e) => e.id === this.renameItem.id);
         if (renameItem) renameItem.name = name;
         else throw 'internalError';
         await network.commit(this.root.files as FileItem[], this.activeRepository);
         await this.getConfig(true, true);
       }
       this.selectedFiles = [];
-    }
-    catch (error) {
+    } catch (error) {
       if (error?.message === 'need login') this.login(error.authenticateHeader);
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
       else this.alert(`${this.$t('unknownError')}`, 'error', error);
@@ -1572,10 +1514,12 @@ export default class Files extends Vue {
     this.isCommitting = false;
   }
   private async moveAction(moveItems = this.selectedFiles): Promise<void> {
-    this.resetForm({ type: 'move', folderList: [{ name: `${this.$t('root')}`, files: [], id: `${getID()}`, disabled: false }] });
+    this.resetForm({
+      type: 'move',
+      folderList: [{ name: `${this.$t('root')}`, files: [], id: `${getID()}`, disabled: false }]
+    });
     this.action = true;
     this.moveItems = moveItems;
-
   }
   private async getFolderList(item: FolderList): Promise<void> {
     const worker = new formWorker();
@@ -1594,37 +1538,44 @@ export default class Files extends Vue {
       if (!this.activeRepository) throw 'getRepositoryFailed';
       this.isCommitting = true;
       this.loading();
-      const dPath = this.formValue.selectedFolder?.split('/').map(e => decodeURIComponent(e));
+      const dPath = this.formValue.selectedFolder?.split('/').map((e) => decodeURIComponent(e));
       if (this.activeRepository.useDatabase) {
-        if (!await database.check(this.activeRepository)) throw `${this.$t('database.notSynchronize')}`;
+        if (!(await database.check(this.activeRepository)))
+          throw `${this.$t('database.notSynchronize')}`;
         let dFolderId = 'root';
         const dFolder = dPath.pop();
-        if (dFolder) dFolderId = this.getPath(dPath).find(file => file.name === dFolder)?.uuid ?? 'root';
+        if (dFolder)
+          dFolderId = this.getPath(dPath).find((file) => file.name === dFolder)?.uuid ?? 'root';
         const failFiles = await database.move(this.moveItems, dFolderId, this.activeRepository);
         const config = await database.list(this.activeRepository);
         await network.commit(config, this.activeRepository);
         this.root.files = config;
         await this.updateDisplayList();
-        failFiles.forEach(file => this.alert(`${this.$t('someFilenameConflict', [file.name])}`, 'error'));
-      }
-      else {
+        failFiles.forEach((file) =>
+          this.alert(`${this.$t('someFilenameConflict', [file.name])}`, 'error')
+        );
+      } else {
         const dFolder = this.getPath(dPath, this.root);
-        const currentPath = this.currentPath.map(e => e.name);
+        const currentPath = this.currentPath.map((e) => e.name);
         const failFiles: FileItem[] = [];
-        this.moveItems.forEach(file => {
-          const path = file.path ? file.path.split('/').map(e => decodeURIComponent(e)) : currentPath;
-          if (dPath.length === path.length && dPath.slice(1).every((e, i) => e === path[i + 1])) return;
+        this.moveItems.forEach((file) => {
+          const path = file.path
+            ? file.path.split('/').map((e) => decodeURIComponent(e))
+            : currentPath;
+          if (dPath.length === path.length && dPath.slice(1).every((e, i) => e === path[i + 1]))
+            return;
           const sFolder = this.getPath(path, this.root);
-          const index = sFolder.findIndex(e => e.id === file.id);
-          if (dFolder.some(e => e.name === file.name)) failFiles.push(file);
+          const index = sFolder.findIndex((e) => e.id === file.id);
+          if (dFolder.some((e) => e.name === file.name)) failFiles.push(file);
           else if (index > -1) dFolder.push(...sFolder.splice(index, 1));
         });
         await network.commit(this.root.files as FileItem[], this.activeRepository);
         await this.getConfig(true, true);
-        failFiles.forEach(file => this.alert(`${this.$t('someFilenameConflict', [file.name])}`, 'error'));
+        failFiles.forEach((file) =>
+          this.alert(`${this.$t('someFilenameConflict', [file.name])}`, 'error')
+        );
       }
-    }
-    catch (error) {
+    } catch (error) {
       if (error?.message === 'need login') this.login(error.authenticateHeader);
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
       else this.alert(`${this.$t('unknownError')}`, 'error', error);
@@ -1686,35 +1637,46 @@ export default class Files extends Vue {
     if (validFiles.length > 0) {
       const { config, layers } = await network.getManifests(this.activeRepository);
       const files = config;
-      layers.push(...validFiles.map(file => ({
-        mediaType: 'application/vnd.docker.image.rootfs.diff.tar.gzip',
-        digest: `sha256:${file.digest.toLowerCase()}`,
-        size: Number(file.size)
-      })));
+      layers.push(
+        ...validFiles.map((file) => ({
+          mediaType: 'application/vnd.docker.image.rootfs.diff.tar.gzip',
+          digest: `sha256:${file.digest.toLowerCase()}`,
+          size: Number(file.size)
+        }))
+      );
       try {
         await network.commit(files, this.activeRepository, layers);
         if (this.activeRepository?.useDatabase) {
           for (const file of validFiles) {
-            await database.add(['LOST_FILE'], {
-              name: file.name,
-              type: 'file',
-              digest: `sha256:${file.digest.toLowerCase()}`,
-              size: Number(file.size),
-              uploadTime: Date.now(),
-              id: getID()
-            }, this.activeRepository);
+            await database.add(
+              ['LOST_FILE'],
+              {
+                name: file.name,
+                type: 'file',
+                digest: `sha256:${file.digest.toLowerCase()}`,
+                size: Number(file.size),
+                uploadTime: Date.now(),
+                id: getID()
+              },
+              this.activeRepository
+            );
           }
           const config = await database.list(this.activeRepository);
           await network.commit(config, this.activeRepository);
-        }
-        else {
-          let lostFilesFolder = files.find(file => file.name === 'LOST_FILE');
+        } else {
+          let lostFilesFolder = files.find((file) => file.name === 'LOST_FILE');
           if (!lostFilesFolder) {
-            lostFilesFolder = { name: 'LOST_FILE', type: 'folder', id: getID(), files: [], uploadTime: Date.now() };
+            lostFilesFolder = {
+              name: 'LOST_FILE',
+              type: 'folder',
+              id: getID(),
+              files: [],
+              uploadTime: Date.now()
+            };
             files.push(lostFilesFolder);
           }
-          validFiles.forEach(file => {
-            let conflictNameFile = lostFilesFolder?.files?.find(e => e.name === file.name);
+          validFiles.forEach((file) => {
+            let conflictNameFile = lostFilesFolder?.files?.find((e) => e.name === file.name);
             if (conflictNameFile) {
               let i = 0;
               let [, name, ext] = file.name.match(/(.*)(\.[^.]*)$/) ?? [];
@@ -1723,9 +1685,12 @@ export default class Files extends Vue {
                 ext = '';
               }
               while (conflictNameFile) {
-                if (conflictNameFile?.digest === `sha256:${file.digest.toLowerCase()}`) throw 'fileExisted';
+                if (conflictNameFile?.digest === `sha256:${file.digest.toLowerCase()}`)
+                  throw 'fileExisted';
                 i++;
-                conflictNameFile = lostFilesFolder?.files?.find(e => e.name === `${name} (${i})${ext}`);
+                conflictNameFile = lostFilesFolder?.files?.find(
+                  (e) => e.name === `${name} (${i})${ext}`
+                );
               }
               file.name = `${name} (${i})${ext}`;
             }
@@ -1743,16 +1708,15 @@ export default class Files extends Vue {
         await this.getConfig(true, true);
         this.loaded();
         this.alert(`${this.$t('recovery.success', [validFiles.length])}`, 'success');
-      }
-      catch (error) {
-        if (error.response?.status === 400) this.alert(`${this.$t('recovery.manual.error')}`, 'error');
+      } catch (error) {
+        if (error.response?.status === 400)
+          this.alert(`${this.$t('recovery.manual.error')}`, 'error');
         else if (error?.message === 'need login') this.login(error.authenticateHeader);
         else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
         else this.alert(`${this.$t('unknownError')}`, 'error', error);
         this.loaded();
       }
-    }
-    else {
+    } else {
       this.loaded();
       this.alert(`${this.$t('recovery.nothing')}`, 'warning');
     }
@@ -1777,13 +1741,15 @@ export default class Files extends Vue {
       this.loading();
       const downloadLinks: string[] = [];
       for (const item of items) {
-        if (item.digest && item.type === 'file') downloadLinks.push(await network.getDownloadURL(item.digest, this.activeRepository));
+        if (item.end) continue;
+        if (item.digest && item.type === 'file')
+          downloadLinks.push(await network.getDownloadURL(item.digest, this.activeRepository));
       }
       await navigator.clipboard.writeText(downloadLinks.join('\r\n'));
       this.alert(`${this.$t('copyDownloadLinksResult', [downloadLinks.length])}`, 'success');
-    }
-    catch (error) {
-      if (error?.message === 'need login') this.login(error.authenticateHeader, this.copyDownloadLinks.bind(this, items));
+    } catch (error) {
+      if (error?.message === 'need login')
+        this.login(error.authenticateHeader, this.copyDownloadLinks.bind(this, items));
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
       else this.alert(`${this.$t('unknownError')}`, 'error', error);
     }
@@ -1792,7 +1758,9 @@ export default class Files extends Vue {
   private getPath(path: PathNode[] | string[], root = this.root): FileItem[] {
     let filePointer: FileItem = root;
     path.slice(1).forEach((pathNode: PathNode | string) => {
-      const nextPointer = filePointer.files?.find(e => e.name === (typeof pathNode === 'string' ? pathNode : pathNode.name));
+      const nextPointer = filePointer.files?.find(
+        (e) => e.name === (typeof pathNode === 'string' ? pathNode : pathNode.name)
+      );
       if (nextPointer?.type === 'folder') filePointer = nextPointer;
       else {
         return (root ? root.files : this.root.files) as FileItem[];
@@ -1807,61 +1775,82 @@ export default class Files extends Vue {
       this.loading();
       this.clickedItemName = item.name;
       if (forceDownload) {
-        this.sendToBrowser(await network.getDownloadURL(item.digest, this.activeRepository), item.name);
-      }
-      else if (/\.(jpg|png|gif|bmp|webp|ico)$/.test(item.name.toLowerCase())) {
+        this.sendToBrowser(
+          await network.getDownloadURL(item.digest, this.activeRepository),
+          item.name
+        );
+      } else if (/\.(jpg|png|gif|bmp|webp|ico)$/.test(item.name.toLowerCase())) {
         this.loaded();
         this.showImage = true;
-      }
-      else if (/\.(mp4|mkv|avi)$/.test(item.name.toLowerCase())) {
-        Object.assign(this.source, { name: item.name, url: await network.getDownloadURL(item.digest, this.activeRepository) });
-        const subtitles = this.displayList.filter(e => e.name.includes(item.name.substring(0, item.name.length - 3)) && /.*\.(vtt|srt|ass|ssa)$/.test(e.name));
+      } else if (/\.(mp4|mkv|avi)$/.test(item.name.toLowerCase())) {
+        Object.assign(this.source, {
+          name: item.name,
+          url: await network.getDownloadURL(item.digest, this.activeRepository)
+        });
+        const subtitles = this.displayList.filter(
+          (e) =>
+            e.name.includes(item.name.substring(0, item.name.length - 3)) &&
+            /.*\.(vtt|srt|ass|ssa)$/.test(e.name)
+        );
         this.tracks = [];
         for (const subtitle of subtitles) {
           this.tracks.push({ name: subtitle.name, url: subtitle.digest as string });
         }
         this.showVideo = true;
-      }
-      else if (/\.(mp3|ogg|wav|flac|aac)$/.test(item.name.toLowerCase())) {
+      } else if (/\.(mp3|ogg|wav|flac|aac)$/.test(item.name.toLowerCase())) {
         const worker = new sortWorker();
         const promiseWorker = new PromiseWorker(worker);
-        const { items, index }: { items: { id: number; name: string; digest: string; cover: string }[]; index: number } = await promiseWorker.postMessage({
-          displayList: item.path ? this.getPath(item.path.split('/').map(e => decodeURIComponent(e))) : this.displayList,
-          listSortBy: this.listSortBy,
-          listSortDesc: this.listSortDesc,
-          itemName: item.name,
-          type: 'audio'
-        });
+        const {
+          items,
+          index
+        }: { items: { id: number; name: string; digest: string; cover: string }[]; index: number } =
+          await promiseWorker.postMessage({
+            displayList: item.path
+              ? this.getPath(item.path.split('/').map((e) => decodeURIComponent(e)))
+              : this.displayList,
+            listSortBy: this.listSortBy,
+            listSortDesc: this.listSortDesc,
+            itemName: item.name,
+            type: 'audio'
+          });
         this.audio(items, index, this.activeRepositoryID);
-      }
-      else if (/\.(m3u8)$/.test(item.name.toLowerCase())) {
+      } else if (/\.(m3u8)$/.test(item.name.toLowerCase())) {
         const { data: m3u8 } = await network.downloadFile(item.digest, this.activeRepository);
-        const path = item.path ? item.path.split('/').map(e => decodeURIComponent(e)) : this.currentPath;
+        const path = item.path
+          ? item.path.split('/').map((e) => decodeURIComponent(e))
+          : this.currentPath;
         const worker = new searchWorker();
         const promiseWorker = new PromiseWorker(worker);
-        const list: { id: number; name: string; digest: string; cover: string }[] = await promiseWorker.postMessage({
-          list: this.root,
-          path: path.slice(1),
-          m3u8
-        });
+        const list: { id: number; name: string; digest: string; cover: string }[] =
+          await promiseWorker.postMessage({
+            list: this.root,
+            path: path.slice(1),
+            m3u8
+          });
         worker.terminate();
         if (list.length > 0) this.audio(list, 0, this.activeRepositoryID);
         else this.alert(`${this.$t('audio.parsePlaylistFailed')}`, 'warning');
+      } else if (this.buildAsExtension) {
+        this.sendToBrowser(
+          await network.getDownloadURL(item.digest, this.activeRepository),
+          item.name
+        );
       }
-      else if (this.buildAsExtension) {
-        this.sendToBrowser(await network.getDownloadURL(item.digest, this.activeRepository), item.name);
-      }
-    }
-    catch (error) {
-      if (error?.message === 'need login') this.login(error.authenticateHeader, this.itemClick.bind(this, item, forceDownload));
+    } catch (error) {
+      if (error?.message === 'need login')
+        this.login(error.authenticateHeader, this.itemClick.bind(this, item, forceDownload));
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
       else this.alert(`${this.$t('unknownError')}`, 'error', error);
     }
     this.loaded();
   }
   private resetForm(value?: {
-    type: string; name?: string; selectedFolder?: string; loading?: boolean;
-    lostFiles?: LostFile[]; folderList?: FolderList[];
+    type: string;
+    name?: string;
+    selectedFolder?: string;
+    loading?: boolean;
+    lostFiles?: LostFile[];
+    folderList?: FolderList[];
   }): void {
     Object.assign(this.formValue, this.defaultFormValue, { lostFiles: [], folderList: [] }, value);
     this.form?.resetValidation();
@@ -1870,11 +1859,12 @@ export default class Files extends Vue {
     try {
       if (!this.activeRepository) throw 'getRepositoryFailed';
       const info = await this.generateDownloadInfo(items);
+      if (info.some((item) => item.range)) return this.alert(`${this.$t('sendResult', [0, 0])}`);
       const { success, fail } = await network.sentToAria2(info, this.activeRepository);
       this.alert(`${this.$t('sendResult', [success, fail])}`);
-    }
-    catch (error) {
-      if (error?.message === 'need login') this.login(error.authenticateHeader, this.sendToAria2.bind(this, items));
+    } catch (error) {
+      if (error?.message === 'need login')
+        this.login(error.authenticateHeader, this.sendToAria2.bind(this, items));
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
       else this.alert(`${this.$t('unknownError')}`, 'error', error);
     }
@@ -1883,25 +1873,41 @@ export default class Files extends Vue {
     try {
       if (!this.activeRepository) throw 'getRepositoryFailed';
       this.loading();
-      const info: { name: string; digest: string; link?: string }[] = await this.generateDownloadInfo(items);
+      const info: { name: string; digest: string; link?: string; range?: number[] }[] =
+        await this.generateDownloadInfo(items);
+      if (info.some((item) => item.range)) {
+        this.loaded();
+        return this.alert(`${this.$t('unknownError')}`, 'warning');
+      }
       for (const item of info) {
         item.link = await network.getDownloadURL(item.digest, this.activeRepository);
       }
-      await navigator.clipboard.writeText(info.map(item => item.link ? `${item.link}\r\n  out=${item.name}` : '').join('\r\n'));
+      await navigator.clipboard.writeText(
+        info
+          .map((item) => {
+            let downloadText = '';
+            if (item.link) downloadText += `${item.link}\r\n  out=${item.name}`;
+            if (item.range) downloadText = '';
+            //downloadText += `\r\n  header="Range: bytes=${item.range[0]}-${item.range[1]}"`;
+            return downloadText;
+          })
+          .join('\r\n')
+      );
       this.alert(`${this.$t('copyAria2DownloadTextResult')}`, 'success');
-    }
-    catch (error) {
-      if (error?.message === 'need login') this.login(error.authenticateHeader, this.copyAria2DownloadText.bind(this, items));
+    } catch (error) {
+      if (error?.message === 'need login')
+        this.login(error.authenticateHeader, this.copyAria2DownloadText.bind(this, items));
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
       else this.alert(`${this.$t('unknownError')}`, 'error', error);
     }
-    this.loaded();
   }
   private sendToBrowser(url: string, filename: string): void {
     chrome.downloads.download({ url, filename: filename.replace(/[\\/:*?"<>|]/g, '') });
     this.alert(`${this.$t('sendToBrowser')}`, 'success');
   }
-  private async generateDownloadInfo(items: FileItem[]): Promise<{ name: string; digest: string }[]> {
+  private async generateDownloadInfo(
+    items: FileItem[]
+  ): Promise<{ name: string; digest: string; range?: number[] }[]> {
     const worker = new formWorker();
     const promiseWorker = new PromiseWorker(worker);
     const { info } = await promiseWorker.postMessage({
@@ -1916,7 +1922,8 @@ export default class Files extends Vue {
     e.preventDefault();
     this.rightClickX = e.clientX;
     this.rightClickY = e.clientY;
-    if (this.selectedFiles.every(file => file.id !== row.item.id)) this.selectedFiles = [row.item];
+    if (this.selectedFiles.every((file) => file.id !== row.item.id))
+      this.selectedFiles = [row.item];
     this.rightClickMenu = true;
   }
   private async refresh(): Promise<void> {
@@ -1927,8 +1934,7 @@ export default class Files extends Vue {
         await network.commit(config, this.activeRepository);
       }
       await this.getConfig(true);
-    }
-    catch (error) {
+    } catch (error) {
       if (error?.message === 'need login') this.login(error.authenticateHeader);
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
       else this.alert(`${this.$t('unknownError')}`, 'error', error);

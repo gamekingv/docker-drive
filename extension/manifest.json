@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "__MSG_extensionName__",
-  "version": "0.5.12",
+  "version": "0.5.13",
   "description": "__MSG_extensionDescription__",
   "icons": {
     "16": "dist/favicon.png",
@@ -19,13 +19,7 @@
   "background": {
     "page": "dist/background.html"
   },
-  "permissions": [
-    "<all_urls>",
-    "storage",
-    "downloads",
-    "webRequest",
-    "webRequestBlocking"
-  ],
+  "permissions": ["<all_urls>", "storage", "downloads", "webRequest", "webRequestBlocking"],
   "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self';",
   "default_locale": "en",
   "update_url": "https://github.com/gamekingv/docker-drive/releases/latest/download/update.xml"

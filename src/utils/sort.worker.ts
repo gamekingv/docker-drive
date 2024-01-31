@@ -25,8 +25,8 @@ registerPromiseWorker(({ displayList, listSortBy, listSortDesc, itemName, type }
       break;
     }
     case 'uploadTime': {
-      sortedList = displayList.sort((a, b): number =>
-        ((b.uploadTime as number) - (a.uploadTime as number)) * sortDesc
+      sortedList = displayList.sort(
+        (a, b): number => ((b.uploadTime as number) - (a.uploadTime as number)) * sortDesc
       );
       break;
     }
@@ -35,14 +35,33 @@ registerPromiseWorker(({ displayList, listSortBy, listSortDesc, itemName, type }
     }
   }
   if (type === 'image') {
-    const items = sortedList.filter(e => /\.(jpg|png|gif|bmp|webp|ico)$/.test(e.name.toLowerCase()));
-    return { items: items.map(e => ({ name: e.name, digest: e.digest as string })), index: items.findIndex(e => e.name === itemName) };
-  }
-  else if (type === 'audio') {
+    const items = sortedList.filter(e =>
+      /\.(jpg|png|gif|bmp|webp|ico)$/.test(e.name.toLowerCase())
+    );
+    return {
+      items: items.map(({ name, digest, start, end }) => ({
+        name,
+        digest,
+        start,
+        end
+      })),
+      index: items.findIndex(e => e.name === itemName)
+    };
+  } else if (type === 'audio') {
     const items = sortedList.filter(e => /\.(mp3|ogg|wav|flac|aac)$/.test(e.name.toLowerCase()));
-    const cover = sortedList.find(e => /^cover\.(jpg|png|gif|bmp|webp|ico)$/.test(e.name.toLowerCase()))?.digest ?? '';
-    return { items: items.map((e, i) => ({ id: i, name: e.name, digest: e.digest as string, cover })), index: items.findIndex(e => e.name === itemName) };
+    const cover =
+      sortedList.find(e => /^cover\.(jpg|png|gif|bmp|webp|ico)$/.test(e.name.toLowerCase()))
+        ?.digest ?? '';
+    return {
+      items: items.map((e, i) => ({
+        id: i,
+        name: e.name,
+        digest: e.digest as string,
+        cover
+      })),
+      index: items.findIndex(e => e.name === itemName)
+    };
   }
 });
 
-export default {} as typeof Worker & { new(): Worker };
+export default {} as typeof Worker & { new (): Worker };

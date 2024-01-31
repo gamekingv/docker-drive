@@ -60,9 +60,7 @@
               class="text-caption mr-2 my-0 ml-n2"
               align="center"
               style="height: 24px; white-space: nowrap"
-              >{{ currentTime | durationFormat }}/{{
-                duration | durationFormat
-              }}</v-row
+              >{{ currentTime | durationFormat }}/{{ duration | durationFormat }}</v-row
             >
           </template>
         </v-slider>
@@ -101,9 +99,7 @@
                       audio.muted = muted;
                     "
                   >
-                    <v-icon :small="!smAndUp">{{
-                      `mdi-volume-${muted ? "off" : "high"}`
-                    }}</v-icon>
+                    <v-icon :small="!smAndUp">{{ `mdi-volume-${muted ? 'off' : 'high'}` }}</v-icon>
                   </v-btn>
                 </template>
               </v-slider>
@@ -144,10 +140,7 @@
                           @click="audioIndex = item.id"
                         >
                           <v-list-item-title
-                            ><v-icon
-                              v-if="item.id === audioIndex"
-                              class="mr-2"
-                              small
+                            ><v-icon v-if="item.id === audioIndex" class="mr-2" small
                               >mdi-music</v-icon
                             >{{ item.name }}</v-list-item-title
                           >
@@ -165,26 +158,11 @@
                     </template> -->
                   </v-data-iterator>
                   <v-card flat tile>
-                    <v-row
-                      class="ma-0 pb-2"
-                      align="center"
-                      justify="space-around"
-                      @click.stop
-                    >
-                      <v-btn
-                        :disabled="listPage === 1"
-                        small
-                        icon
-                        @click.stop="listPage = 1"
-                      >
+                    <v-row class="ma-0 pb-2" align="center" justify="space-around" @click.stop>
+                      <v-btn :disabled="listPage === 1" small icon @click.stop="listPage = 1">
                         <v-icon>mdi-chevron-double-left</v-icon>
                       </v-btn>
-                      <v-btn
-                        :disabled="listPage === 1"
-                        small
-                        icon
-                        @click.stop="listPage--"
-                      >
+                      <v-btn :disabled="listPage === 1" small icon @click.stop="listPage--">
                         <v-icon>mdi-chevron-left</v-icon>
                       </v-btn>
                       <v-btn
@@ -217,9 +195,7 @@
                   audio.loop = loop;
                 "
               >
-                <v-icon :small="!smAndUp">{{
-                  `mdi-${loop ? "sync" : "swap-horizontal"}`
-                }}</v-icon>
+                <v-icon :small="!smAndUp">{{ `mdi-${loop ? 'sync' : 'swap-horizontal'}` }}</v-icon>
               </v-btn>
             </v-list-item-action>
             <v-list-item-action class="my-0 mr-0" :class="{ 'ml-3': smAndUp }">
@@ -228,14 +204,8 @@
               </v-btn>
             </v-list-item-action>
             <v-list-item-action class="my-0" :class="{ 'ml-3': smAndUp }">
-              <v-btn
-                :small="!smAndUp"
-                icon
-                @click.stop="playing ? audio.pause() : audio.play()"
-              >
-                <v-icon :small="!smAndUp">{{
-                  `mdi-${playing ? "pause" : "play"}`
-                }}</v-icon>
+              <v-btn :small="!smAndUp" icon @click.stop="playing ? audio.pause() : audio.play()">
+                <v-icon :small="!smAndUp">{{ `mdi-${playing ? 'pause' : 'play'}` }}</v-icon>
               </v-btn>
             </v-list-item-action>
             <v-list-item-action class="my-0" :class="{ 'ml-3': smAndUp }">
@@ -306,21 +276,27 @@ import storage from '@/utils/storage';
     durationFormat(time: number): string {
       const minute = Math.floor(time / 60);
       const second = Math.floor(time) - minute * 60;
-      return `${minute}: ${`0${second}`.slice(-2)}`;
+      return `${minute}:${`0${second}`.slice(-2)}`;
     }
   }
 })
-
 export default class AudioPlayer extends Vue {
-  @Ref() private readonly audio!: HTMLAudioElement
+  @Ref() private readonly audio!: HTMLAudioElement;
 
   @Emit()
-  private alert(text: string, type?: string): void { ({ text, type }); }
+  private alert(text: string, type?: string): void {
+    ({ text, type });
+  }
 
-  @Prop(Number) private readonly repo!: number
-  @Prop(Array) private readonly list!: { id: number; name: string; digest: string; cover: string }[]
-  @PropSync('index') private audioIndex!: number
-  @PropSync('show') private showAudio!: boolean
+  @Prop(Number) private readonly repo!: number;
+  @Prop(Array) private readonly list!: {
+    id: number;
+    name: string;
+    digest: string;
+    cover: string;
+  }[];
+  @PropSync('index') private audioIndex!: number;
+  @PropSync('show') private showAudio!: boolean;
 
   private get playingAudio(): { name: string; digest: string; cover: string } {
     return this.list[this.audioIndex] ?? {};
@@ -332,19 +308,19 @@ export default class AudioPlayer extends Vue {
     return this.$vuetify.theme.dark;
   }
 
-  private showPlayer = false
-  private currentTime = 0
-  private duration = 0
-  private loadedPercentage = 0
-  private seeking = false
-  private playing = false
-  private volume = 100
-  private muted = false
-  private loop = false
-  private loading = false
-  private source = ''
-  private cover = ''
-  private listPage = 1
+  private showPlayer = false;
+  private currentTime = 0;
+  private duration = 0;
+  private loadedPercentage = 0;
+  private seeking = false;
+  private playing = false;
+  private volume = 100;
+  private muted = false;
+  private loop = false;
+  private loading = false;
+  private source = '';
+  private cover = '';
+  private listPage = 1;
 
   @Watch('playingAudio')
   private async onSourceChange(): Promise<void> {
@@ -356,12 +332,12 @@ export default class AudioPlayer extends Vue {
     if (!this.playingAudio.digest) return;
     this.loading = true;
     const repositories = await storage.getRepositories();
-    const activeRepository = repositories.find(e => e.id === this.repo);
+    const activeRepository = repositories.find((e) => e.id === this.repo);
     if (activeRepository) {
       this.source = await network.getDownloadURL(this.playingAudio.digest, activeRepository);
-      if (this.playingAudio.cover) this.cover = await network.getDownloadURL(this.playingAudio.cover, activeRepository);
-    }
-    else this.alert(`${this.$t('getRepositoryFailed')}`, 'error');
+      if (this.playingAudio.cover)
+        this.cover = await network.getDownloadURL(this.playingAudio.cover, activeRepository);
+    } else this.alert(`${this.$t('getRepositoryFailed')}`, 'error');
   }
 
   private nextAudio(): void {
@@ -383,8 +359,9 @@ export default class AudioPlayer extends Vue {
       }
       const loadEndPercentage = bf.end(range) / this.audio.duration;
       this.loadedPercentage = loadEndPercentage;
+    } catch (e) {
+      e;
     }
-    catch (e) { e; }
   }
 }
 </script>

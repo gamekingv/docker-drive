@@ -37,19 +37,27 @@ client.interceptors.response.use(undefined, errorHandler);
 
 export default {
   async getToken(secret: string): Promise<{ token: string; expiration: number }> {
-    const { data } = await axios.post('https://iam.cloud.ibm.com/identity/token', qs.stringify({
-      'grant_type': 'urn:ibm:params:oauth:grant-type:apikey',
-      'apikey': secret
-    }), {
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/x-www-form-urlencoded'
+    const { data } = await axios.post(
+      'https://iam.cloud.ibm.com/identity/token',
+      qs.stringify({
+        // eslint-disable-next-line
+        grant_type: 'urn:ibm:params:oauth:grant-type:apikey',
+        apikey: secret
+      }),
+      {
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
       }
-    });
+    );
     return { token: data.access_token, expiration: data.expiration };
   },
   async setToken(repository: Repository): Promise<void> {
-    const databaseToken = await storage.getDatabaseToken(repository.id) ?? { token: '', expiration: 0 };
+    const databaseToken = (await storage.getDatabaseToken(repository.id)) ?? {
+      token: '',
+      expiration: 0
+    };
     if (!repository.databaseApiKey) return;
     const now = Date.now() / 1000;
     if (now >= databaseToken.expiration - 60) {
@@ -65,12 +73,12 @@ export default {
     try {
       await client.head(`${repository.databaseURL}/${databaseName}`);
       await client.delete(`${repository.databaseURL}/${databaseName}`);
-    }
-    catch (error) {
+    } catch (error) {
       if (error.response.status !== 404) throw error;
     }
     await client.put(`${repository.databaseURL}/${databaseName}?partitioned=true`);
-    const docs: DatabaseItem[] = [], uuids: string[] = [];
+    const docs: DatabaseItem[] = [],
+      uuids: string[] = [];
     const count = (function getCount(files: FileItem[]): number {
       return files.reduce((count, file) => {
         if (file.type === 'folder') {
@@ -88,37 +96,49 @@ export default {
       });
       uuids.push(...data.uuids);
     }
-    await client.post(`${repository.databaseURL}/${databaseName}/_index`, {
-      ddoc: 'name',
-      index: {
-        fields: [{ name: 'asc' }]
+    await client.post(
+      `${repository.databaseURL}/${databaseName}/_index`,
+      {
+        ddoc: 'name',
+        index: {
+          fields: [{ name: 'asc' }]
+        },
+        name: 'getItemByName',
+        type: 'json'
       },
-      name: 'getItemByName',
-      type: 'json'
-    }, {
-      headers: { 'Content-Type': 'application/json' }
-    });
-    await client.post(`${repository.databaseURL}/${databaseName}/_index`, {
-      ddoc: 'uploadTime',
-      index: {
-        fields: [{ uploadTime: 'desc' }]
+      {
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+    await client.post(
+      `${repository.databaseURL}/${databaseName}/_index`,
+      {
+        ddoc: 'uploadTime',
+        index: {
+          fields: [{ uploadTime: 'desc' }]
+        },
+        name: 'getItemByUploadTime',
+        type: 'json'
       },
-      name: 'getItemByUploadTime',
-      type: 'json'
-    }, {
-      headers: { 'Content-Type': 'application/json' }
-    });
-    await client.post(`${repository.databaseURL}/${databaseName}/_index`, {
-      ddoc: 'global',
-      index: {
-        fields: [{ uploadTime: 'desc' }]
+      {
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+    await client.post(
+      `${repository.databaseURL}/${databaseName}/_index`,
+      {
+        ddoc: 'global',
+        index: {
+          fields: [{ uploadTime: 'desc' }]
+        },
+        name: 'getItemGlobal',
+        type: 'json',
+        partitioned: false
       },
-      name: 'getItemGlobal',
-      type: 'json',
-      partitioned: false
-    }, {
-      headers: { 'Content-Type': 'application/json' }
-    });
+      {
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
     (function toArray(files: DatabaseItem[], parent: string): void {
       files.forEach(file => {
         file._id = `${parent}:${CryptoJS.MD5(file.name)}`;
@@ -136,15 +156,22 @@ export default {
       const part = Math.ceil(contentLength / (800 * 1024));
       const docCount = Math.floor(docs.length / part);
       while (docs.length > 0) {
-        await client.post(`${repository.databaseURL}/${databaseName}/_bulk_docs`, {
-          docs: docs.splice(0, docCount)
-        }, { timeout: 0 });
+        await client.post(
+          `${repository.databaseURL}/${databaseName}/_bulk_docs`,
+          {
+            docs: docs.splice(0, docCount)
+          },
+          { timeout: 0 }
+        );
       }
-    }
-    else {
-      await client.post(`${repository.databaseURL}/${databaseName}/_bulk_docs`, {
-        docs
-      }, { timeout: 0 });
+    } else {
+      await client.post(
+        `${repository.databaseURL}/${databaseName}/_bulk_docs`,
+        {
+          docs
+        },
+        { timeout: 0 }
+      );
     }
   },
   async check(repository: Repository): Promise<boolean> {
@@ -152,8 +179,7 @@ export default {
     const databaseName = repository.url.replace(/\//g, '-').replace(/\./g, '_');
     try {
       await client.head(`${repository.databaseURL}/${databaseName}`);
-    }
-    catch (error) {
+    } catch (error) {
       return false;
     }
     return true;
@@ -161,30 +187,38 @@ export default {
   async list(repository: Repository): Promise<FileItem[]> {
     await this.setToken(repository);
     const databaseName = repository.url.replace(/\//g, '-').replace(/\./g, '_');
-    const { data } = await client.post(`${repository.databaseURL}/${databaseName}/_find`, {
-      selector: { _id: { $gt: '0' } },
-      fields: ['_id', 'name', 'type', 'digest', 'size', 'uploadTime', 'uuid'],
-      sort: [{ uploadTime: 'desc' }]
-    }, {
-      headers: {
-        'Content-Type': 'application/json'
+    const { data } = await client.post(
+      `${repository.databaseURL}/${databaseName}/_find`,
+      {
+        selector: { _id: { $gt: '0' } },
+        fields: ['_id', 'name', 'type', 'digest', 'size', 'uploadTime', 'uuid', 'start', 'end'],
+        sort: [{ uploadTime: 'desc' }]
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json'
+        }
       }
-    });
+    );
     return await this.parse(data.docs);
   },
   async search(name: string, parent: string, repository: Repository): Promise<FileItem[]> {
     await this.setToken(repository);
     const databaseName = repository.url.replace(/\//g, '-').replace(/\./g, '_');
-    const { data } = await client.post(`${repository.databaseURL}/${databaseName}/_partition/${parent}/_find`, {
-      selector: {
-        name: { $eq: name }
+    const { data } = await client.post(
+      `${repository.databaseURL}/${databaseName}/_partition/${parent}/_find`,
+      {
+        selector: {
+          name: { $eq: name }
+        },
+        fields: ['_id', 'name', 'type', 'digest', 'size', 'uploadTime', 'uuid', 'start', 'end']
       },
-      fields: ['_id', 'name', 'type', 'digest', 'size', 'uploadTime', 'uuid']
-    }, {
-      headers: {
-        'Content-Type': 'application/json'
+      {
+        headers: {
+          'Content-Type': 'application/json'
+        }
       }
-    });
+    );
     return data.docs;
   },
   async update(item: DatabaseItem, parent: string, repository: Repository): Promise<string> {
@@ -195,17 +229,19 @@ export default {
     delete item.files;
     if (item._id) {
       const [parentID, id] = item._id.split(':');
-      const isModifyName = id !== `${CryptoJS.MD5(item.name)}`, isModifyParent = parentID !== parent;
+      const isModifyName = id !== `${CryptoJS.MD5(item.name)}`,
+        isModifyParent = parentID !== parent;
       try {
         if (isModifyName || isModifyParent) {
           item._id = `${parent}:${CryptoJS.MD5(item.name)}`;
         } else {
-          const { headers } = await client.head(`${repository.databaseURL}/${databaseName}/${item._id}`);
+          const { headers } = await client.head(
+            `${repository.databaseURL}/${databaseName}/${item._id}`
+          );
           if (headers['etag']) item._rev = headers['etag'].replace(/.*"([^"]+)".*/, '$1');
           else throw '';
         }
-      }
-      catch (error) {
+      } catch (error) {
         throw `"${item.name}" doesn't exist`;
       }
       try {
@@ -215,27 +251,31 @@ export default {
           }
         });
         return item.type === 'file' ? data.id.split(':')[1] : item.uuid;
-      }
-      catch (error) {
+      } catch (error) {
         if (error.response) {
           if (error.response.status === 409 && error.response.data?.error === 'conflict') {
             if (!isModifyName && !isModifyParent) {
-              const { headers } = await client.head(`${repository.databaseURL}/${databaseName}/${item._id}`);
+              const { headers } = await client.head(
+                `${repository.databaseURL}/${databaseName}/${item._id}`
+              );
               if (headers['etag']) item._rev = headers['etag'].replace(/.*"([^"]+)".*/, '$1');
               else throw error;
-              const { data } = await client.post(`${repository.databaseURL}/${databaseName}`, item, {
-                headers: {
-                  'Content-Type': 'application/json'
+              const { data } = await client.post(
+                `${repository.databaseURL}/${databaseName}`,
+                item,
+                {
+                  headers: {
+                    'Content-Type': 'application/json'
+                  }
                 }
-              });
+              );
               return item.type === 'file' ? data.id.split(':')[1] : item.uuid;
             }
           }
         }
         throw error;
       }
-    }
-    else {
+    } else {
       if (item.type === 'folder') {
         const { data } = await client.get(`${repository.databaseURL}/_uuids`);
         item.uuid = data.uuids[0];
@@ -248,12 +288,14 @@ export default {
           }
         });
         return item.type === 'file' ? data.id.split(':')[1] : item.uuid;
-      }
-      catch (error) {
+      } catch (error) {
         if (error.response?.status === 409 && error.response?.data?.error === 'conflict') {
           if (item.type === 'folder') return item.uuid as string;
           else {
-            let finalName = item.name, finalId = item._id, index = 0, exist = true;
+            let finalName = item.name,
+              finalId = item._id,
+              index = 0,
+              exist = true;
             let [, name, ext] = item.name.match(/(.*)(\.[^.]*)$/) || [];
             if (!name) {
               name = item.name;
@@ -262,19 +304,25 @@ export default {
             while (exist) {
               finalName = `${name} (${++index})${ext}`;
               try {
-                const { data } = await client.get(`${repository.databaseURL}/${databaseName}/${finalId}`);
+                const { data } = await client.get(
+                  `${repository.databaseURL}/${databaseName}/${finalId}`
+                );
                 if (data.digest === item.digest) throw 'fileExisted';
                 finalId = `${parent}:${CryptoJS.MD5(finalName)}`;
-                await client.post(`${repository.databaseURL}/${databaseName}`, Object.assign(item, { _id: finalId, name: finalName }), {
-                  headers: {
-                    'Content-Type': 'application/json'
+                await client.post(
+                  `${repository.databaseURL}/${databaseName}`,
+                  Object.assign(item, { _id: finalId, name: finalName }),
+                  {
+                    headers: {
+                      'Content-Type': 'application/json'
+                    }
                   }
-                });
+                );
                 exist = false;
                 return finalId.split(':')[1];
-              }
-              catch (error) {
-                if (error.response?.status !== 409 || error.response?.data?.error !== 'conflict') throw error;
+              } catch (error) {
+                if (error.response?.status !== 409 || error.response?.data?.error !== 'conflict')
+                  throw error;
               }
             }
           }
@@ -297,8 +345,7 @@ export default {
         if (parentID === to) continue;
         await this.update(item, to, repository);
         await this.remove(oldId, repository);
-      }
-      catch (error) {
+      } catch (error) {
         duplicate.push(item);
       }
     }
@@ -308,7 +355,12 @@ export default {
     await this.setToken(repository);
     const databaseName = repository.url.replace(/\//g, '-').replace(/\./g, '_');
     const { headers } = await client.head(`${repository.databaseURL}/${databaseName}/${id}`);
-    await client.delete(`${repository.databaseURL}/${databaseName}/${id}?rev=${headers['etag'].replace(/.*"([^"]+)".*/, '$1')}`);
+    await client.delete(
+      `${repository.databaseURL}/${databaseName}/${id}?rev=${headers['etag'].replace(
+        /.*"([^"]+)".*/,
+        '$1'
+      )}`
+    );
   },
   async add(paths: string[], item: FileItem, repository: Repository): Promise<void> {
     /*@ts-ignore*/
@@ -317,13 +369,17 @@ export default {
       if (folder) {
         folder.uploadTime = item.uploadTime;
         return await this.update(folder, await parentId, repository);
-      }
-      else return await this.update({
-        id: getID(),
-        name: path,
-        type: 'folder',
-        uploadTime: item.uploadTime
-      }, await parentId, repository);
+      } else
+        return await this.update(
+          {
+            id: getID(),
+            name: path,
+            type: 'folder',
+            uploadTime: item.uploadTime
+          },
+          await parentId,
+          repository
+        );
     }, 'root');
     await this.update(item, parent, repository);
   },

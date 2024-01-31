@@ -5,13 +5,7 @@
     content-class="image-viewer-mask"
     transition="fade-transition"
   >
-    <v-toolbar
-      class="image-viewer-top-bar"
-      color="rgba(0,0,0,0.3)"
-      min-width="100vw"
-      dark
-      flat
-    >
+    <v-toolbar class="image-viewer-top-bar" color="rgba(0,0,0,0.3)" min-width="100vw" dark flat>
       <v-tooltip bottom :open-delay="300">
         <template v-slot:activator="{ on, attrs }">
           <v-btn
@@ -29,11 +23,9 @@
             <v-icon>mdi-image-multiple</v-icon>
           </v-btn>
         </template>
-        <span>{{ $t("switchMode") }}</span>
+        <span>{{ $t('switchMode') }}</span>
       </v-tooltip>
-      <v-toolbar-title v-if="images[index]" class="pl-5">{{
-        images[index].name
-      }}</v-toolbar-title>
+      <v-toolbar-title v-if="images[index]" class="pl-5">{{ images[index].name }}</v-toolbar-title>
       <v-spacer></v-spacer>
       <v-btn class="ml-5" icon @click.stop="showImage = false">
         <v-icon>mdi-close</v-icon>
@@ -54,18 +46,10 @@
               <image-loader :url="imageURLs[i]" @retry="reload(i)" />
             </v-carousel-item>
             <template v-slot:prev="{ on, attrs }">
-              <div
-                class="carousel-button carousel-button-prev"
-                v-bind="attrs"
-                v-on="on"
-              ></div>
+              <div class="carousel-button carousel-button-prev" v-bind="attrs" v-on="on"></div>
             </template>
             <template v-slot:next="{ on, attrs }">
-              <div
-                class="carousel-button carousel-button-next"
-                v-bind="attrs"
-                v-on="on"
-              ></div>
+              <div class="carousel-button carousel-button-next" v-bind="attrs" v-on="on"></div>
             </template>
             <img v-show="false" :src="preloadURL" />
           </v-carousel>
@@ -76,8 +60,8 @@
               v-intersect="{
                 handler: onScrollToTop,
                 options: {
-                  threshold: [0, 1],
-                },
+                  threshold: [0, 1]
+                }
               }"
               color="transparent"
               flat
@@ -94,18 +78,8 @@
           </v-col>
         </v-fade-transition>
       </div>
-      <v-row
-        v-else
-        key="loader"
-        class="fill-height ma-0"
-        align="center"
-        justify="center"
-      >
-        <v-progress-circular
-          color="primary"
-          indeterminate
-          size="64"
-        ></v-progress-circular>
+      <v-row v-else key="loader" class="fill-height ma-0" align="center" justify="center">
+        <v-progress-circular color="primary" indeterminate size="64"></v-progress-circular>
       </v-row>
     </v-fade-transition>
     <v-chip class="rounded-r-0 rounded-bl-0 image-count" x-small label
@@ -127,76 +101,98 @@ import network from '@/utils/network';
     ImageLoader
   }
 })
-
 export default class ImageViewer extends Vue {
-  @Ref() private readonly prevSpacer!: Vue
+  @Ref() private readonly prevSpacer!: Vue;
 
-  @Prop() private readonly activeRepository!: Repository
-  @Prop() private readonly displayList!: FileItem[]
-  @Prop() private readonly listSortBy!: string | string[] | undefined
-  @Prop() private readonly listSortDesc!: boolean | boolean[] | undefined
-  @Prop(String) private readonly name!: string
-  @PropSync('show') private readonly showImage!: boolean
+  @Prop() private readonly activeRepository!: Repository;
+  @Prop() private readonly displayList!: FileItem[];
+  @Prop() private readonly listSortBy!: string | string[] | undefined;
+  @Prop() private readonly listSortDesc!: boolean | boolean[] | undefined;
+  @Prop(String) private readonly name!: string;
+  @PropSync('show') private readonly showImage!: boolean;
 
   @Emit()
-  private login(authenticateHeader?: string, fn?: Function): void { ({ authenticateHeader, fn }); }
+  private login(authenticateHeader?: string, fn?: Function): void {
+    ({ authenticateHeader, fn });
+  }
   @Emit()
-  private alert(text: string, type?: string, error?: Error): void { ({ text, type, error }); }
+  private alert(text: string, type?: string, error?: Error): void {
+    ({ text, type, error });
+  }
 
   @Watch('showImage')
   private async onShow(val: boolean): Promise<void> {
     if (val) {
       const worker = new sortWorker();
       const promiseWorker = new PromiseWorker(worker);
-      const { items, index }: { items: { name: string; digest: string }[]; index: number } = await promiseWorker.postMessage({
-        displayList: this.displayList,
-        listSortBy: this.listSortBy,
-        listSortDesc: this.listSortDesc,
-        itemName: this.name,
-        type: 'image'
-      });
+      const { items, index }: { items: { name: string; digest: string }[]; index: number } =
+        await promiseWorker.postMessage({
+          displayList: this.displayList,
+          listSortBy: this.listSortBy,
+          listSortDesc: this.listSortDesc,
+          itemName: this.name,
+          type: 'image'
+        });
       worker.terminate();
       this.images = items;
       this.index = index;
       this.imageURLs = [];
       this.onImageChange(this.index);
       if (this.multiple) this.multipleInitialized = false;
-      this.$nextTick(() => this.showViewer = true);
-    }
-    else this.$nextTick(() => this.showViewer = false);
+      this.$nextTick(() => (this.showViewer = true));
+    } else this.$nextTick(() => (this.showViewer = false));
   }
 
-  private imageURLs: (string | undefined)[] = []
-  private index = 0
-  private showViewer = false
-  private multiple = false
-  private multipleInitialized = false
-  private images: { name: string; digest: string }[] = []
-  private preloadURL = ''
+  private imageURLs: (string | undefined)[] = [];
+  private index = 0;
+  private showViewer = false;
+  private multiple = false;
+  private multipleInitialized = false;
+  private images: { name: string; digest: string; start?: number; end?: number }[] = [];
+  private preloadURL = '';
 
   private async onImageChange(i: number): Promise<void> {
     try {
       if (!this.imageURLs[i]) {
         this.$set(this.imageURLs, i, 'loading');
-        this.$set(this.imageURLs, i, await network.getDownloadURL(this.images[i].digest, this.activeRepository));
+        this.$set(
+          this.imageURLs,
+          i,
+          await this.getImageAsBlob(this.images[i].digest, this.images[i].start, this.images[i].end)
+        );
       }
       if (!this.imageURLs[i + 1] && this.images[i + 1] && !this.multiple) {
         this.$set(this.imageURLs, i + 1, 'loading');
-        this.preloadURL = await network.getDownloadURL(this.images[i + 1].digest, this.activeRepository);
+        this.preloadURL = await this.getImageAsBlob(
+          this.images[i + 1].digest,
+          this.images[i + 1].start,
+          this.images[i + 1].end
+        );
         this.$set(this.imageURLs, i + 1, this.preloadURL);
       }
       if (!this.imageURLs[i - 1] && this.images[i - 1] && !this.multiple) {
         this.$set(this.imageURLs, i - 1, 'loading');
-        this.$set(this.imageURLs, i - 1, await network.getDownloadURL(this.images[i - 1].digest, this.activeRepository));
+        this.$set(
+          this.imageURLs,
+          i - 1,
+          await this.getImageAsBlob(
+            this.images[i - 1].digest,
+            this.images[i - 1].start,
+            this.images[i - 1].end
+          )
+        );
       }
-    }
-    catch (error) {
-      if (error?.message === 'need login') this.login(error.authenticateHeader, this.onImageChange.bind(this, i));
+    } catch (error) {
+      if (error?.message === 'need login')
+        this.login(error.authenticateHeader, this.onImageChange.bind(this, i));
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
       else this.alert(`${this.$t('unknownError')}`, 'error', error);
-      if (!this.imageURLs[i] || this.imageURLs[i] === 'loading') this.$set(this.imageURLs, i, 'error');
-      if ((!this.imageURLs[i + 1] || this.imageURLs[i + 1] === 'loading') && !this.multiple) this.$set(this.imageURLs, i + 1, 'error');
-      if ((!this.imageURLs[i - 1] || this.imageURLs[i - 1] === 'loading') && !this.multiple) this.$set(this.imageURLs, i - 1, 'error');
+      if (!this.imageURLs[i] || this.imageURLs[i] === 'loading')
+        this.$set(this.imageURLs, i, 'error');
+      if ((!this.imageURLs[i + 1] || this.imageURLs[i + 1] === 'loading') && !this.multiple)
+        this.$set(this.imageURLs, i + 1, 'error');
+      if ((!this.imageURLs[i - 1] || this.imageURLs[i - 1] === 'loading') && !this.multiple)
+        this.$set(this.imageURLs, i - 1, 'error');
     }
   }
   private onIntersect(i: number, [entry]: IntersectionObserverEntry[]): void {
@@ -206,12 +202,20 @@ export default class ImageViewer extends Vue {
       if (!this.imageURLs[i + 1] && this.images[i + 1]) {
         this.$nextTick(async () => {
           this.$set(this.imageURLs, i + 1, 'loading');
-          this.$set(this.imageURLs, i + 1, await network.getDownloadURL(this.images[i + 1].digest, this.activeRepository));
+          this.$set(
+            this.imageURLs,
+            i + 1,
+            await this.getImageAsBlob(
+              this.images[i + 1].digest,
+              this.images[i + 1].start,
+              this.images[i + 1].end
+            )
+          );
         });
       }
-    }
-    catch (error) {
-      if (error?.message === 'need login') this.login(error.authenticateHeader, this.onIntersect.bind(this, i, [entry]));
+    } catch (error) {
+      if (error?.message === 'need login')
+        this.login(error.authenticateHeader, this.onIntersect.bind(this, i, [entry]));
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
       else this.alert(`${this.$t('unknownError')}`, 'error', error);
       this.$set(this.imageURLs, i + 1, 'error');
@@ -221,18 +225,25 @@ export default class ImageViewer extends Vue {
     if (!this.multipleInitialized) {
       this.multipleInitialized = true;
       this.prevSpacer?.$el.nextElementSibling?.scrollIntoView();
-    }
-    else if (entry?.intersectionRatio === 1) {
-      const i = this.imageURLs.findIndex(e => e);
+    } else if (entry?.intersectionRatio === 1) {
+      const i = this.imageURLs.findIndex((e) => e);
       try {
         if (!this.imageURLs[i - 1] && this.images[i - 1]) {
           this.$set(this.imageURLs, i - 1, 'loading');
           this.$nextTick(() => this.prevSpacer?.$el.nextElementSibling?.scrollIntoView());
-          this.$set(this.imageURLs, i - 1, await network.getDownloadURL(this.images[i - 1].digest, this.activeRepository));
+          this.$set(
+            this.imageURLs,
+            i - 1,
+            await this.getImageAsBlob(
+              this.images[i - 1].digest,
+              this.images[i - 1].start,
+              this.images[i - 1].end
+            )
+          );
         }
-      }
-      catch (error) {
-        if (error?.message === 'need login') this.login(error.authenticateHeader, this.onScrollToTop.bind(this, [entry]));
+      } catch (error) {
+        if (error?.message === 'need login')
+          this.login(error.authenticateHeader, this.onScrollToTop.bind(this, [entry]));
         else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
         else this.alert(`${this.$t('unknownError')}`, 'error', error);
         this.$set(this.imageURLs, i - 1, 'error');
@@ -241,14 +252,30 @@ export default class ImageViewer extends Vue {
   }
   private async reload(i: number): Promise<void> {
     try {
-      this.$set(this.imageURLs, i, await network.getDownloadURL(this.images[i].digest, this.activeRepository));
-    }
-    catch (error) {
-      if (error?.message === 'need login') this.login(error.authenticateHeader, this.reload.bind(this, i));
+      this.$set(
+        this.imageURLs,
+        i,
+        await this.getImageAsBlob(this.images[i].digest, this.images[i].start, this.images[i].end)
+      );
+    } catch (error) {
+      if (error?.message === 'need login')
+        this.login(error.authenticateHeader, this.reload.bind(this, i));
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
       else this.alert(`${this.$t('unknownError')}`, 'error', error);
       this.$set(this.imageURLs, i, 'error');
     }
+  }
+  private async getImageAsBlob(digest: string, start?: number, end?: number): Promise<string> {
+    const url = await network.getDownloadURL(digest, this.activeRepository);
+    let blob: Blob;
+    if ((start || start === 0) && end) {
+      blob = await fetch(url, {
+        headers: {
+          Range: `bytes=${start}-${end}`
+        }
+      }).then((r) => r.blob());
+    } else blob = await fetch(url).then((r) => r.blob());
+    return window.URL.createObjectURL(new Blob([blob]));
   }
 }
 </script>
@@ -283,11 +310,11 @@ export default class ImageViewer extends Vue {
 }
 .carousel-button.carousel-button-next {
   right: 0;
-  cursor: url("../assets/arrow-right.svg") 16 16, pointer;
+  cursor: url('../assets/arrow-right.svg') 16 16, pointer;
 }
 .carousel-button.carousel-button-prev {
   left: 0;
-  cursor: url("../assets/arrow-left.svg") 16 16, pointer;
+  cursor: url('../assets/arrow-left.svg') 16 16, pointer;
 }
 </style>
 
