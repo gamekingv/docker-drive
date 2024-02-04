@@ -187,6 +187,9 @@ export default {
   async list(repository: Repository): Promise<FileItem[]> {
     await this.setToken(repository);
     const databaseName = repository.url.replace(/\//g, '-').replace(/\./g, '_');
+    let bytes = 0,
+      lastUpdate = Date.now();
+    const request = axios.CancelToken.source();
     const { data } = await client.post(
       `${repository.databaseURL}/${databaseName}/_find`,
       {
@@ -197,7 +200,17 @@ export default {
       {
         headers: {
           'Content-Type': 'application/json'
-        }
+        },
+        cancelToken: request.token,
+        onDownloadProgress: ({ loaded }) => {
+          if (loaded - bytes > 10 * 1024) {
+            lastUpdate = Date.now();
+            bytes = loaded;
+          } else if (Date.now() - lastUpdate > 10000) {
+            request.cancel('timeout');
+          }
+        },
+        timeout: 0
       }
     );
     return await this.parse(data.docs);
