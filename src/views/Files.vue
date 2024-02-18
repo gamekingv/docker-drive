@@ -1900,6 +1900,7 @@ export default class Files extends Vue {
       else if (typeof error === 'string') this.alert(`${this.$t(error)}`, 'error');
       else this.alert(`${this.$t('unknownError')}`, 'error', error);
     }
+    this.loaded();
   }
   private sendToBrowser(url: string, filename: string): void {
     chrome.downloads.download({ url, filename: filename.replace(/[\\/:*?"<>|]/g, '') });
