@@ -1779,7 +1779,7 @@ export default class Files extends Vue {
           await network.getDownloadURL(item.digest, this.activeRepository),
           item.name
         );
-      } else if (/\.(jpg|png|gif|bmp|webp|ico)$/.test(item.name.toLowerCase())) {
+      } else if (/\.(jpg|jpeg|png|gif|bmp|webp|ico)$/.test(item.name.toLowerCase())) {
         this.loaded();
         this.showImage = true;
       } else if (/\.(mp4|mkv|avi)$/.test(item.name.toLowerCase())) {

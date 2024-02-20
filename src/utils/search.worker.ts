@@ -39,7 +39,7 @@ registerPromiseWorker(({ list, path, searchText, searchRecursive = false, m3u8 }
         for (const name of path) {
           const nextPointer = folderPointer.files?.find(e => e.name === name);
           if (!--remainPath && nextPointer?.type === 'file') {
-            const cover = folderPointer.files?.find(e => /^cover\.(jpg|png|gif|bmp|webp|ico)$/.test(e.name.toLowerCase()))?.digest ?? '';
+            const cover = folderPointer.files?.find(e => /^cover\.(jpg|jpeg|png|gif|bmp|webp|ico)$/.test(e.name.toLowerCase()))?.digest ?? '';
             folderPointer.files?.find(e => e.name === name);
             return { name: nextPointer.name, digest: nextPointer.digest, cover };
           }

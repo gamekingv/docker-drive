@@ -36,7 +36,7 @@ registerPromiseWorker(({ displayList, listSortBy, listSortDesc, itemName, type }
   }
   if (type === 'image') {
     const items = sortedList.filter(e =>
-      /\.(jpg|png|gif|bmp|webp|ico)$/.test(e.name.toLowerCase())
+      /\.(jpg|jpeg|png|gif|bmp|webp|ico)$/.test(e.name.toLowerCase())
     );
     return {
       items: items.map(({ name, digest, start, end }) => ({
@@ -50,7 +50,7 @@ registerPromiseWorker(({ displayList, listSortBy, listSortDesc, itemName, type }
   } else if (type === 'audio') {
     const items = sortedList.filter(e => /\.(mp3|ogg|wav|flac|aac)$/.test(e.name.toLowerCase()));
     const cover =
-      sortedList.find(e => /^cover\.(jpg|png|gif|bmp|webp|ico)$/.test(e.name.toLowerCase()))
+      sortedList.find(e => /^cover\.(jpg|jpeg|png|gif|bmp|webp|ico)$/.test(e.name.toLowerCase()))
         ?.digest ?? '';
     return {
       items: items.map((e, i) => ({
